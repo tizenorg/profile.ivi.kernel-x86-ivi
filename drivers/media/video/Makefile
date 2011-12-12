@@ -212,3 +212,17 @@ obj-$(CONFIG_ARCH_OMAP)	+= omap/
 ccflags-y += -I$(srctree)/drivers/media/dvb/dvb-core
 ccflags-y += -I$(srctree)/drivers/media/dvb/frontends
 ccflags-y += -I$(srctree)/drivers/media/common/tuners
+
+obj-$(CONFIG_IOH_ML86V76651)	+= ioh_video_in_ml86v76651.o
+obj-$(CONFIG_IOH_ML86V76653)	+= ioh_video_in_ml86v76651.o
+obj-$(CONFIG_IOH_OV7620)	+= ioh_video_in_ov7620.o
+obj-$(CONFIG_IOH_OV9653)	+= ioh_video_in_ov9653.o
+obj-$(CONFIG_IOH_NCM13J)	+= ioh_video_in_ncm13j.o
+obj-$(CONFIG_IOH_VIDEOIN)       += ioh_video_in.o
+ifeq ($(CONFIG_IOH_ML86V76653),y)
+ccflags-y += -DIOH_VIDEO_IN_ML86V76653
+endif
+ifeq ($(CONFIG_IOH_VIDEO_IN_DMA_CONTIG),y)
+ccflags-y += -DIOH_VIDEO_IN_DMA_CONTIG
+endif
+ccflags-y += -I$(srctree)/drivers/i2c/busses/
