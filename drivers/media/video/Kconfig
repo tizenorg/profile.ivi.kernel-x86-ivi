@@ -961,6 +961,81 @@ config VIDEO_S5P_MIPI_CSIS
 	  To compile this driver as a module, choose M here: the
 	  module will be called s5p-csis.
 
+config IOH_VIDEOIN
+        tristate "IOH VIDEO IN"
+        depends on PCI && DMADEVICES
+	select PCH_DMA
+        help
+          If you say yes to this option, support will be included for the
+          IOH VIDEO ON Driver.
+
+config  IOH_VIDEO_DEVICE_SELECT
+        boolean
+
+choice
+        prompt "Select IOH VIDEO IN Device"
+        depends on IOH_VIDEOIN
+        help
+           This is a selection of used device of the IOH VIDEO.
+
+config IOH_ML86V76651
+        boolean "IOH VIDEO IN(ML86V76651)"
+        depends on PCI && IOH_VIDEOIN && I2C_EG20T
+        help
+          If you say yes to this option, support will be included for the
+          IOH VIDEO ON Driver(ML86V76651).
+
+config IOH_ML86V76653
+        boolean "IOH VIDEO IN(ML86V76653)"
+        depends on PCI && IOH_VIDEOIN && I2C_EG20T
+        help
+          If you say yes to this option, support will be included for the
+          IOH VIDEO ON Driver(ML86V76653).
+
+config IOH_OV7620
+        boolean "IOH VIDEO IN(OV7620)"
+        depends on PCI && IOH_VIDEOIN && I2C_EG20T
+        help
+          If you say yes to this option, support will be included for the
+          IOH VIDEO ON Driver(OV7620).
+
+config IOH_OV9653
+        boolean "IOH VIDEO IN(OV9653)"
+        depends on PCI && IOH_VIDEOIN && I2C_EG20T
+        help
+          If you say yes to this option, support will be included for the
+          IOH VIDEO ON Driver(OV9653).
+
+config IOH_NCM13J
+        boolean "IOH VIDEO IN(NCM13-J)"
+        depends on PCI && IOH_VIDEOIN && I2C_EG20T
+        help
+          If you say yes to this option, support will be included for the
+          IOH VIDEO ON Driver(NCM13-J).
+endchoice
+
+config  IOH_VIDEO_FRAMEWORK_SELECT
+        boolean
+
+choice
+        prompt "Select IOH VIDEO IN Videobuf Freamework"
+        depends on IOH_VIDEOIN
+        help
+           This is a selection of used the method of video buffer framework.
+
+config IOH_VIDEO_IN_VMALLOC
+        boolean "VMALLOC Framework"
+	select VIDEOBUF_VMALLOC
+        help
+          If you say yes to this option, VMALLOC framework is used.
+
+config IOH_VIDEO_IN_DMA_CONTIG
+        boolean "DMA-CONTIG Framework"
+	select VIDEOBUF_DMA_CONTIG
+        help
+          If you say yes to this option, DMA-CONTIG framework is used.
+endchoice
+
 #
 # USB Multimedia device configuration
 #
