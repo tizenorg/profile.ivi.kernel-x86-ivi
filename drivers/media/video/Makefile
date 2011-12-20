@@ -218,6 +218,7 @@ obj-$(CONFIG_IOH_ML86V76653)	+= ioh_video_in_ml86v76651.o
 obj-$(CONFIG_IOH_OV7620)	+= ioh_video_in_ov7620.o
 obj-$(CONFIG_IOH_OV9653)	+= ioh_video_in_ov9653.o
 obj-$(CONFIG_IOH_NCM13J)	+= ioh_video_in_ncm13j.o
+obj-$(CONFIG_IOH_ADV7180)	+= ioh_video_in_adv7180.o
 obj-$(CONFIG_IOH_VIDEOIN)       += ioh_video_in.o
 ifeq ($(CONFIG_IOH_ML86V76653),y)
 ccflags-y += -DIOH_VIDEO_IN_ML86V76653

@@ -926,6 +926,13 @@ config IOH_NCM13J
         help
           If you say yes to this option, support will be included for the
           IOH VIDEO ON Driver(NCM13-J).
+
+config IOH_ADV7180
+        boolean "IOH VIDEO IN(ADV7180)"
+        depends on PCI && IOH_VIDEOIN && I2C_EG20T
+        help
+          If you say yes to this option, support will be included for the
+          IOH VIDEO ON Driver(ADV7180).
 endchoice
 
 config  IOH_VIDEO_FRAMEWORK_SELECT
