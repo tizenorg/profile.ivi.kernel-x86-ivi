@@ -1410,7 +1410,8 @@ static struct eg20t_port *pch_uart_init_port(struct pci_dev *pdev,
 	if (!rxbuf)
 		goto init_port_free_txbuf;
 
-	base_baud = 1843200; /* 1.8432MHz */
+	/* After we config the pch_phub, base clk is now 192M */
+	base_baud = 192000000;
 
 	/* quirk for CM-iTC board */
 	board_name = dmi_get_system_info(DMI_BOARD_NAME);
