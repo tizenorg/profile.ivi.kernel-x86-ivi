@@ -708,6 +708,12 @@ static int __devinit pch_phub_probe(struct pci_dev *pdev,
 						CLKCFG_PLL2VCO | CLKCFG_UARTCLKSEL,
 						CLKCFG_UART_MASK);
 
+		pch_phub_read_modify_write_reg(chip,
+						(unsigned int)CLKCFG_REG_OFFSET,
+						CLKCFG_UART_48MHZ | CLKCFG_BAUDDIV |
+						CLKCFG_PLL2VCO | CLKCFG_UARTCLKSEL,
+						CLKCFG_UART_MASK);
+
 		/* set the prefech value */
 		iowrite32(0x000affaa, chip->pch_phub_base_address + 0x14);
 		/* set the interrupt delay value */
@@ -715,6 +721,13 @@ static int __devinit pch_phub_probe(struct pci_dev *pdev,
 		chip->pch_opt_rom_start_address = PCH_PHUB_ROM_START_ADDR_EG20T;
 		chip->pch_mac_start_address = PCH_PHUB_MAC_START_ADDR_EG20T;
 	} else if (id->driver_data == 2) { /* ML7213 IOH */
+
+		pch_phub_read_modify_write_reg(chip,
+						(unsigned int)CLKCFG_REG_OFFSET,
+						CLKCFG_UART_48MHZ | CLKCFG_BAUDDIV |
+						CLKCFG_PLL2VCO | CLKCFG_UARTCLKSEL,
+						CLKCFG_UART_MASK);
+
 		retval = sysfs_create_bin_file(&pdev->dev.kobj, &pch_bin_attr);
 		if (retval)
 			goto err_sysfs_create;
@@ -756,6 +769,8 @@ static int __devinit pch_phub_probe(struct pci_dev *pdev,
 		chip->pch_mac_start_address = PCH_PHUB_MAC_START_ADDR_ML7223;
 	}
 
+	pr_info("PHUB controller: CLKCFG register is set to 0x%08x\n",
+		ioread32(chip->pch_phub_base_address + CLKCFG_REG_OFFSET));
 	chip->ioh_type = id->driver_data;
 	pci_set_drvdata(pdev, chip);
 
