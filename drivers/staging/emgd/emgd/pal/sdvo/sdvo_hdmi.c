@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: sdvo_hdmi.c
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -520,3 +520,5 @@ sdvo_status_t sdvo_hdmi_write_buffer
 }
 
 #endif/* SDVO_HDMI */
+
+

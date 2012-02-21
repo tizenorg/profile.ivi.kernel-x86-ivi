@@ -153,3 +153,4 @@ IMG_VOID PVRSRVOutputMetricTotals(IMG_VOID)
 }
 
 #endif
+

@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: mode_access.h
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -49,3 +49,4 @@ extern int mode_getresolution(igd_display_h display_h,
 GET_DEVICE_POWER_STATE(d_h) : ((PORT(d_h, pn))->power_state))
 
 #endif /* _IGD_MODEACCESS_H */
+

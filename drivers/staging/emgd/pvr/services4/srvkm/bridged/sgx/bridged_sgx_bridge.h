@@ -35,3 +35,4 @@ IMG_VOID SetSGXDispatchTableEntry(IMG_VOID);
 #endif
 
 #endif
+

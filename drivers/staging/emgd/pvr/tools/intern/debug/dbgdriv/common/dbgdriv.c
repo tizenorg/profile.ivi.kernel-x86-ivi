@@ -2069,3 +2069,4 @@ PDBG_LASTFRAME_BUFFER FindLFBuf(PDBG_STREAM psStream)
 
 	return psLFBuffer;
 }
+

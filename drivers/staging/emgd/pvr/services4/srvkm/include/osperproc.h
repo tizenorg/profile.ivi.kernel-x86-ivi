@@ -69,3 +69,4 @@ static INLINE PVRSRV_ERROR OSPerProcessSetHandleOptions(PVRSRV_HANDLE_BASE *psHa
 #endif
 
 #endif
+

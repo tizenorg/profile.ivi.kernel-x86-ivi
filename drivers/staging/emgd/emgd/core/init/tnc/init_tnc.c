@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: init_tnc.c
- * $Revision: 1.23 $
+ * $Revision: 1.24 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -246,49 +246,50 @@ static int full_config_vga_tnc(igd_context_t *context,
 		context->device_context.virt_mmadr_sdvo);
 
 	/* Map the STMicro SDVO registers. */
-	if(OS_PCI_READ_CONFIG_32(platform_context->stbridgedev,
-			TNC_PCI_MMADR, (void*)&context->device_context.mmadr_sdvo_st)) {
-		EMGD_ERROR_EXIT("Reading MMADR");
-		return -IGD_ERROR_NODEV;
+	if(platform_context->stbridgedev) {
+		if(OS_PCI_READ_CONFIG_32(platform_context->stbridgedev,
+					TNC_PCI_MMADR, (void*)&context->device_context.mmadr_sdvo_st)) {
+			EMGD_ERROR_EXIT("Reading MMADR");
+			return -IGD_ERROR_NODEV;
+		}
+
+		context->device_context.mmadr_sdvo_st &= 0xfffffff9;
+		context->device_context.virt_mmadr_sdvo_st =
+			OS_MAP_IO_TO_MEM_NOCACHE(context->device_context.mmadr_sdvo_st,
+					TNC_ST_SDVO_MMIO_SIZE);
+
+		if (!context->device_context.virt_mmadr_sdvo_st) {
+			EMGD_ERROR_EXIT("Failed to map MMADR");
+			return -IGD_ERROR_NODEV;
+		}
+
+		EMGD_DEBUG("STMicro sdvo mmadr mapped %dKB @ (phys):0x%lx  (virt):%p",
+				TNC_ST_SDVO_MMIO_SIZE/1024,
+				context->device_context.mmadr_sdvo_st,
+				context->device_context.virt_mmadr_sdvo_st);
+
+		/* Map the STMicro GPIO registers. */
+		if(OS_PCI_READ_CONFIG_32(platform_context->stgpiodev,
+					TNC_PCI_MMADR, (void*)&context->device_context.mmadr_sdvo_st_gpio)) {
+			EMGD_ERROR_EXIT("Reading MMADR");
+			return -IGD_ERROR_NODEV;
+		}
+
+		context->device_context.mmadr_sdvo_st_gpio &= 0xfffffff9;
+		context->device_context.virt_mmadr_sdvo_st_gpio =
+			OS_MAP_IO_TO_MEM_NOCACHE(context->device_context.mmadr_sdvo_st_gpio,
+					TNC_ST_SDVO_MMIO_SIZE);
+
+		if (!context->device_context.virt_mmadr_sdvo_st_gpio) {
+			EMGD_ERROR_EXIT("Failed to map MMADR");
+			return -IGD_ERROR_NODEV;
+		}
+
+		EMGD_DEBUG("STMicro sdvo gpio mmadr mapped %dKB @ (phys):0x%lx  (virt):%p",
+				TNC_ST_SDVO_MMIO_SIZE/1024,
+				context->device_context.mmadr_sdvo_st_gpio,
+				context->device_context.virt_mmadr_sdvo_st_gpio);
 	}
-
-	context->device_context.mmadr_sdvo_st &= 0xfffffff9;
-	context->device_context.virt_mmadr_sdvo_st =
-		OS_MAP_IO_TO_MEM_NOCACHE(context->device_context.mmadr_sdvo_st,
-		TNC_ST_SDVO_MMIO_SIZE);
-
-	if (!context->device_context.virt_mmadr_sdvo_st) {
-		EMGD_ERROR_EXIT("Failed to map MMADR");
-		return -IGD_ERROR_NODEV;
-	}
-
-	EMGD_DEBUG("STMicro sdvo mmadr mapped %dKB @ (phys):0x%lx  (virt):%p",
-		TNC_ST_SDVO_MMIO_SIZE/1024,
-		context->device_context.mmadr_sdvo_st,
-		context->device_context.virt_mmadr_sdvo_st);
-
-	/* Map the STMicro SDVO registers. */
-	if(OS_PCI_READ_CONFIG_32(platform_context->stgpiodev,
-			TNC_PCI_MMADR, (void*)&context->device_context.mmadr_sdvo_st_gpio)) {
-		EMGD_ERROR_EXIT("Reading MMADR");
-		return -IGD_ERROR_NODEV;
-	}
-
-	context->device_context.mmadr_sdvo_st_gpio &= 0xfffffff9;
-	context->device_context.virt_mmadr_sdvo_st_gpio =
-		OS_MAP_IO_TO_MEM_NOCACHE(context->device_context.mmadr_sdvo_st_gpio,
-		TNC_ST_SDVO_MMIO_SIZE);
-
-	if (!context->device_context.virt_mmadr_sdvo_st_gpio) {
-		EMGD_ERROR_EXIT("Failed to map MMADR");
-		return -IGD_ERROR_NODEV;
-	}
-
-	EMGD_DEBUG("STMicro sdvo gpio mmadr mapped %dKB @ (phys):0x%lx  (virt):%p",
-		TNC_ST_SDVO_MMIO_SIZE/1024,
-		context->device_context.mmadr_sdvo_st_gpio,
-		context->device_context.virt_mmadr_sdvo_st_gpio);
-
 
 	/* Map the GPIO BAR. Provides the 64 bytes of I/O space for GPIO
 	 * BAR is defined by bits 15:6 */
@@ -577,9 +578,9 @@ void full_shutdown_tnc(igd_context_t *context)
 
 
  int query_2d_caps_hwhint_tnc(
-	         igd_context_t *context,
-	         unsigned long caps_val,
-	         unsigned long *status)
+  	         igd_context_t *context,
+  	         unsigned long caps_val,
+  	         unsigned long *status)
 {
 	platform_context_tnc_t *platform_context;
 
@@ -617,3 +618,4 @@ void full_shutdown_tnc(igd_context_t *context)
 	EMGD_TRACE_EXIT;
 	return 0;
 }
+

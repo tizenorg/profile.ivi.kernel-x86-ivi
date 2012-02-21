@@ -1,9 +1,9 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
- * Filename: personality.h
- * $Revision: 1.5 $
+ * Filename: mode_tnc.h
+ * $Revision: 1.2 $
  *-----------------------------------------------------------------------------
- * Copyright (c) 2002-2010, Intel Corporation.
+ * Copyright (c) 2002-2011, Intel Corporation.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,26 +24,29 @@
  * THE SOFTWARE.
  *
  *-----------------------------------------------------------------------------
- * Description:
- *  This file is used in conjunction with the default_config.h to
- *  gererate a full set of build defines.
- *-----------------------------------------------------------------------------
  */
 
-#ifndef _PERSONALITY_H
-#define _PERSONALITY_H
-/*
-TODO: After the 9.1.1 branch, re-enable this code and delete igd_version.h
-#define IGD_MAJOR_NUM  9
-#define IGD_MINOR_NUM  1
-#define IGD_BUILD_NUM  1258
+#define MODULE_NAME hal.mode
 
-#define IGD_PCF_VERSION   0x00000400
-*/
+typedef struct _mode_data_tnc {
+	unsigned long plane_a_preserve;
+	unsigned long plane_b_c_preserve;
+	unsigned long pipe_preserve;
+	unsigned long dsp_arb;
+	unsigned long fifo_watermark1;
+	unsigned long fifo_watermark2;
+	unsigned long fifo_watermark3;
+	unsigned long fifo_watermark4;
+	unsigned long fifo_watermark5;
+	unsigned long fifo_watermark6;
+} mode_data_tnc_t;
 
-/* Enable COPP */
-#define CONFIG_COPP
+#define CHECK_VGA(a) MODE_IS_VGA(a)
 
-#include <igd_version.h>
-
+#ifdef DEBUG_BUILD_TYPE
+#define FLAG(a) a
+#else
+/* Turn all workaround for release driver */
+#define FLAG(a) 1
 #endif
+

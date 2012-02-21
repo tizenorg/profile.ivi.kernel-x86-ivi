@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: igd_pwr.c
- * $Revision: 1.11 $
+ * $Revision: 1.15 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -129,10 +129,9 @@ static int igd_pwr_alter(igd_driver_h driver_handle, unsigned int dwPowerState)
 		/* Officially change the power state after registers are restored */
 		context->device_context.power_state = IGD_POWERSTATE_D0;
 
-		/* restore power to plane, pipe and port */
+		/* Power up mode module */
 		if(context->mod_dispatch.mode_pwr) {
-			retval = context->mod_dispatch.mode_pwr(context,
-				IGD_POWERSTATE_D0);
+			retval = context->mod_dispatch.mode_pwr(context, dwPowerState);
 			if (retval) {
 				return retval;
 			}
@@ -303,3 +302,4 @@ int _pwr_init(igd_context_t *context)
 
 	return 0;
 }                                                               /* _pwr_init */
+

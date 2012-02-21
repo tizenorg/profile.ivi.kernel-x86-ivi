@@ -45,8 +45,8 @@ QueuePrintCommands (PVRSRV_QUEUE_INFO * psQueue, IMG_CHAR * buffer, size_t size)
 
 		off = printAppend(buffer, size, off, "%p %p  %5lu  %6lu  %3lu  %5lu   %2lu   %2lu    %3lu  \n",
 							psQueue,
-							psCmd,
-							psCmd->ui32ProcessID,
+					 		psCmd,
+					 		psCmd->ui32ProcessID,
 							psCmd->CommandType,
 							psCmd->ui32CmdSize,
 							psCmd->ui32DevIndex,
@@ -92,8 +92,8 @@ void ProcSeqShowQueue(struct seq_file *sfile,void* el)
 
 		seq_printf(sfile, "%p %p  %5lu  %6lu  %3lu  %5lu   %2lu   %2lu    %3lu  \n",
 							psQueue,
-							psCmd,
-							psCmd->ui32ProcessID,
+					 		psCmd,
+					 		psCmd->ui32ProcessID,
 							psCmd->CommandType,
 							psCmd->ui32CmdSize,
 							psCmd->ui32DevIndex,
@@ -1158,3 +1158,4 @@ PVRSRV_ERROR PVRSRVRemoveCmdProcListKM(IMG_UINT32 ui32DevIndex,
 
 	return PVRSRV_OK;
 }
+

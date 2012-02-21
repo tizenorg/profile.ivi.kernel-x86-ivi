@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: emgd_drv.c
- * $Revision: 1.127 $
+ * $Revision: 1.142 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -32,8 +32,14 @@
 
 #define MODULE_NAME hal.oal
 
+#include <drm/drmP.h>
+#include <drm/drm.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_crtc_helper.h>
 #include <linux/version.h>
+#include <linux/device.h>
 #include <drm/drm_pciids.h>
+#include <intelpci.h>
 #include "drm_emgd_private.h"
 #include "user_config.h"
 #include "emgd_drv.h"
@@ -53,17 +59,28 @@
 #include <linkage.h>
 #include <sysconfig.h>
 
+/* For Buffer Class of Texture Stream*/
+/* pvr/services4/3rdparty/emgd_bufferclass/emgd_bc_linux.c */
+extern int emgd_bc_ts_init(void);
+extern int emgd_bc_ts_uninit(void);
+
+/*------------------------------------------------------------------------------
+ * Formal Declaration
+ *------------------------------------------------------------------------------
+ */
 extern void emgd_set_real_handle(igd_driver_h drm_handle);
 extern void emgd_set_real_dispatch(igd_dispatch_t *drm_dispatch);
-extern void emgd_ms_init(struct drm_device *dev);
-extern int msvdx_pre_init_plb(struct drm_device *dev);
+extern void emgd_modeset_init(struct drm_device *dev);
+extern void emgd_modeset_destroy(struct drm_device *dev);
+extern int  msvdx_pre_init_plb(struct drm_device *dev);
 extern emgd_drm_config_t config_drm;
+extern int context_count;
 
 /* This must be defined whether debug or release build */
 igd_debug_t emgd_debug_flag = {
-        {
-                CONFIG_DEBUG_FLAGS
-        }
+	{
+		CONFIG_DEBUG_FLAGS
+	}
 };
 igd_debug_t *emgd_debug = &emgd_debug_flag;
 
@@ -141,8 +158,12 @@ module_param_named(debug_dump_gmm_on_fail, emgd_debug_flag.hal.dump_gmm_on_fail,
 MODULE_PARM_DESC(debug_dump_shaders, "Verbose Debug: dump shaders");
 module_param_named(debug_dump_shaders, emgd_debug_flag.hal.dump_shaders, short, 0600);
 
+MODULE_PARM_DESC(debug_bc_ts, "Debug: Texture Stream");
+module_param_named(debug_bc_ts, emgd_debug_flag.hal.buf_class, short, 0600);
 #endif
 
+
+static struct drm_driver driver;  /* TODO: what? */
 
 /* Note: The following module paramter values are advertised to the root user,
  * via the files in the /sys/module/emgd/parameters directory (e.g. the "init"
@@ -192,12 +213,12 @@ unsigned x_started = false;
 /**
  * The primary fb_info to use when the DRM module [re-]initializes the display.
  */
-igd_framebuffer_info_t primary_fb_info;
+igd_framebuffer_info_t *primary_fb_info;
 /**
  * The secondary fb_info to use when the DRM module [re-]initializes the
  * display.
  */
-igd_framebuffer_info_t secondary_fb_info;
+igd_framebuffer_info_t *secondary_fb_info;
 /**
  * The primary display structure (filled in by alter_displays()) to use when
  * the DRM module [re-]initializes the display.
@@ -241,50 +262,63 @@ static struct pci_device_id pciidlist[] = {
 		{.cmd = ioctl, .func = _func, .flags = _flags}
 
 static struct drm_ioctl_desc emgd_ioctl[] = {
-	/* NOTE: The "DRM_ROOT_ONLY" flag value (last parameter) below indicates
-	 * that the ioctl will only work for "root" (super-user) processes (e.g. X
-	 * server).  We don't use the other flag values, because we only want these
-	 * ioctls to be used by the X driver code, running within the X server.
+	/*
+	 * NOTE: The flag "DRM_MASTER" for the final parameter indicates an ioctl
+	 * can only be used by the DRM master process.  In an X environment, the
+	 * X server will be the master, in a Wayland environment, the Wayland
+	 * compositor will be master, and if just running standalone GBM apps,
+	 * they'll gain master.  For ioctl's that we want to run from an X
+	 * client app or a Wayland client app, we instead use DRM_AUTH; these
+	 * clients will get the DRM master to authenticate them, after which
+	 * they'll be able to call the ioctl's.  Random programs that haven't
+	 * authenticated with the DRM master won't be able to call them.
 	 */
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_ALTER_CURSOR, emgd_alter_cursor,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_ALTER_CURSOR_POS, emgd_alter_cursor_pos,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_ALTER_DISPLAYS, emgd_alter_displays,
-		DRM_ROOT_ONLY),
-	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_ALTER_OVL, emgd_alter_ovl, DRM_ROOT_ONLY),
-	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_ALTER_OVL2, emgd_alter_ovl2, DRM_ROOT_ONLY),
+		DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_ALTER_OVL, emgd_alter_ovl, DRM_MASTER),
+	/* Making DRM_IOCTL_IGD_ALTER_OVL2 DRM_AUTH so that libva wayland can
+	 * call alter_ovl without going through X server.
+	 */
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_ALTER_OVL2, emgd_alter_ovl2, DRM_AUTH),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_APPCTX_ALLOC, emgd_appcontext_alloc,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_APPCTX_FREE, emgd_appcontext_free,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_DRIVER_SAVE_RESTORE, emgd_driver_save_restore,
-		DRM_ROOT_ONLY),
-	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_ENABLE_PORT, emgd_enable_port, DRM_ROOT_ONLY),
-	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_ATTRS, emgd_get_attrs, DRM_ROOT_ONLY),
-	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_DISPLAY, emgd_get_display, DRM_ROOT_ONLY),
+		DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_ENABLE_PORT, emgd_enable_port, DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_ATTRS, emgd_get_attrs, DRM_MASTER),
+	/* Making DRM_IOCTL_IGD_GET_DISPLAY DRM_AUTH so that libva wayland can
+	 * obtain the display handle without going through x server.
+	 */
+    EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_DISPLAY, emgd_get_display, DRM_AUTH),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_DRM_CONFIG, emgd_get_drm_config,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_EDID_BLOCK, emgd_get_EDID_block,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_EDID_INFO, emgd_get_EDID_info,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_PIXELFORMATS, emgd_get_pixelformats,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_PORT_INFO, emgd_get_port_info,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GMM_ALLOC_REGION, emgd_gmm_alloc_region,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GMM_ALLOC_SURFACE, emgd_gmm_alloc_surface,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GMM_GET_NUM_SURFACE, emgd_gmm_get_num_surface,
-		DRM_ROOT_ONLY),
-	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GMM_GET_SURFACE_LIST, emgd_gmm_get_surface_list,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GMM_GET_SURFACE_LIST,
+		emgd_gmm_get_surface_list,
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GMM_FREE, emgd_gmm_free,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GMM_FLUSH_CACHE, emgd_gmm_flush_cache,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	/*
 	 * Externally handled IOCTL's. These are routed to the Imagination Tech
 	 * kernel services.
@@ -297,21 +331,25 @@ static struct drm_ioctl_desc emgd_ioctl[] = {
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_RESERVED_5, PVRDRMUnprivCmd, 0),
 
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_PAN_DISPLAY, emgd_pan_display,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_POWER_DISPLAY, emgd_power_display,
-		DRM_ROOT_ONLY),
-	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_PWR_ALTER, emgd_pwr_alter, DRM_ROOT_ONLY),
+		DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_PWR_ALTER, emgd_pwr_alter, DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_QUERY_DC, emgd_query_dc,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_QUERY_MAX_SIZE_OVL, emgd_query_max_size_ovl,
-		DRM_ROOT_ONLY),
-	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_QUERY_OVL, emgd_query_ovl, DRM_ROOT_ONLY),
+		DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_QUERY_OVL, emgd_query_ovl, DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_QUERY_MODE_LIST, emgd_query_mode_list,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_GOLDEN_HTOTAL, emgd_get_golden_htotal,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_CONTROL_PLANE_FORMAT, emgd_control_plane_format,
+		DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_SET_OVERLAY_DISPLAY, emgd_set_overlay_display,
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_QUERY_2D_CAPS_HWHINT, emgd_query_2d_caps_hwhint,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	/*
 	 * For PDUMP
 	 */
@@ -320,26 +358,26 @@ static struct drm_ioctl_desc emgd_ioctl[] = {
 #else
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_RESERVED_6, NULL, 0),
 #endif
-	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_SET_ATTRS, emgd_set_attrs, DRM_ROOT_ONLY),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_SET_ATTRS, emgd_set_attrs, DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_SET_PALETTE_ENTRY, emgd_set_palette_entry,
-		DRM_ROOT_ONLY),
-	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_SET_SURFACE, emgd_set_surface, DRM_ROOT_ONLY),
-	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_SYNC, emgd_sync, DRM_ROOT_ONLY),
+		DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_SET_SURFACE, emgd_set_surface, DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_SYNC, emgd_sync, DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_DRIVER_PRE_INIT, emgd_driver_pre_init,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_DRIVER_GET_PORTS, emgd_driver_get_ports,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_OVL_INIT_PARAMS, emgd_get_ovl_init_params,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_PAGE_LIST, emgd_get_page_list,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_START_PVRSRV, emgd_start_pvrsrv,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_TEST_PVRSRV, emgd_test_pvrsrv,
-		DRM_ROOT_ONLY),
+		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_CHIPSET_INFO, emgd_get_chipset_info,
-		DRM_ROOT_ONLY),
-
+		DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_DIHCLONE_SET_SURFACE, emgd_dihclone_set_surface, DRM_MASTER),
 
 	/*
 	 * For VIDEO (MSVDX/TOPAZ
@@ -353,6 +391,22 @@ static struct drm_ioctl_desc emgd_ioctl[] = {
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_VIDEO_GET_INFO, emgd_video_get_info,
 		DRM_AUTH),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_VIDEO_FLUSH_TLB, emgd_video_flush_tlb,
+		DRM_AUTH),
+
+	/* For Buffer Class of Texture Stream */
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_BC_TS_INIT, emgd_bc_ts_cmd_init,
+		DRM_AUTH),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_BC_TS_UNINIT, emgd_bc_ts_cmd_uninit,
+		DRM_AUTH),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_BC_TS_REQUEST_BUFFERS, emgd_bc_ts_cmd_request_buffers,
+		DRM_AUTH),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_BC_TS_RELEASE_BUFFERS, emgd_bc_ts_cmd_release_buffers,
+		DRM_AUTH),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_BC_TS_SET_BUFFER_INFO, emgd_bc_ts_set_buffer_info,
+		DRM_AUTH),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_BC_TS_GET_BUFFERS_COUNT, emgd_bc_ts_get_buffers_count,
+		DRM_AUTH),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_BC_TS_GET_BUFFER_INDEX, emgd_bc_ts_get_buffer_index,
 		DRM_AUTH),
 };
 
@@ -472,7 +526,8 @@ void emgd_print_params(igd_param_t *params)
 	for (i = 0 ; i < IGD_MAX_PORTS; i++) {
 		int j;
 
-		EMGD_DEBUG("  port_number = %lu", params->display_params[i].port_number);
+		EMGD_DEBUG("  port_number = %lu",
+			params->display_params[i].port_number);
 		EMGD_DEBUG("   present_params = %lu = 0x%lx",
 			params->display_params[i].present_params,
 			params->display_params[i].present_params);
@@ -590,7 +645,7 @@ void emgd_print_params(igd_param_t *params)
  */
 int emgd_startup_hal(struct drm_device *dev, igd_param_t *params)
 {
-	drm_emgd_private *priv = dev->dev_private;
+	drm_emgd_priv_t *priv = dev->dev_private;
 	int err = 0;
 
 	EMGD_TRACE_ENTER;
@@ -598,6 +653,7 @@ int emgd_startup_hal(struct drm_device *dev, igd_param_t *params)
 
 	/* Initialize the various HAL modules: */
 	EMGD_DEBUG("Calling igd_module_init()");
+
 	err = igd_module_init(drm_HAL_handle, &drm_HAL_dispatch, params);
 	if (err != 0) {
 		return -EIO;
@@ -606,28 +662,22 @@ int emgd_startup_hal(struct drm_device *dev, igd_param_t *params)
 	/* Give the dispatch table to the ioctl-handling "bridge" code: */
 	emgd_set_real_dispatch(drm_HAL_dispatch);
 
-	/* Hook up the drm framebuffer */
-	EMGD_DEBUG("Calling emgd_ms_init()");
-	emgd_ms_init(dev);
-
 	/* Record that the HAL is running now: */
 	priv->hal_running = 1;
 	/* Record that the console's state is saved: */
 	priv->saved_registers = CONSOLE_STATE_SAVED;
 
-	if (priv->pvrsrv_started) {
-		/* Since PVR services is running, we're restarting the HAL, which
-		 * disabled the SGX & MSVDX interrupts.  Need to re-enable those
-		 * interrupts:
-		 */
-		SysReEnableInterrupts();
-	}
-
+	/* Since PVR services is running, we're restarting the HAL, which
+	 * disabled the SGX & MSVDX interrupts.  Need to re-enable those
+	 * interrupts:
+	 */
+	SysReEnableInterrupts();
 
 	EMGD_TRACE_EXIT;
 
 	return 0;
 } /* emgd_startup_hal() */
+
 
 
 /**
@@ -638,119 +688,95 @@ int emgd_startup_hal(struct drm_device *dev, igd_param_t *params)
  * merged with the pre-compiled parameters.
  *
  */
-void emgd_init_display(int merge_mod_params)
+void emgd_init_display(int merge_mod_params, drm_emgd_priv_t *priv)
 {
-	int err = 0;
-	igd_display_info_t *mode_list = NULL;
-	igd_display_info_t *mode = NULL;
-	int mode_flags = IGD_QUERY_LIVE_MODES;
-	unsigned char *fb;
-	unsigned long temp_bg_color;
+	int                     err         = 0;
+	igd_display_info_t     *mode_list   = NULL;
+	igd_display_info_t     *mode        = NULL;
+	struct drm_framebuffer *framebuffer = NULL;
+	emgd_framebuffer_t     *emgd_fb     = NULL;
+	unsigned char          *fb          = NULL;
+	int                     mode_flags = IGD_QUERY_LIVE_MODES;
+	unsigned long           temp_bg_color;
 
 	EMGD_TRACE_ENTER;
 
 
 	if (merge_mod_params) {
 		EMGD_DEBUG("Checking other module parameters before initializing the "
-			"display");
+				"display");
 
 		/*************************************
 		 * Get the desired display display config:
 		 *************************************/
 		if (-1 != drm_emgd_dc) {
 			/* Validate and potentially use the module parameter: */
-			EMGD_DEBUG("Value of module parameter \"dc\" = \"%d\"", drm_emgd_dc);
+			EMGD_DEBUG("Value of module parameter \"dc\" = \"%d\"",
+				drm_emgd_dc);
+
 			if ((drm_emgd_dc == 1) || (drm_emgd_dc == 2) ||
-				(drm_emgd_dc == 8)) {
+					(drm_emgd_dc == 8)) {
 				/* Use validated value to override compile-time value: */
 				config_drm.dc = drm_emgd_dc;
 			} else if (drm_emgd_dc == 4) {
 				/* Use validated value to override compile-time value: */
 				EMGD_DEBUG("Module parameter \"dc\" contains unsupported value "
-					"%d.", drm_emgd_dc);
+						"%d.", drm_emgd_dc);
 				EMGD_DEBUG("Overriding and making it 1 (single display).");
 				drm_emgd_dc = 1;
 				config_drm.dc = drm_emgd_dc;
 			} else {
 				/* Use compile-time value: */
 				EMGD_ERROR("Module parameter \"dc\" contains invalid value "
-					"%d (must be 1, 2, or 8).", drm_emgd_dc);
+						"%d (must be 1, 2, or 8).", drm_emgd_dc);
 				if (config_drm.dc == 4) {
 					EMGD_DEBUG("Compile-time setting for module parameter "
-						"\"dc\" contains unsupported value %d.", config_drm.dc);
+						"\"dc\" contains unsupported value %d.",
+						config_drm.dc);
 					EMGD_DEBUG("Overriding and making it 1 (single display).");
+
 					config_drm.dc = 1;
 				} else {
 					EMGD_ERROR("Will use compile-time setting %d instead "
-						"of invalid value %d.\n", config_drm.dc, drm_emgd_dc);
+							"of invalid value %d.\n",
+							config_drm.dc, drm_emgd_dc);
 				}
 				drm_emgd_dc = config_drm.dc;
 			}
 		} else {
 			/* Check and potentially use the compile-time value: */
 			if ((config_drm.dc == 1) || (config_drm.dc == 2) ||
-				(config_drm.dc == 8)) {
+					(config_drm.dc == 8)) {
 				/* Report the compile-time value: */
-				EMGD_DEBUG("Using compile-time setting for the module parameter "
-					"\"dc\" = \"%d\"", config_drm.dc);
+				EMGD_DEBUG("Using compile-time setting for the module parameter"
+						" \"dc\" = \"%d\"", config_drm.dc);
 			} else if (config_drm.dc == 4) {
 				EMGD_DEBUG("Compile-time setting for module parameter "
-					"\"dc\" contains unsupported value %d.", config_drm.dc);
+						"\"dc\" contains unsupported value %d.", config_drm.dc);
 				EMGD_DEBUG("Overriding and making it 1 (single display).");
 				config_drm.dc = 1;
 			} else {
 				EMGD_DEBUG("Compile-time setting for module parameter "
-					"\"dc\" contains invalid value %d.", config_drm.dc);
-				EMGD_DEBUG("Must be 1, 2, or 8.  Making it 1 (single display).");
+						"\"dc\" contains invalid value %d.", config_drm.dc);
+				EMGD_DEBUG("Must be 1, 2, or 8. Making it 1 (single display).");
 				config_drm.dc = 1;
 			}
 			drm_emgd_dc = config_drm.dc;
 		}
-	}
 
-	/*************************************
-	 * Query the DC list (use first one):
-	 *************************************/
-	EMGD_DEBUG("Calling query_dc()");
-	err = drm_HAL_dispatch->query_dc(drm_HAL_handle, drm_emgd_dc,
-		&desired_dc, IGD_QUERY_DC_INIT);
-	EMGD_DEBUG("query_dc() returned %d", err);
-	if (err) {
-		EMGD_ERROR_EXIT("Cannot initialize the display as requested.\n"
-			"The query_dc() function returned %d.", err);
-		return;
-	}
-	port_number = (*desired_dc & 0xf0) >> 4;
-	EMGD_DEBUG("Using DC 0x%lx with port number %d",
-		*desired_dc, port_number);
-
-	/*************************************
-	 * Query the mode list:
-	 *************************************/
-	EMGD_DEBUG("Calling query_mode_list()");
-	err = drm_HAL_dispatch->query_mode_list(drm_HAL_handle, *desired_dc,
-		&mode_list, mode_flags);
-	EMGD_DEBUG("query_mode_list() returned %d", err);
-	if (err) {
-		EMGD_ERROR_EXIT("Cannot initialize the display as requested\n"
-			"The query_mode_list() function returned %d.", err);
-		return;
-	}
-
-	if (merge_mod_params) {
 		/*************************************
 		 * Get the desired display "width":
 		 *************************************/
 		if (-1 != drm_emgd_width) {
 			/* Override the compile-time value with the module parameter: */
 			EMGD_DEBUG("Using the \"width\" module parameter: \"%d\"",
-				drm_emgd_width);
+					drm_emgd_width);
 			config_drm.width = drm_emgd_width;
 		} else {
 			/* Use the compile-time value: */
 			drm_emgd_width = config_drm.width;
 			EMGD_DEBUG("Using the compile-time \"width\" value: \"%d\"",
-				drm_emgd_width);
+					drm_emgd_width);
 		}
 
 		/*************************************
@@ -759,13 +785,13 @@ void emgd_init_display(int merge_mod_params)
 		if (-1 != drm_emgd_height) {
 			/* Override the compile-time value with the module parameter: */
 			EMGD_DEBUG("Using the \"height\" module parameter: \"%d\"",
-				drm_emgd_height);
+					drm_emgd_height);
 			config_drm.height = drm_emgd_height;
 		} else {
 			/* Use the compile-time value: */
 			drm_emgd_height = config_drm.height;
 			EMGD_DEBUG("Using the compile-time \"height\" value: \"%d\"",
-				drm_emgd_height);
+					drm_emgd_height);
 		}
 
 		/*************************************
@@ -774,121 +800,219 @@ void emgd_init_display(int merge_mod_params)
 		if (-1 != drm_emgd_refresh) {
 			/* Override the compile-time value with the module parameter: */
 			EMGD_DEBUG("Using the \"refresh\" module parameter: \"%d\"",
-				drm_emgd_refresh);
+					drm_emgd_refresh);
 			config_drm.refresh = drm_emgd_refresh;
 		} else {
 			/* Use the compile-time value: */
 			drm_emgd_refresh = config_drm.refresh;
 			EMGD_DEBUG("Using the compile-time \"refresh\" value: \"%d\"",
-				drm_emgd_refresh);
+					drm_emgd_refresh);
 		}
 	}
 
-	/*************************************
-	 * Find the desired mode from the list:
-	 *************************************/
-	EMGD_DEBUG("Comparing the mode list with the desired width, height, and "
-		"refresh rate...");
-	mode = mode_list;
-	while (mode && (mode->width != IGD_TIMING_TABLE_END)) {
-		EMGD_DEBUG(" ... Found a mode with width=%d, height=%d, refresh=%d;",
-			mode->width, mode->height, mode->refresh);
-		if ((mode->width == drm_emgd_width) &&
-			(mode->height == drm_emgd_height) &&
-			(mode->refresh == drm_emgd_refresh)) {
-			EMGD_DEBUG("     ... This mode is a match!");
-			desired_mode = mode;
-			break;
+
+	if (config_drm.kms) {
+		priv->num_crtc = 2;
+
+
+		/*************************************
+		 * Initialize kernel mode setting functionality
+		 *************************************/
+		emgd_modeset_init(priv->ddev);
+
+		/* Get Display context */
+		drm_HAL_context->mod_dispatch.dsp_get_dc(NULL,
+							(igd_display_context_t **) &primary,
+							(igd_display_context_t **) &secondary);
+
+
+		/*************************************
+		 * Initialize primary_fb_info
+		 *************************************/
+		framebuffer = list_entry(priv->ddev->mode_config.fb_list.next,
+				struct drm_framebuffer, head);
+		if (!framebuffer) {
+			EMGD_ERROR("Can't display splash screen/video as there is no fb.");
+		} else {
+			emgd_fb = container_of(framebuffer, emgd_framebuffer_t, base);
+			primary_fb_info = &priv->initfb_info;
+			if (priv->fbdev) {
+				fb = priv->fbdev->screen_base;
+			}
 		}
-		mode++;
-	}
-	if (NULL == desired_mode) {
-		EMGD_ERROR("Cannot initialize the display as requested.");
-		EMGD_ERROR("No mode matching the desired width (%d), height "
-			"(%d), and refresh rate (%d) was found.",
-			drm_emgd_width, drm_emgd_height, drm_emgd_refresh);
-		return;
+
+
+		/*
+		 * Update the private data structure
+		 */
+		priv->primary               = primary;
+		priv->secondary             = secondary;
+		priv->primary_port_number   = IGD_DC_PRIMARY(priv->dc);
+		priv->secondary_port_number = IGD_DC_SECONDARY(priv->dc);
 	} else {
-		/* Must set this in order to get the timings setup: */
-		desired_mode->flags |= IGD_DISPLAY_ENABLE;
+
+		/*************************************
+		 * Query the DC list (use first one):
+		 *************************************/
+		EMGD_DEBUG("Calling query_dc()");
+		err = drm_HAL_dispatch->query_dc(drm_HAL_handle, drm_emgd_dc,
+				&desired_dc, IGD_QUERY_DC_INIT);
+		EMGD_DEBUG("query_dc() returned %d", err);
+		if (err) {
+			EMGD_ERROR_EXIT("Cannot initialize the display as requested.\n"
+					"The query_dc() function returned %d.", err);
+			return;
+		}
+		port_number = (*desired_dc & 0xf0) >> 4;
+		EMGD_DEBUG("Using DC 0x%lx with port number %d",
+				*desired_dc, port_number);
+
+		/*************************************
+		 * Query the mode list:
+		 *************************************/
+		EMGD_DEBUG("Calling query_mode_list()");
+		err = drm_HAL_dispatch->query_mode_list(drm_HAL_handle, *desired_dc,
+				&mode_list, mode_flags);
+		EMGD_DEBUG("query_mode_list() returned %d", err);
+		if (err) {
+			EMGD_ERROR_EXIT("Cannot initialize the display as requested\n"
+					"The query_mode_list() function returned %d.", err);
+			return;
+		}
+
+
+		/*************************************
+		 * Find the desired mode from the list:
+		 *************************************/
+		EMGD_DEBUG("Comparing the mode list with the desired width, height, and"
+			" refresh rate...");
+
+		mode = mode_list;
+		while (mode && (mode->width != IGD_TIMING_TABLE_END)) {
+			EMGD_DEBUG(" ...Found a mode with width=%d, height=%d, refresh=%d;",
+					mode->width, mode->height, mode->refresh);
+			if ((mode->width == drm_emgd_width) &&
+					(mode->height == drm_emgd_height) &&
+					(mode->refresh == drm_emgd_refresh)) {
+				EMGD_DEBUG("     ... This mode is a match!");
+				desired_mode = mode;
+				break;
+			}
+			mode++;
+		}
+		if (NULL == desired_mode) {
+			EMGD_ERROR("Cannot initialize the display as requested.");
+			EMGD_ERROR("No mode matching the desired width (%d), height "
+					"(%d), and refresh rate (%d) was found.",
+					drm_emgd_width, drm_emgd_height, drm_emgd_refresh);
+			return;
+		} else {
+			/* Must set this in order to get the timings setup: */
+			desired_mode->flags |= IGD_DISPLAY_ENABLE;
+		}
+
+		/*************************************
+		 * Call alter_displays():
+		 *************************************/
+		primary_fb_info   = kzalloc(sizeof(igd_framebuffer_info_t), GFP_KERNEL);
+		secondary_fb_info = kzalloc(sizeof(igd_framebuffer_info_t), GFP_KERNEL);
+		primary_fb_info->width = desired_mode->width;
+		primary_fb_info->height = desired_mode->height;
+		primary_fb_info->pixel_format = IGD_PF_ARGB32;
+		primary_fb_info->flags = 0;
+		primary_fb_info->allocated = 0;
+		memcpy(secondary_fb_info, primary_fb_info,
+				sizeof(igd_framebuffer_info_t));
+
+		EMGD_DEBUG("Calling alter_displays()");
+		err = drm_HAL_dispatch->alter_displays(drm_HAL_handle,
+				&primary, desired_mode, primary_fb_info,
+				&secondary, desired_mode, secondary_fb_info,
+				*desired_dc, 0);
+		EMGD_DEBUG("alter_displays() returned %d", err);
+		if (err) {
+			EMGD_ERROR_EXIT("Cannot initialize the display as requested.\n"
+					"The alter_displays() function returned %d.", err);
+			return;
+		}
+
+		/*
+		 * Update the private data structure with the values we get
+		 * back from alter displays.
+		 */
+		priv->dc                    = *desired_dc;
+		priv->primary               = primary;
+		priv->secondary             = secondary;
+		priv->primary_port_number   = IGD_DC_PRIMARY(*desired_dc);
+		priv->secondary_port_number = IGD_DC_SECONDARY(*desired_dc);
+
+		/*************************************
+		 * Call get_display():
+		 *************************************/
+		EMGD_DEBUG("Calling get_display()");
+		err = drm_HAL_dispatch->get_display(primary, port_number,
+				primary_fb_info, &pt_info, 0);
+		EMGD_DEBUG("get_display() returned %d", err);
+		if (err) {
+			EMGD_ERROR_EXIT("Cannot initialize the display as requested\n"
+					"The get_display() function returned %d.", err);
+			return;
+		}
+
+		/*************************************
+		 * Get FB virtual address
+		 *************************************/
+		EMGD_DEBUG("Calling full_clear_fb()");
+		fb = mode_context->context->dispatch.gmm_map(
+				primary_fb_info->fb_base_offset);
 	}
 
-	/*************************************
-	 * Call alter_displays():
-	 *************************************/
-	primary_fb_info.width = desired_mode->width;
-	primary_fb_info.height = desired_mode->height;
-	primary_fb_info.pixel_format = IGD_PF_ARGB32;
-	primary_fb_info.flags = 0;
-	primary_fb_info.allocated = 0;
-	memcpy(&secondary_fb_info, &primary_fb_info,
-		sizeof(igd_framebuffer_info_t));
+	if (fb) {
 
-	EMGD_DEBUG("Calling alter_displays()");
-	err = drm_HAL_dispatch->alter_displays(drm_HAL_handle,
-		&primary, desired_mode, &primary_fb_info,
-		&secondary, desired_mode, &secondary_fb_info,
-		*desired_dc, 0);
-	EMGD_DEBUG("alter_displays() returned %d", err);
-	if (err) {
-		EMGD_ERROR_EXIT("Cannot initialize the display as requested.\n"
-			"The alter_displays() function returned %d.", err);
-		return;
+		/*************************************
+		 * Set the framebuffer to the background color:
+		 *************************************/
+		temp_bg_color = mode_context->display_color;
+		mode_context->display_color = config_drm.ss_data->bg_color;
+		full_clear_fb(mode_context, primary_fb_info, fb);
+		mode_context->display_color = temp_bg_color;
+
+		/*************************************
+		 * Display a splash screen if requested by user
+		 *************************************/
+		if(config_drm.ss_data->width &&
+				config_drm.ss_data->height) {
+
+			/* Display a splash screen */
+			printk(KERN_ERR "[EMGD] Display splash screen image.\n");
+			EMGD_DEBUG("Calling disp_splash_screen()");
+			display_splash_screen(primary_fb_info, fb, config_drm.ss_data);
+		}
+
+		/*************************************
+		 * Display a splash video if requested by user
+		 *************************************/
+		if(config_drm.sv_data->pixel_format &&
+				config_drm.sv_data->src_width &&
+				config_drm.sv_data->src_height &&
+				config_drm.sv_data->src_pitch &&
+				config_drm.sv_data->dst_width &&
+				config_drm.sv_data->dst_height) {
+
+			/* Display a splash video */
+			EMGD_DEBUG("Calling disp_splash_video()");
+			disp_splash_video(config_drm.sv_data);
+		}
+	} else {
+		EMGD_ERROR("framebuffer base address is 0");
 	}
 
-	/*************************************
-	 * Call get_display():
-	 *************************************/
-	EMGD_DEBUG("Calling get_display()");
-	err = drm_HAL_dispatch->get_display(primary, port_number,
-		&primary_fb_info, &pt_info, 0);
-	EMGD_DEBUG("get_display() returned %d", err);
-	if (err) {
-		EMGD_ERROR_EXIT("Cannot initialize the display as requested\n"
-			"The get_display() function returned %d.", err);
-		return;
+	if (!config_drm.kms) {
+		mode_context->context->dispatch.gmm_unmap(fb);
 	}
-
-	/*************************************
-	 * Set the framebuffer to the background color:
-	 *************************************/
-	EMGD_DEBUG("Calling full_clear_fb()");
-	fb = mode_context->context->dispatch.gmm_map(
-			primary_fb_info.fb_base_offset);
-	temp_bg_color = mode_context->display_color;
-	mode_context->display_color = config_drm.ss_data->bg_color;
-	full_clear_fb(mode_context, &primary_fb_info, fb);
-	mode_context->display_color = temp_bg_color;
-
-	/*************************************
-	 * Display a splash screen if requested by user
-	 *************************************/
-	if(config_drm.ss_data->width &&
-			config_drm.ss_data->height) {
-
-		/* Display a splash screen */
-		EMGD_DEBUG("Calling disp_splash_screen()");
-		display_splash_screen(&primary_fb_info, fb, config_drm.ss_data);
-	}
-
-	/*************************************
-	 * Display a splash video if requested by user
-	 *************************************/
-	if(config_drm.sv_data->pixel_format &&
-			config_drm.sv_data->src_width &&
-			config_drm.sv_data->src_height &&
-			config_drm.sv_data->src_pitch &&
-			config_drm.sv_data->dst_width &&
-			config_drm.sv_data->dst_height) {
-
-		/* Display a splash video */
-		EMGD_DEBUG("Calling disp_splash_video()");
-		disp_splash_video(config_drm.sv_data);
-	}
-	mode_context->context->dispatch.gmm_unmap(fb);
-
 	EMGD_TRACE_EXIT;
 } /* emgd_init_display() */
+
 
 
 /**
@@ -977,6 +1101,8 @@ int disp_splash_video(emgd_drm_splash_video_t *sv_data)
 	return 0;
 }
 
+
+
 /**
  * This is the drm_driver.load() function.  It is called when the DRM "loads"
  * (i.e. when our driver loads, it calls drm_init(), which eventually causes
@@ -993,7 +1119,7 @@ int emgd_driver_load(struct drm_device *dev, unsigned long flags)
 {
 	int i, err = 0;
 	igd_param_t *params;
-	drm_emgd_private *priv = NULL;
+	drm_emgd_priv_t *priv = NULL;
 	igd_init_info_t *init_info;
 	int num_hal_params =
 		sizeof(config_drm.hal_params) / sizeof(config_drm.hal_params[0]);
@@ -1143,17 +1269,22 @@ int emgd_driver_load(struct drm_device *dev, unsigned long flags)
 	/* Create the private structure used to communicate to the IMG 3rd-party
 	 * display driver:
 	 */
-	priv = OS_ALLOC(sizeof(drm_emgd_private));
+	priv = OS_ALLOC(sizeof(drm_emgd_priv_t));
 	if (NULL == priv) {
 		OS_FREE(init_info);
 		mutex_unlock(&dev->struct_mutex);
 		return -ENOMEM;
 	}
-	OS_MEMSET(priv, 0, sizeof(drm_emgd_private));
+
+
+	OS_MEMSET(priv, 0, sizeof(drm_emgd_priv_t));
 	priv->hal_running = 0;
-	priv->context = drm_HAL_context;
-	priv->init_info = init_info;
-	dev->dev_private = priv;
+	priv->context     = drm_HAL_context;
+	priv->init_info   = init_info;
+	priv->qb_seamless = params->qb_seamless;
+	dev->dev_private  = priv;
+	priv->ddev        = dev;
+	priv->kms_enabled = 0;
 
 
 	/* Do basic driver initialization & configuration: */
@@ -1167,10 +1298,24 @@ int emgd_driver_load(struct drm_device *dev, unsigned long flags)
 		return -EIO;
 	}
 
+	// PVRSRVDrmLoad() sets up an ISR routine with a pointer to drm_device to be passed every time.  This variable (gpDrmDevice) is initialized in msvdx_pre_init_plb only.
+	// Due to this reason, msvdx_pre_init_plb() is moved before PVRSRVDrmLoad().
 
+	/* Init MSVDX and load firmware */
+	msvdx_pre_init_plb(dev);
+
+	/* Initialize the PVR services if not already initialized */
+	printk(KERN_INFO "Initializing PVR Services.\n");
+	PVRSRVDrmLoad(dev, 0);
 
 	/* Decide if we can defer the rest of the initialization */
-	if (drm_emgd_init) {
+	if (config_drm.init) {
+
+		if (config_drm.kms) {
+			params->preserve_regs = 1;
+			priv->kms_enabled = 1;
+		}
+
 		/* Initialize and configure the driver now */
 		err = emgd_startup_hal(dev, params);
 		if (err != 0) {
@@ -1180,20 +1325,31 @@ int emgd_driver_load(struct drm_device *dev, unsigned long flags)
 			mutex_unlock(&dev->struct_mutex);
 			return err;
 		}
+
+		/* This will get the plane, pipe and port register values and fill up the
+		 * fw_info data structure. This needs to be done at INIT time before the
+		 * user-mode driver loads
+		 */
+		get_pre_driver_info(mode_context);
+
 		/* Per the user's request, initialize the display: */
-		emgd_init_display(TRUE);
+		emgd_init_display(TRUE, priv);
 	}
 
 
-	/* This will get the plane, pipe and port register values and fill up the
-	 * fw_info data structure. This needs to be done at INIT time before the
-	 * user-mode driver loads
+
+#ifdef DEBUG_BUILD_TYPE
+	/* Turn on KMS debug messages in the general DRM module if our OAL
+	 * messages are on and it's a debug driver.
 	 */
-	get_pre_driver_info(mode_context);
+	if (emgd_debug->hal.oal) {
+		drm_debug |= DRM_UT_KMS;
+	}
+#endif
 
-
-    /* Init MSVDX and load firmware */
-    msvdx_pre_init_plb(dev);
+	/* can not work out how to start PVRSRV */
+	/* Load Buffer Class Module*/
+	emgd_bc_ts_init();
 
 	mutex_unlock(&dev->struct_mutex);
 	EMGD_TRACE_EXIT;
@@ -1214,15 +1370,21 @@ int emgd_driver_load(struct drm_device *dev, unsigned long flags)
  */
 int emgd_driver_unload(struct drm_device *dev)
 {
-	drm_emgd_private *priv = dev->dev_private;
+	drm_emgd_priv_t *priv = dev->dev_private;
+	unsigned long save_flags = 0;
 
 	EMGD_TRACE_ENTER;
 
 	mutex_lock(&dev->struct_mutex);
 
-	if (priv->pvrsrv_started) {
-		PVRSRVDrmUnload(dev);
-		priv->pvrsrv_started = 0;
+	/* Unload Buffer Class Module*/
+	emgd_bc_ts_uninit();
+
+	PVRSRVDrmUnload(dev);
+
+	/* KMS cleanup */
+	if (config_drm.init && config_drm.kms) {
+		emgd_modeset_destroy(dev);
 	}
 
 	if (priv->hal_running) {
@@ -1236,17 +1398,24 @@ int emgd_driver_unload(struct drm_device *dev)
 		 * save_restore now, so that this state will still exist after
 		 * igd_driver_shutdown().
 		 */
-		if (priv->saved_registers == X_SERVER_STATE_SAVED) {
+		if (priv->saved_registers == CONSOLE_STATE_SAVED) {
 			EMGD_DEBUG("Need to restore the console's saved register state");
-			drm_HAL_dispatch->driver_save_restore(drm_HAL_handle);
+
+			save_flags = IGD_REG_SAVE_ALL;
+			drm_HAL_dispatch->driver_save_restore(drm_HAL_handle, save_flags);
 			EMGD_DEBUG("State of saved registers is X_SERVER_STATE_SAVED");
-			priv->saved_registers = CONSOLE_STATE_SAVED;
+			priv->saved_registers = X_SERVER_STATE_SAVED;
 		}
 		igd_driver_shutdown_hal(drm_HAL_handle);
 		igd_driver_shutdown(drm_HAL_handle);
 	} else {
 		/* Do safe cleanup that would've been done by igd_driver_shutdown() */
 		igd_driver_shutdown(drm_HAL_handle);
+	}
+
+	if (!config_drm.kms) {
+		kfree(primary_fb_info);
+		kfree(secondary_fb_info);
 	}
 
 	OS_FREE(priv->init_info);
@@ -1279,7 +1448,6 @@ int emgd_driver_unload(struct drm_device *dev)
 int emgd_driver_open(struct drm_device *dev, struct drm_file *priv)
 {
 	int ret = 0;
-	drm_emgd_private *emgd_priv;
 
 	EMGD_TRACE_ENTER;
 
@@ -1296,15 +1464,7 @@ int emgd_driver_open(struct drm_device *dev, struct drm_file *priv)
 	 */
 	mutex_lock(&dev->struct_mutex);
 
-	emgd_priv = dev->dev_private;
-	if ((emgd_priv->hal_running) && (1 == emgd_priv->pvrsrv_started)) {
-		EMGD_DEBUG("Calling PVRSRVOpen()");
-		ret = PVRSRVOpen(dev, priv);
-		EMGD_DEBUG("PVRSRVOpen() returned %d", ret);
-	} else {
-		EMGD_DEBUG("PVRSRVOpen() not called because PVR services not started "
-			"yet");
-	}
+	ret = PVRSRVOpen(dev, priv);
 
 	mutex_unlock(&dev->struct_mutex);
 
@@ -1323,24 +1483,54 @@ int emgd_driver_open(struct drm_device *dev, struct drm_file *priv)
  */
 void emgd_driver_lastclose(struct drm_device *dev)
 {
-	drm_emgd_private *priv = dev->dev_private;
-	igd_init_info_t *init_info;
+	drm_emgd_priv_t *priv = dev->dev_private;
+	igd_init_info_t *init_info = priv->init_info;
 	int err = 0;
+	unsigned long restore_flags = 0;
 
 	EMGD_TRACE_ENTER;
 
 	mutex_lock(&dev->struct_mutex);
 
-	/* Don't let the 3rd-party display driver (3DD) re-init too early: */
-	priv->dc = 0;
 
 	if (priv->hal_running) {
-		if (drm_emgd_init) {
+		if (config_drm.init) {
 			if( x_started ) {
-				emgd_init_display(FALSE);
+
+				restore_flags = (IGD_REG_SAVE_ALL & ~IGD_REG_SAVE_GTT)
+									| IGD_REG_SAVE_TYPE_REG;
+
+				if (!config_drm.kms) {
+					restore_flags &= ~IGD_REG_SAVE_RB;
+				}
+
+
+				if (priv->saved_registers == CONSOLE_STATE_SAVED) {
+					EMGD_DEBUG("Need to restore the console's saved "
+						"register state");
+					drm_HAL_dispatch->driver_save_restore(drm_HAL_handle,
+															restore_flags);
+					EMGD_DEBUG("State of saved registers is "
+						"X_SERVER_STATE_SAVED");
+					priv->saved_registers = X_SERVER_STATE_SAVED;
+				}
+
+				if (priv->saved_registers == X_SERVER_STATE_SAVED &&
+					!config_drm.kms && !priv->qb_seamless) {
+					emgd_init_display(FALSE, priv);
+				}
+
+				if (priv->saved_registers == CONSOLE_STATE_SAVED) {
+					EMGD_DEBUG("Need to restore the console's saved register "
+						"state");
+					drm_HAL_dispatch->driver_save_restore(drm_HAL_handle,
+															restore_flags);
+					EMGD_DEBUG("State of saved registers is X_SERVER_STATE_SAVED");
+					priv->saved_registers = X_SERVER_STATE_SAVED;
+				}
 
 				/* Since an alter_displays() was done, re-init the 3DD: */
-				if (priv->pvrsrv_started && priv->reinit_3dd) {
+				if (priv->reinit_3dd) {
 					priv->reinit_3dd(dev);
 				}
 
@@ -1351,10 +1541,15 @@ void emgd_driver_lastclose(struct drm_device *dev)
 			 * currently saved (likely) restore that state, so that the console
 			 * can be seen and work.
 			 */
+			context_count = 0;
+			priv->dc = 0; /* Don't let the 3DD re-init too early: */
 			if (priv->saved_registers == CONSOLE_STATE_SAVED) {
 				EMGD_DEBUG("Need to restore the console's saved register "
 					"state");
-				drm_HAL_dispatch->driver_save_restore(drm_HAL_handle);
+				restore_flags = IGD_REG_SAVE_ALL;
+
+				drm_HAL_dispatch->driver_save_restore(drm_HAL_handle,
+														restore_flags);
 				EMGD_DEBUG("State of saved registers is X_SERVER_STATE_SAVED");
 				priv->saved_registers = X_SERVER_STATE_SAVED;
 			}
@@ -1389,7 +1584,9 @@ void emgd_driver_lastclose(struct drm_device *dev)
 			if (priv->saved_registers == X_SERVER_STATE_SAVED) {
 				EMGD_DEBUG("Need to restore the console's saved register "
 					"state");
-				drm_HAL_dispatch->driver_save_restore(drm_HAL_handle);
+				restore_flags = IGD_REG_SAVE_ALL;
+				drm_HAL_dispatch->driver_save_restore(drm_HAL_handle,
+														restore_flags);
 				EMGD_DEBUG("State of saved registers is X_SERVER_STATE_SAVED");
 				priv->saved_registers = CONSOLE_STATE_SAVED;
 			}
@@ -1402,7 +1599,9 @@ void emgd_driver_lastclose(struct drm_device *dev)
 			 * work, we must do the following minimal initialization.
 			 */
 			EMGD_DEBUG("Calling igd_driver_init()");
-			init_info = (igd_init_info_t *)OS_ALLOC(sizeof(igd_init_info_t));
+			if(init_info == NULL){
+				init_info = (igd_init_info_t *)OS_ALLOC(sizeof(igd_init_info_t));
+			}
 			drm_HAL_handle = igd_driver_init(init_info);
 			if (drm_HAL_handle == NULL) {
 				/* This shouldn't happen, but if it does, alert the user, as
@@ -1410,8 +1609,8 @@ void emgd_driver_lastclose(struct drm_device *dev)
 				 * reboot:
 				 */
 				OS_FREE(init_info);
-				printk(KERN_ALERT "While restarting the EMGD graphics HAL, "
-					"call to igd_driver_init() failed!\n");
+				printk(KERN_ALERT "[EMGD] Failed to restart the EMGD graphics "
+						"HAL\n");
 				mutex_unlock(&dev->struct_mutex);
 				return;
 			}
@@ -1451,8 +1650,8 @@ void emgd_driver_lastclose(struct drm_device *dev)
 				 * reboot:
 				 */
 				OS_FREE(init_info);
-				printk(KERN_ALERT "While restarting the EMGD graphics HAL, "
-					"call to igd_driver_config() failed!\n");
+				printk(KERN_ALERT "[EMGD] Failed to restart the EMGD graphics "
+						"HAL.\n");
 				mutex_unlock(&dev->struct_mutex);
 				return;
 			}
@@ -1460,7 +1659,7 @@ void emgd_driver_lastclose(struct drm_device *dev)
 			/* To ensure the devinfo->interrupt_h is NULL, call the
 			 * following:
 			 */
-			if (priv->pvrsrv_started && priv->reinit_3dd) {
+			if (priv->reinit_3dd) {
 				priv->reinit_3dd(dev);
 			}
 		}
@@ -1484,7 +1683,7 @@ void emgd_driver_lastclose(struct drm_device *dev)
  */
 void emgd_driver_preclose(struct drm_device *dev, struct drm_file *priv)
 {
-	drm_emgd_private *emgd_priv = dev->dev_private;
+	drm_emgd_priv_t *emgd_priv = dev->dev_private;
 
 	/* Notes on what to implement in this function.  What this
 	 * function does is largely influenced by when/why this can be called:
@@ -1540,20 +1739,14 @@ void emgd_driver_preclose(struct drm_device *dev, struct drm_file *priv)
  */
 void emgd_driver_postclose(struct drm_device *dev, struct drm_file *priv)
 {
-	drm_emgd_private *emgd_priv = dev->dev_private;
+	int ret = 0;
 
 	EMGD_TRACE_ENTER;
+	mutex_lock(&dev->struct_mutex);
 
-	if ((emgd_priv->hal_running) && (1 == emgd_priv->pvrsrv_started)) {
-		int ret = 0;
-		EMGD_DEBUG("Calling PVRSRVRelease()");
-		ret = PVRSRVRelease(dev, priv);
-		EMGD_DEBUG("PVRSRVRelease() returned %d", ret);
-	} else {
-		EMGD_DEBUG("PVRSRVRelease() not called because PVR services not started "
-			"yet");
-	}
+	ret = PVRSRVRelease(dev, priv);
 
+	mutex_unlock(&dev->struct_mutex);
 	EMGD_TRACE_EXIT;
 } /* emgd_driver_postclose() */
 
@@ -1577,7 +1770,7 @@ int emgd_driver_suspend(struct drm_device *dev, pm_message_t state)
 {
 	int ret;
 	unsigned int pwr_state;
-	drm_emgd_private *priv = dev->dev_private;
+	drm_emgd_priv_t *priv = dev->dev_private;
 
 	EMGD_TRACE_ENTER;
 
@@ -1657,7 +1850,7 @@ int emgd_driver_suspend(struct drm_device *dev, pm_message_t state)
 int emgd_driver_resume(struct drm_device *dev)
 {
 	int ret;
-	drm_emgd_private *priv = dev->dev_private;
+	drm_emgd_priv_t *priv = dev->dev_private;
 
 	EMGD_TRACE_ENTER;
 
@@ -1714,9 +1907,10 @@ int emgd_driver_resume(struct drm_device *dev)
  */
 int emgd_driver_device_is_agp(struct drm_device *dev)
 {
-	printk(KERN_INFO "[EMGD] Returning 0 from emgd_driver_device_is_agp()\n");
+	EMGD_DEBUG("[EMGD] Returning 0 from emgd_driver_device_is_agp()\n");
 	return 0;
 } /* emgd_driver_device_is_agp() */
+
 
 
 /**
@@ -1724,71 +1918,209 @@ int emgd_driver_device_is_agp(struct drm_device *dev)
  * the raw hardware vblank counter.  There are 4 places within "drm_irq.c" that
  * call this function.
  *
- * @param dev (IN) DRM per-device (e.g. one GMA) struct (in "drmP.h")
- * @param crtc (IN) counter to fetch (really a pipe for our driver)
+ * @param dev         (IN) DRM per-device (e.g. one GMA) struct (in "drmP.h")
+ * @param crtc_select (IN) Exactly how this is derived is unclear, but
+ *                     for now we are assuming that it is the order
+ *                     in which the CRTCs were creatd.  So 0 for
+ *                     the first CRTC, 1 for the second, and so on.
  *
  * @return raw vblank counter value
  */
-u32 emgd_driver_get_vblank_counter(struct drm_device *dev, int crtc)
+u32 emgd_driver_get_vblank_counter(struct drm_device *dev, int crtc_select)
 {
-	/* Notes on what to implement in this function:
-	 *
-	 * - There isn't an existing HAL interface that corresponds to this
-	 *   functionality.  However, we may use some IMG functionality to
-	 *   implement this.   For now a stubbed version is sufficient.
-	 */
+	struct drm_crtc *crtc;
+	emgd_crtc_t     *cur_emgd_crtc, *selected_emgd_crtc = NULL;
 
-	/* TODO -- REPLACE THIS STUB WITH A REAL IMPLEMENTATION THE IMG TRAINING */
-	printk(KERN_INFO "[EMGD] Inside of STUBBED %s()", __FUNCTION__);
 
-	return 0;
+	EMGD_TRACE_ENTER;
+
+	/* Only supported for KMS-enabled driver */
+	if (!config_drm.kms) {
+		/* Since we have previously returned 0 for our non-KMS driver,
+		 * this is left in to prevent any unforeseen problems. */
+		EMGD_TRACE_EXIT;
+		return 0;
+	}
+
+
+	/* Find the CRTC associated with the  */
+	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
+		cur_emgd_crtc = container_of(crtc, emgd_crtc_t, base);
+
+		if ((1 << crtc_select) == cur_emgd_crtc->crtc_id) {
+			selected_emgd_crtc = cur_emgd_crtc;
+			break;
+		}
+	}
+
+	if (NULL == selected_emgd_crtc) {
+		EMGD_ERROR_EXIT("Invalid CRTC selected.");
+		return -EINVAL;
+	}
+
+	EMGD_TRACE_EXIT;
+
+	return mode_context->kms_dispatch->kms_get_vblank_counter(
+										selected_emgd_crtc);
 } /* emgd_driver_get_vblank_counter() */
+
 
 
 /**
  * This is the drm_driver.enable_vblank() function.  It is called by
  * drm_vblank_get() (in "drm_irq.c") to enable vblank interrupt events.
+ * This function is only available for KMS
  *
- * @param dev (IN) DRM per-device (e.g. one GMA) struct (in "drmP.h")
- * @param crtc (IN) which irq to enable (really a pipe for our driver)
+ * @param dev         (IN) DRM per-device (e.g. one GMA) struct (in "drmP.h")
+ * @param crtc_select (IN) Exactly how this is derived is unclear, but
+ *                     for now we are assuming that it is the order
+ *                     in which the CRTCs were creatd.  So 0 for
+ *                     the first CRTC, 1 for the second, and so on.
  *
  * @return 0 on Success
  * @return <0 if the given crtc's vblank interrupt cannot be enabled
  */
-int emgd_driver_enable_vblank(struct drm_device *dev, int crtc)
+int emgd_driver_enable_vblank(struct drm_device *dev, int crtc_select)
 {
-	/* Notes on what to implement in this function:
-	 *
-	 * - Ditto the notes in emgd_driver_get_vblank_counter().
-	 *
-	 * - In addition: the open source Intel driver has some simple code for
-	 *   doing this.  It seems to rely on all pipe hardware having mostly the
-	 *   same hardware registers.  If we decide to implement this ourselves,
-	 *   without IMG help, perhaps we could go with a similar approach, or we
-	 *   could create some HAL-like dispatch table that allows future hardware
-	 *   to be different?
-	 */
+	struct drm_crtc *crtc;
+	unsigned char   *mmio;
+	emgd_crtc_t     *cur_emgd_crtc, *selected_emgd_crtc = NULL;
+	unsigned long    request_for;
+	int              ret = 0;
 
-	/* TODO -- REPLACE THIS STUB WITH A REAL IMPLEMENTATION THE IMG TRAINING */
-	printk(KERN_INFO "[EMGD] Inside of STUBBED %s()", __FUNCTION__);
+	EMGD_TRACE_ENTER;
 
-	return 0;
+	/* Only supported for KMS-enabled driver */
+	if (!config_drm.kms) {
+		/* We should return an error here since this is not
+		 * supported.  However, since we have previously returned 0
+		 * for our non-KMS driver, this is left in to prevent any
+		 * unforeseen problems. */
+		EMGD_TRACE_EXIT;
+		return 0;
+	}
+
+
+	/* Find the CRTC associated with the  */
+	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
+		cur_emgd_crtc = container_of(crtc, emgd_crtc_t, base);
+
+		if ((1 << crtc_select) == cur_emgd_crtc->crtc_id) {
+			selected_emgd_crtc = cur_emgd_crtc;
+			break;
+		}
+	}
+
+	if (NULL == selected_emgd_crtc) {
+		EMGD_ERROR_EXIT("Invalid CRTC selected.");
+		return -EINVAL;
+	}
+
+
+	switch (selected_emgd_crtc->igd_pipe->pipe_features & IGD_PORT_MASK) {
+		case IGD_PORT_SHARE_LVDS:
+			request_for = VBLANK_INT4_PORT4;
+			break;
+
+		case IGD_PORT_SHARE_DIGITAL:
+			request_for = VBLANK_INT4_PORT2;
+			break;
+
+		default:
+			EMGD_DEBUG("Unsupported port type");
+			request_for = 0;
+			ret         = -EINVAL;
+			break;
+	}
+
+	if (0 == ret) {
+		mmio = EMGD_MMIO(mode_context->context->device_context.virt_mmadr);
+		ret  = mode_context->dispatch->full->request_vblanks(request_for, mmio);
+
+		if (ret) {
+			EMGD_DEBUG("Failed to enable vblank");
+		}
+	}
+
+	EMGD_TRACE_EXIT;
+	return ret;
 } /* emgd_driver_enable_vblank() */
+
 
 
 /**
  * This is the drm_driver.disable_vblank() function.  It is called by
  * vblank_disable_fn() (in "drm_irq.c") to disable vblank interrupt events.
  *
- * @param dev (IN) DRM per-device (e.g. one GMA) struct (in "drmP.h")
- * @param crtc (IN) which irq to disable (really a pipe for our driver)
+ * @param dev         (IN) DRM per-device (e.g. one GMA) struct (in "drmP.h")
+ * @param crtc_select (IN) Exactly how this is derived is unclear, but
+ *                     for now we are assuming that it is the order
+ *                     in which the CRTCs were creatd.  So 0 for
+ *                     the first CRTC, 1 for the second, and so on.
  */
-void emgd_driver_disable_vblank(struct drm_device *dev, int crtc)
+void emgd_driver_disable_vblank(struct drm_device *dev, int crtc_select)
 {
-	/* TODO -- REPLACE THIS STUB WITH A REAL IMPLEMENTATION THE IMG TRAINING */
-	printk(KERN_INFO "[EMGD] Inside of STUBBED %s()", __FUNCTION__);
+	struct drm_crtc *crtc;
+	unsigned char   *mmio;
+	emgd_crtc_t     *cur_emgd_crtc, *selected_emgd_crtc = NULL;
+	unsigned long    request_for;
+	int              ret = 0;
 
+	EMGD_TRACE_ENTER;
+
+
+	/* Only supported for KMS-enabled driver */
+	if (!config_drm.kms) {
+		EMGD_TRACE_EXIT;
+		return;
+	}
+
+
+	/* Find the CRTC associated with the  */
+	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
+		cur_emgd_crtc = container_of(crtc, emgd_crtc_t, base);
+
+		if ((1 << crtc_select) == cur_emgd_crtc->crtc_id) {
+			selected_emgd_crtc = cur_emgd_crtc;
+			break;
+		}
+	}
+
+	if (NULL == selected_emgd_crtc) {
+		EMGD_ERROR_EXIT("Invalid CRTC selected.");
+		return;
+	}
+
+
+	switch (selected_emgd_crtc->igd_pipe->pipe_features & IGD_PORT_MASK) {
+		case IGD_PORT_SHARE_LVDS:
+			request_for = VBLANK_INT4_PORT4;
+			break;
+
+		case IGD_PORT_SHARE_DIGITAL:
+			request_for = VBLANK_INT4_PORT2;
+			break;
+
+		default:
+			EMGD_DEBUG("Unsupported port type");
+			request_for = 0;
+			ret         = -EINVAL;
+			break;
+	}
+
+	if (0 == ret) {
+		mmio = EMGD_MMIO(mode_context->context->device_context.virt_mmadr);
+		ret  = mode_context->dispatch->full->end_request(request_for, mmio);
+
+		if (ret) {
+			EMGD_DEBUG("Failed to disable vblank");
+		}
+	}
+
+	EMGD_TRACE_EXIT;
+	return;
 } /* emgd_driver_disable_vblank() */
+
 
 
 /**
@@ -1826,7 +2158,7 @@ void emgd_driver_irq_preinstall(struct drm_device *dev)
 	 *   different?
 	 */
 
-	/* TODO -- REPLACE THIS STUB WITH A REAL IMPLEMENTATION THE IMG TRAINING */
+	/* TODO -- REPLACE THIS STUB WITH A REAL IMPLEMENTATION  */
 	printk(KERN_INFO "[EMGD] Inside of STUBBED %s()", __FUNCTION__);
 
 } /* emgd_driver_irq_preinstall() */
@@ -1844,9 +2176,6 @@ void emgd_driver_irq_preinstall(struct drm_device *dev)
  */
 int emgd_driver_irq_postinstall(struct drm_device *dev)
 {
-	/* TODO -- REPLACE THIS STUB WITH A REAL IMPLEMENTATION THE IMG TRAINING */
-	printk(KERN_INFO "[EMGD] Inside of STUBBED %s()", __FUNCTION__);
-
 	return 0;
 } /* emgd_driver_irq_postinstall() */
 
@@ -1873,6 +2202,8 @@ void emgd_driver_irq_uninstall(struct drm_device *dev)
  * (implemented in "interrupt.h") with this function as the 2nd parameter.  The
  * return type is an enum (see the Linux header "irqreturn.h").
  *
+ * Our HAL will have already installed an IRQ handler, so we do nothing here.
+ *
  * @param dev (IN) DRM per-device (e.g. one GMA) struct (in "drmP.h")
  *
  * @return IRQ_NONE if the interrupt was not from this device
@@ -1888,7 +2219,70 @@ irqreturn_t emgd_driver_irq_handler(int irq, void *arg)
 } /* emgd_driver_irq_handler() */
 
 
+static int __devinit emgd_pci_probe(struct pci_dev *pdev,
+		const struct pci_device_id *ent)
+{
+	if (PCI_FUNC(pdev->devfn)) {
+		return -ENODEV;
+	}
 
+	/*
+	 * Name changed at some point in time.  2.6.35 uses drm_get_dev
+	 * and 2.6.38 uses drm_get_pci_dev  Need to figure what kernel
+	 * version this changed.
+	 */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,35)
+	return drm_get_pci_dev(pdev, ent, &driver);
+#else
+	return drm_get_dev(pdev, ent, &driver);
+#endif
+}
+
+static void emgd_pci_remove(struct pci_dev *pdev)
+{
+	struct drm_device *dev = pci_get_drvdata(pdev);
+
+	drm_put_dev(dev);
+}
+
+static int emgd_pm_suspend(struct device *dev)
+{
+	return 0;
+}
+
+static int emgd_pm_resume(struct device *dev)
+{
+	return 0;
+}
+
+static int emgd_pm_freeze(struct device *dev)
+{
+	return 0;
+}
+
+static int emgd_pm_thaw(struct device *dev)
+{
+	return 0;
+}
+
+static int emgd_pm_poweroff(struct device *dev)
+{
+	return 0;
+}
+
+static int emgd_pm_restore(struct device *dev)
+{
+	return 0;
+}
+
+static const struct dev_pm_ops emgd_pm_ops = {
+	.suspend = emgd_pm_suspend,
+	.resume = emgd_pm_resume,
+	.freeze = emgd_pm_freeze,
+	.thaw = emgd_pm_thaw,
+	.poweroff = emgd_pm_poweroff,
+	.restore = emgd_pm_restore,
+};
 
 /*
  * NOTE: The remainder of this file is standard kernel module initialization
@@ -1906,6 +2300,9 @@ irqreturn_t emgd_driver_irq_handler(int irq, void *arg)
 #define EMGD_PCI_DRIVER {    \
 	.name     = DRIVER_NAME, \
 	.id_table = pciidlist,   \
+	.probe = emgd_pci_probe, \
+	.remove = emgd_pci_remove, \
+	.driver.pm = &emgd_pm_ops, \
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
@@ -1951,6 +2348,7 @@ static struct drm_driver driver = {
 		.mmap    = emgd_mmap,
 		.poll    = drm_poll,
 		.fasync  = drm_fasync,
+		.read    = drm_read,
 	},
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,38)
 	.pci_driver          = EMGD_PCI_DRIVER,
@@ -1968,16 +2366,45 @@ static struct drm_driver driver = {
  */
 static int __init emgd_init(void) {
 	int ret;
+	struct pci_dev *our_device;
 
-	EMGD_TRACE_ENTER;
+	printk(KERN_INFO "[EMGD] Initializing Driver.\n");
 	driver.num_ioctls = emgd_max_ioctl;
+
+	/* If init == 1 then we should always set KMS to 0 for US15 */
+
+	if(config_drm.init || drm_emgd_init == 1){
+
+		/*  Detecting device */
+
+		/*
+		 * 0x8086 is the intel vendor id and 0x8108 is the
+		 * US15 device id.
+		 * pci_get_device returns NULL if it is not a PLB.
+		 */
+
+		our_device = pci_get_device(PCI_VENDOR_ID_INTEL,
+					PCI_DEVICE_ID_VGA_PLB, NULL);
+
+		if(our_device){
+			EMGD_ERROR("US15 detected. Setting KMS to 0 "
+				"config_drm.kms = %d ", config_drm.kms);
+			config_drm.kms = 0;
+		}
+	}
+
+	if (config_drm.kms && (config_drm.init || drm_emgd_init == 1)) {
+		driver.driver_features |= DRIVER_MODESET;
+	}
+
+	PVRDPFInit();
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
 	ret = drm_pci_init(&driver, &emgd_pci_driver);
 #else
 	ret = drm_init(&driver);
 #endif
-	PVRDPFInit();
-	printk(KERN_INFO "[EMGD] drm_init() returning %d\n", ret);
+	printk(KERN_INFO "[EMGD] Driver Initialized.\n");
 	EMGD_TRACE_EXIT;
 	return ret;
 }

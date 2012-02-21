@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: ovl2_tnc.c
- * $Revision: 1.18 $
+ * $Revision: 1.20 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -353,7 +353,7 @@ int alter_ovl2_tnc(igd_display_context_t *display,
 
 	/* Send the instructions to the command queue */
 	ret = ovl2_send_instr_tnc(display, &spritec_regs_tnc, flags);
-
+	EMGD_DEBUG("Sprite C= %s",flags & IGD_OVL_ALTER_ON?"ON":"OFF");
 	EMGD_TRACE_EXIT;
 	return ret;
 }

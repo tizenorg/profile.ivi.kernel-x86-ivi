@@ -345,3 +345,4 @@ static INLINE IMG_VOID NoHardwareGenerateEvent(PVRSRV_SGXDEV_INFO		*psDevInfo,
 #endif
 
 #endif
+

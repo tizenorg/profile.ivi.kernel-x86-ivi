@@ -233,7 +233,7 @@ typedef struct _PVRSRV_DEVICE_NODE_
 PVRSRV_ERROR IMG_CALLCONV PVRSRVRegisterDevice(PSYS_DATA psSysData,
 											  PVRSRV_ERROR (*pfnRegisterDevice)(PVRSRV_DEVICE_NODE*),
 											  IMG_UINT32 ui32SOCInterruptBit,
-											  IMG_UINT32 *pui32DeviceIndex );
+			 								  IMG_UINT32 *pui32DeviceIndex );
 
 PVRSRV_ERROR IMG_CALLCONV PVRSRVInitialiseDevice(IMG_UINT32 ui32DevIndex);
 PVRSRV_ERROR IMG_CALLCONV PVRSRVFinaliseSystem(IMG_BOOL bInitSuccesful);
@@ -271,3 +271,4 @@ IMG_VOID IMG_CALLCONV PVRSRVMISR(IMG_VOID *pvSysData);
 #endif
 
 #endif
+

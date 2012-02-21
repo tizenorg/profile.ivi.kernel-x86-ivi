@@ -140,3 +140,4 @@ SGXGetInternalDevInfoKM(IMG_HANDLE hDevCookie,
 #endif
 
 #endif
+

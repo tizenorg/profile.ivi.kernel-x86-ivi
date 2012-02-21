@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: pwr_dispatch.h
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -49,3 +49,4 @@ typedef struct _pwr_dispatch {
 extern pwr_dispatch_t pwr_dispatch_plb;
 
 #endif
+

@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: msvdx.c
- * $Revision: 1.23 $
+ * $Revision: 1.25 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -106,7 +106,8 @@ unsigned long save_msg_cnt;
  */
 unsigned long jiffies_at_last_dequeue = 0;
 
-int msvdx_dequeue_send(igd_context_t *context)
+int mtx_message_complete = 1;
+int msvdx_dequeue_send(igd_context_t *context) 
 {
     platform_context_plb_t *platform;
     struct msvdx_cmd_queue *msvdx_cmd = NULL;
@@ -252,6 +253,7 @@ int send_to_mtx(igd_context_t *context, unsigned long *msg)
 	int padding_flag = 0;
 
 	EMGD_TRACE_ENTER;
+	mtx_message_complete = 0;
 
 	/* Enable all clocks before touching VEC local ram */
 	EMGD_WRITE32(PSB_CLK_ENABLE_ALL, mmio + PSB_MSVDX_MAN_CLK_ENABLE);
@@ -380,12 +382,12 @@ int send_to_mtx(igd_context_t *context, unsigned long *msg)
 	/* Send an interrupt to the MTX to let it know about the message */
 	EMGD_WRITE32(1, mmio + PSB_MSVDX_MTX_KICK);
 
-	/* Read MSVDX Register several times in case idle signal assert */
+	/* Read MSVDX Register several times in case idle signal assert */		
 	EMGD_READ32(mmio + PSB_MSVDX_INTERRUPT_STATUS);
 	EMGD_READ32(mmio + PSB_MSVDX_INTERRUPT_STATUS);
 	EMGD_READ32(mmio + PSB_MSVDX_INTERRUPT_STATUS);
 	EMGD_READ32(mmio + PSB_MSVDX_INTERRUPT_STATUS);
-
+	
 
 #if 0
 	DEBUG_DUMP(context); /* For lots of additional debugging info */
@@ -446,6 +448,7 @@ void msvdx_mtx_interrupt_plb(igd_context_t *context)
 
 			EMGD_WRITE32(read_idx, mmio + PSB_MSVDX_COMMS_TO_HOST_RD_INDEX);
 
+			mtx_message_complete = 1;
 			/* Check message ID */
 			switch ((msg[0] & 0x0000ff00) >> 8) {
 			case IGD_MSGID_CMD_FAILED:
@@ -617,7 +620,7 @@ int msvdx_poll_mtx_irq(igd_context_t *context)
 IMG_BOOL msvdx_mtx_isr(IMG_VOID *pvData)
 {
     struct drm_device *dev;
-    drm_emgd_private *priv;
+    drm_emgd_priv_t *priv;
     igd_context_t *context;
 	unsigned char *mmio;
 	platform_context_plb_t *platform;

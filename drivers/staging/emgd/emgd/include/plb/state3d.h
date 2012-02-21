@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: state3d.h
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -395,3 +395,4 @@ int state3d_update_plb(igd_command_t **in, appcontext_t *appcontext);
 int state3d_update_size(appcontext_t *appcontext);
 
 #endif
+

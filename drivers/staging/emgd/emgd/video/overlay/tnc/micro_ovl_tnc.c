@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: micro_ovl_tnc.c
- * $Revision: 1.14 $
+ * $Revision: 1.18 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -78,6 +78,7 @@ unsigned int micro_spritec_send_instr_tnc(
 	igd_display_context_t     *display,
 	unsigned long regs,
 	unsigned long value);
+extern ovl_context_t ovl_context[1];
 
 #ifndef CONFIG_MICRO_OVERLAY
 #define	OVL2_CHECK_TNC_RET(ret,a, b, c, d, e,f) ret = ovl2_check_tnc(a ,b ,c ,d ,e ,f)
@@ -565,7 +566,7 @@ static unsigned int micro_spritec_update_regs_tnc(
 		if ((plane_control & (3<<22)) != 0) {
 			plane_control &= ~(3<<22);
 		}
-		if((plane_control & 0x3c000000) == 0x1c000000) {
+		if((plane_control & DSPxCNTR_SRC_FMT_MASK) == DSPxCNTR_ARGB_8888) {
 			plane_control &= ~0x04000000;
 		}
 		if(plane_control != orig_plane_control) {
@@ -672,14 +673,14 @@ static unsigned int micro_spritec_update_regs_tnc(
 		 * If Overlay + FB Blend is requested and the FB is xRGB
 		 * turn on the ARGB format.
 		 */
-		if((plane_control & 0x3c000000) == 0x18000000) {
-			plane_control |= 0x1c000000;
+		if((plane_control & DSPxCNTR_SRC_FMT_MASK) == DSPxCNTR_RGB_8888) {
+			plane_control |= DSPxCNTR_ARGB_8888;
 		}
 
 		/* Dest Blend requires Plane C on the bottom of the Z order */
 		spritec_regs_tnc->control |= 4;
 	} else {
-		if((plane_control & 0x3c000000) == 0x1c000000) {
+		if((plane_control & DSPxCNTR_SRC_FMT_MASK) == DSPxCNTR_ARGB_8888) {
 			plane_control &= ~0x04000000;
 		}
 	}
@@ -1164,7 +1165,10 @@ static unsigned int micro_spritec_disable_ovl_tnc(
 	if ((plane_control & (3<<22)) != 0) {
 		plane_control &= ~(3<<22);
 	}
-	if((plane_control & 0x3c000000) == 0x1c000000) {
+	if(((plane_control & DSPxCNTR_SRC_FMT_MASK) == DSPxCNTR_ARGB_8888) &&
+		(!display->context->mod_dispatch.fb_blend_ovl_override)) {
+		/* Preserve the state of the register if FB blend +
+		 * Ovl override is invoked */
 		plane_control &= ~0x04000000;
 	}
 	if(plane_control != orig_plane_control) {
@@ -1277,11 +1281,14 @@ static void micro_spritec_update_colorkey_tnc(
 		 * If Overlay + FB Blend is requested and the FB is xRGB
 		 * turn on the ARGB format.
 		 */
-		if((ovl_cache.ovl2_regs.plane_control & 0x3c000000) == 0x18000000) {
-			ovl_cache.ovl2_regs.plane_control |= 0x1c000000;
+		if((ovl_cache.ovl2_regs.plane_control & DSPxCNTR_SRC_FMT_MASK) == DSPxCNTR_RGB_8888) {
+			ovl_cache.ovl2_regs.plane_control |= DSPxCNTR_ARGB_8888;
 		}
 	} else {
-		if((ovl_cache.ovl2_regs.plane_control & 0x3c000000) == 0x1c000000) {
+		if(((ovl_cache.ovl2_regs.plane_control & DSPxCNTR_SRC_FMT_MASK) == DSPxCNTR_ARGB_8888) &&
+			(!display->context->mod_dispatch.fb_blend_ovl_override)){
+			/* Preserve the state of the register if FB blend +
+			 * Ovl override is invoked */
 			ovl_cache.ovl2_regs.plane_control &= ~0x04000000;
 		}
 	}
@@ -1486,8 +1493,9 @@ static unsigned int micro_spritec_update_regs_tnc(
 	}
 
 	/* Init the cache if needed */
-	if (ovl_cache_needs_init) {
+	if ((ovl_cache_needs_init) || (ovl_context->ovl_display_swapped)){
 		micro_spritec_clear_cache_tnc(display, flags);
+		ovl_context->ovl_display_swapped = 0;
 	}
 
 	/* See what has changed in the cache */
@@ -1599,9 +1607,11 @@ static unsigned int micro_spritec_update_regs_tnc(
 
 	/* General overlay information.  Turn the second overlay on. */
 	ovl_cache.ovl2_regs.control |= (1<<31);
-	ovl_cache.ovl2_regs.control |= PIPE(display)->pipe_num ?
-		(1<<24)/*Pipe B*/ :
-		(0<<24)/*Pipe A*/;
+	if (PIPE(display)->pipe_num == 1) {
+		ovl_cache.ovl2_regs.control |= (1<<24);/*Pipe B*/
+	} else {
+		ovl_cache.ovl2_regs.control &= ~(1<<24);/*Pipe A*/
+	}
 
 	/*
 	 * Now write all the changes to the part
@@ -1670,7 +1680,7 @@ int micro_prepare_ovl2_tnc(
 	if( (QUERY_OVL2_TNC_RET(ret,(igd_display_h)display,
 								IGD_OVL_QUERY_WAIT_LAST_FLIP_DONE)) )
 	{
-		printk(KERN_ERR "QEURY_OVL2_TNC_RET failedi\n");
+		//printk(KERN_ERR "QEURY_OVL2_TNC_RET failedi\n");
 		if ((FALSE == ret) &&
 			(flags & IGD_OVL_ALTER_ON)) {
 			/* Only return an error if the overlay is on.  If turning it off,
@@ -1725,3 +1735,4 @@ int micro_alter_ovl2_tnc(igd_display_context_t *display,
 	EMGD_TRACE_EXIT;
 	return ret;
 }
+

@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: splash_screen.h
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -36,21 +36,41 @@
 
 #include <user_config.h>
 
-#define CONV_16_TO_32_BIT(a) (((a & 0xF800)<<8) | ((a & 0x7E0)<<5) |\
-						(a & 0x1F)<<3)
+#define CONV_16_TO_32_BIT(a) (0xFF000000 | ((a & 0xF800)<<8) |\
+						((a & 0x7E0)<<5) | (a & 0x1F)<<3)
+#define CONV_GS_4_TO_32(a) (0xFF000000 | ((a)<<20) | ((a)<<16) |\
+						((a)<<12) | ((a)<<8) | ((a)<<4) | ((a)))
 
-#define CONV_GS_4_TO_32(a) (((a)<<20) | ((a)<<16) |	((a)<<12) | ((a)<<8) |\
-						((a)<<4) | ((a)))
+#define CONV_GS_2_TO_32(a) (0xFF000000 | ((a)<<22) | ((a)<<20) | ((a)<<18) |\
+						((a)<<16) | ((a)<<14) | ((a)<<12) | ((a)<<10) |\
+						((a)<<8) | ((a)<<6) | ((a)<<4) | ((a)<<2) | ((a)))
 
-#define CONV_GS_2_TO_32(a) (((a)<<22) | ((a)<<20) | ((a)<<18) | ((a)<<16) |\
-						((a)<<14) | ((a)<<12) | ((a)<<10) | ((a)<<8) |\
-						((a)<<6) | ((a)<<4) | ((a)<<2) | ((a)))
+#define CONV_GS_1_TO_32(a) (0xFF000000 | ((a)<<23) | ((a)<<22) | ((a)<<21) |\
+						((a)<<20) | ((a)<<19) | ((a)<<18) | ((a)<<17) |\
+						((a)<<16) |	((a)<<15) | ((a)<<14) | ((a)<<13) |\
+						((a)<<12) |	((a)<<11) | ((a)<<10) | ((a)<<9) |\
+						((a)<<8) | ((a)<<7) | ((a)<<6) | ((a)<<5) | ((a)<<4) |\
+						((a)<<3) | ((a)<<2) | ((a)<<1) | ((a)))
 
-#define CONV_GS_1_TO_32(a) (((a)<<23) | ((a)<<22) | ((a)<<21) | ((a)<<20) |\
-						((a)<<19) | ((a)<<18) | ((a)<<17) | ((a)<<16) |\
-						((a)<<15) | ((a)<<14) | ((a)<<13) | ((a)<<12) |\
-						((a)<<11) | ((a)<<10) | ((a)<<9) | ((a)<<8) |\
-						((a)<<7) | ((a)<<6) | ((a)<<5) | ((a)<<4) |\
+/* Colour_type options */
+#define COLOR_GREY       0
+#define COLOR_TRUE       2
+#define COLOR_INDEXED    3
+#define COLOR_GREY_ALPHA 4
+#define COLOR_TRUE_ALPHA 6
+
+#define CONV_GS_4_TO_32(a) (0xFF000000 | ((a)<<20) | ((a)<<16) | ((a)<<12) |\
+						((a)<<8) | ((a)<<4) | ((a)))
+
+#define CONV_GS_2_TO_32(a) (0xFF000000 | ((a)<<22) | ((a)<<20) | ((a)<<18) |\
+						((a)<<16) | ((a)<<14) | ((a)<<12) | ((a)<<10) |\
+						((a)<<8) | ((a)<<6) | ((a)<<4) | ((a)<<2) | ((a)))
+
+#define CONV_GS_1_TO_32(a) (0xFF000000 | ((a)<<23) | ((a)<<22) | ((a)<<21) |\
+						((a)<<20) |	((a)<<19) | ((a)<<18) | ((a)<<17) |\
+						((a)<<16) |	((a)<<15) | ((a)<<14) | ((a)<<13) |\
+						((a)<<12) |	((a)<<11) | ((a)<<10) | ((a)<<9) |\
+						((a)<<8) | ((a)<<7) | ((a)<<6) | ((a)<<5) | ((a)<<4) |\
 						((a)<<3) | ((a)<<2) | ((a)<<1) | ((a)))
 
 #define PNG_HEADER_SIZE                   8
@@ -89,12 +109,26 @@
 #define CHUNK_IDAT 0x49444154
 #define CHUNK_IEND 0x49454E44
 
+/* APNG Chunks */
+#define CHUNK_ACTL 0x6163544C
+#define CHUNK_FCTL 0x6663544C
+#define CHUNK_FDAT 0x66644154
+
 /* Colour_type options */
 #define COLOR_GREY       0
 #define COLOR_TRUE       2
 #define COLOR_INDEXED    3
 #define COLOR_GREY_ALPHA 4
 #define COLOR_TRUE_ALPHA 6
+
+/* APNG dispose_op codes */
+#define APNG_DISPOSE_OP_NONE       0
+#define APNG_DISPOSE_OP_BACKGROUND 1
+#define APNG_DISPOSE_OP_PREVIOUS   2
+
+/* APNG blend_op codes */
+#define APNG_BLEND_OP_SOURCE 0
+#define APNG_BLEND_OP_OVER   1
 
 typedef struct _bitmap_header {
 	/* What is the widht and height of the bitmap */
@@ -111,12 +145,40 @@ typedef struct _bitmap_header {
 typedef struct _png_header {
 	unsigned long width;
 	unsigned long height;
+	unsigned long x_offset;
+	unsigned long y_offset;
 	unsigned char bit_depth;
 	unsigned char colour_type;
 	unsigned char compression_method;
 	unsigned char filter_method;
 	unsigned char interlace_method;
+	unsigned long bpp;
+	unsigned long bytes_pp;
+	unsigned long bytes_pl;
+	unsigned long background;
+	unsigned char background_r;
+	unsigned char background_g;
+	unsigned char background_b;
+	unsigned long *image_palette;
+	unsigned long using_transparency;
+	unsigned short transparency_r;
+	unsigned short transparency_g;
+	unsigned short transparency_b;
 } png_header;
+
+typedef struct _png_frame {
+	unsigned long *output;
+	unsigned long size;
+	unsigned long width;
+	unsigned long height;
+	unsigned long x_offset;
+	unsigned long y_offset;
+	unsigned long bytes_pp;
+	unsigned long bytes_pl;
+	unsigned long delay;
+	unsigned char dispose_op;
+	unsigned char blend_op;
+} png_frame;
 
 typedef struct _huffman_node {
 	unsigned long value;
@@ -125,6 +187,16 @@ typedef struct _huffman_node {
 	struct huffman_node *leaf[2];
 } huffman_node;
 
+void display_png_frame(
+	igd_framebuffer_info_t *fb_info,
+	unsigned char *fb,
+	png_header image_header,
+	png_frame *frame,
+	unsigned long prev_dispose_op);
+void decode_png_data(
+	png_header *image_header,
+	unsigned char *input_data,
+	png_frame *frame);
 int create_tree(
     unsigned long max_bits,
     unsigned long num_codes,
@@ -185,6 +257,10 @@ int read_int_from_stream(
 	unsigned char *stream,
 	unsigned long *iter,
 	unsigned long *value);
+int read_short_from_stream(
+	unsigned char *stream,
+	unsigned long *iter,
+	unsigned short *value);
 int read_char_from_stream(
 	unsigned char *stream,
 	unsigned long *iter,
@@ -200,6 +276,5 @@ unsigned int read_bit_from_stream(
     unsigned long *iter,
     unsigned char *bit_iter);
 
-
-
 #endif
+

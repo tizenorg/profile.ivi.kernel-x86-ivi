@@ -2374,3 +2374,4 @@ HAPFlagsToString(IMG_UINT32 ui32Flags)
     return szFlags;
 }
 #endif
+

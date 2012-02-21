@@ -144,3 +144,4 @@ PVRSRVDissociateMemFromResmanKM(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 
 	return eError;
 }
+

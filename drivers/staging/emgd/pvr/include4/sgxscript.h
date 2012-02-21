@@ -74,3 +74,4 @@ typedef struct _SGX_INIT_SCRIPTS_
 #endif
 
 #endif
+

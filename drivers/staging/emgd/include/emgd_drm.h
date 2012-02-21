@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: emgd_drm.h
- * $Revision: 1.53 $
+ * $Revision: 1.59 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -79,6 +79,7 @@ enum {
 #define CMD_VIDEO_SHUTDOWN        6
 #define CMD_VIDEO_GET_FENCE_ID    7
 #define CMD_VIDOE_GET_FRAME_SKIP  8
+#define CMD_VIDEO_GET_MSVDX_STATUS  	  9
 
 /* Video state */
 #define VIDEO_STATE_FW_LOADED     	0x00000001
@@ -246,6 +247,12 @@ typedef struct _kdrm_get_drm_config {
 	igd_param_t params; /* (UP) */
 	/** The display config (e.g. 8 for DIH). */
 	int display_config; /* (UP) */
+	/*
+	 * Build configuration (e.g., DDK version used, debug vs release, etc.);
+	 * if these don't match what userspace was built with, the driver may not
+	 * run properly.  (UP)
+	 */
+	igd_build_config_t build_config;
 } emgd_drm_get_drm_config_t;
 
 
@@ -394,12 +401,27 @@ typedef struct _kdrm_video_get_info {
 	int last_frame;
 	unsigned long fence_id;
 	unsigned long frame_skip;
+	unsigned long queue_status; /* (UP) - return 1 if msvdx queue empty, else 0 */
+	unsigned long mtx_msg_status; /* (UP) - return 1 if msvdx current message complete, else 0 */
 } emgd_drm_video_get_info_t;
 
 typedef struct _kdrm_video_flush_tlb {
 	int rtn;
 	int engine;
 } emgd_drm_video_flush_tlb_t;
+
+typedef struct _kdrm_get_display_info {
+	int rtn; /* (UP) - return value of HAL procedure */
+	igd_display_info_t primary_pt_info; /* (UP) */
+	igd_display_info_t secondary_pt_info; /* (UP) */
+	igd_framebuffer_info_t primary_fb_info; /* (UP) */
+	igd_framebuffer_info_t secondary_fb_info; /* (UP) */
+	unsigned long dc; /* (UP) */
+	unsigned long flags; /* (UP) */
+
+	igd_display_h primary; /* (UP) Generated "opaque handle" */
+	igd_display_h secondary; /* (UP) Generated "opaque handle" */
+} emgd_drm_get_display_info_t;
 
 typedef struct _kdrm_pan_display {
 	/* Note: the return value is a long this time: */
@@ -509,6 +531,46 @@ typedef struct _kdrm_set_surface {
 	unsigned long flags; /* (DOWN) */
 } emgd_drm_set_surface_t;
 
+#define CLONE_PRIMARY 0
+#define CLONE_SECONDARY 1
+#define CLONE 0
+#define DIH   1
+
+
+typedef struct _kdrm_dihclone_set_surface {
+	int rtn; /* (UP) - return value of HAL procedure */
+	unsigned long dih_clone_display; /* (DOWN) - primary or secondary display to clone */
+	unsigned long mode; /* (DOWN) - dih to clone or back to dih */
+} emgd_drm_dihclone_set_surface_t;
+
+typedef struct _kdrm_control_plane_format {
+	/* Note on modification to the structure to accomodate both
+	 * Use PRIMARY/SECONDARY to indicate which display
+	 * FB blend + overlay to turn ON/OFF. The relationship between
+	 * plane, pipe and port is transparent to the user.
+	 * A qualifier (use_plane) is used to decide which model the user wants.
+	 */
+	int rtn; /* (UP) - return value of HAL procedure */
+	/* 	(DOWN) Turn off transparency by switching to XRGB format = 0
+		Turn on transparency by switching to ARGB format = 1 */
+	int enable;
+	union {
+		/* 	(DOWN) Plane A = 0
+			Plane B = 1 */
+		int display_plane;
+		/* 	(DOWN) Primary/Secondary display handle */
+		igd_display_h primary_secondary_dsp;
+	};
+	/* If set, KMD will use the plane convention */
+	unsigned int use_plane;
+} emgd_drm_control_plane_format_t;
+
+
+typedef struct _kdrm_set_overlay_display{
+	int rtn; /* (UP) - return value of HAL procedure */
+	igd_display_h ovl_display[OVL_MAX_HW]; /* (DOWN) Overlay display handles */
+} emgd_drm_set_overlay_display_t;
+
 
 typedef struct _kdrm_sync {
 	int rtn; /* (UP) - return value of HAL procedure */
@@ -575,6 +637,22 @@ typedef struct _kdrm_query_2d_caps_hwhint {
 	unsigned long *status; /* (UP) */
 } emgd_drm_query_2d_caps_hwhint_t;
 
+/* For Buffer Class FCB #17711*/
+typedef struct _kdrm_bc_ts {
+	int rtn;
+	int width;
+	int height;
+	int stride;
+	int is_continous;
+	unsigned long dev_id;
+	unsigned long buf_id;
+	unsigned long buf_tag;
+	unsigned long num_buf;
+	unsigned long pixel_format;
+	unsigned long phyaddr;
+	unsigned long virtaddr;
+} emgd_drm_bc_ts_t;
+
 /*
  * This is where all the IOCTL's used by the egd DRM interface are
  * defined.  This information is shared between the user space code and
@@ -609,8 +687,12 @@ typedef struct _kdrm_query_2d_caps_hwhint {
 #define DRM_IGD_GMM_FLUSH_CACHE      0x11
 #define DRM_IGD_GMM_GET_NUM_SURFACE  0x31
 #define DRM_IGD_GMM_GET_SURFACE_LIST 0x32
-#define DRM_IGD_GET_GOLDEN_HTOTAL	 0x33
-#define DRM_IGD_QUERY_2D_CAPS_HWHINT 0x34
+#define DRM_IGD_GET_GOLDEN_HTOTAL    0x33
+#define DRM_IGD_CONTROL_PLANE_FORMAT 0x34
+#define DRM_IGD_QUERY_2D_CAPS_HWHINT 0x35
+#define DRM_IGD_DIHCLONE_SET_SURFACE 0x36
+#define DRM_IGD_SET_OVERLAY_DISPLAY  0x37
+
 /*
  * The EMGD DRM includes the PVR DRM, and as such, includes the following PVR
  * DRM ioctls.  The numbering must be kept in sync with what is defined in
@@ -653,6 +735,15 @@ typedef struct _kdrm_query_2d_caps_hwhint {
 #define DRM_IGD_GET_OVL_INIT_PARAMS 0x2e
 #define DRM_IGD_ALTER_OVL2          0x2f
 #define DRM_IGD_GET_CHIPSET_INFO    0x30
+#define DRM_IGD_GET_DISPLAY_INFO    0x38
+/* For Buffer Class of Texture Stream */
+#define DRM_IGD_BC_TS_INIT			0x40
+#define DRM_IGD_BC_TS_UNINIT		0x41
+#define DRM_IGD_BC_TS_REQUEST_BUFFERS	0x42
+#define DRM_IGD_BC_TS_RELEASE_BUFFERS	0x43
+#define DRM_IGD_BC_TS_SET_BUFFER_INFO	0x44
+#define DRM_IGD_BC_TS_GET_BUFFERS_COUNT	0x45
+#define DRM_IGD_BC_TS_GET_BUFFER_INDEX	0x46
 
 /*
  * egd IOCTLs.
@@ -727,6 +818,10 @@ typedef struct _kdrm_query_2d_caps_hwhint {
 		emgd_drm_query_mode_list_t)
 #define DRM_IOCTL_IGD_GET_GOLDEN_HTOTAL  DRM_IOWR(DRM_IGD_GET_GOLDEN_HTOTAL + BASE,\
 		emgd_drm_get_golden_htotal_t)
+#define DRM_IOCTL_IGD_CONTROL_PLANE_FORMAT DRM_IOWR(DRM_IGD_CONTROL_PLANE_FORMAT + BASE,\
+		emgd_drm_control_plane_format_t)
+#define DRM_IOCTL_IGD_SET_OVERLAY_DISPLAY DRM_IOWR(DRM_IGD_SET_OVERLAY_DISPLAY + BASE,\
+		emgd_drm_set_overlay_display_t)
 #define DRM_IOCTL_IGD_SET_ATTRS        DRM_IOWR(DRM_IGD_SET_ATTRS + BASE,\
 		emgd_drm_set_attrs_t)
 #define DRM_IOCTL_IGD_SET_PALETTE_ENTRY DRM_IOWR(DRM_IGD_SET_PALETTE_ENTRY +\
@@ -751,6 +846,11 @@ typedef struct _kdrm_query_2d_caps_hwhint {
 		emgd_drm_driver_get_chipset_info_t)
 #define DRM_IOCTL_IGD_QUERY_2D_CAPS_HWHINT DRM_IOWR(DRM_IGD_QUERY_2D_CAPS_HWHINT + BASE,\
 		emgd_drm_query_2d_caps_hwhint_t)
+#define DRM_IOCTL_IGD_GET_DISPLAY_INFO  DRM_IOR(DRM_IGD_GET_DISPLAY_INFO + BASE,\
+		emgd_drm_get_display_info_t)
+
+#define DRM_IOCTL_IGD_DIHCLONE_SET_SURFACE	DRM_IOWR(DRM_IGD_DIHCLONE_SET_SURFACE + BASE,\
+		emgd_drm_dihclone_set_surface_t)
 
 
 /* From pvr_bridge.h */
@@ -776,4 +876,21 @@ typedef struct _kdrm_query_2d_caps_hwhint {
 		emgd_drm_video_get_info_t)
 #define DRM_IOCTL_IGD_VIDEO_FLUSH_TLB  DRM_IOR(DRM_IGD_VIDEO_FLUSH_TLB + BASE,\
 		emgd_drm_video_flush_tlb_t)
+#define DRM_IOCTL_IGD_GET_DISPLAY_INFO  DRM_IOR(DRM_IGD_GET_DISPLAY_INFO + BASE,\
+		emgd_drm_get_display_info_t)
+/* For Buffer Class of Texture Stream */
+#define DRM_IOCTL_IGD_BC_TS_INIT DRM_IOR(DRM_IGD_BC_TS_INIT + BASE,\
+		emgd_drm_bc_ts_t)
+#define DRM_IOCTL_IGD_BC_TS_UNINIT DRM_IOR(DRM_IGD_BC_TS_UNINIT + BASE,\
+		emgd_drm_bc_ts_t)
+#define DRM_IOCTL_IGD_BC_TS_REQUEST_BUFFERS DRM_IOR(DRM_IGD_BC_TS_REQUEST_BUFFERS + BASE,\
+		emgd_drm_bc_ts_t)
+#define DRM_IOCTL_IGD_BC_TS_RELEASE_BUFFERS DRM_IOR(DRM_IGD_BC_TS_RELEASE_BUFFERS + BASE,\
+		emgd_drm_bc_ts_t)
+#define DRM_IOCTL_IGD_BC_TS_SET_BUFFER_INFO DRM_IOR(DRM_IGD_BC_TS_SET_BUFFER_INFO + BASE,\
+		emgd_drm_bc_ts_t)
+#define DRM_IOCTL_IGD_BC_TS_GET_BUFFERS_COUNT DRM_IOR(DRM_IGD_BC_TS_GET_BUFFERS_COUNT + BASE,\
+		emgd_drm_bc_ts_t)
+#define DRM_IOCTL_IGD_BC_TS_GET_BUFFER_INDEX DRM_IOR(DRM_IGD_BC_TS_GET_BUFFER_INDEX + BASE,\
+		emgd_drm_bc_ts_t)
 #endif

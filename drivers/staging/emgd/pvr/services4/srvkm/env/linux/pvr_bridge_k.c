@@ -97,7 +97,7 @@ LinuxBridgeInit(IMG_VOID)
 												  ProcSeqShowBridgeStats,
 												  ProcSeqOff2ElementBridgeStats,
 												  ProcSeqStartstopBridgeStats
-												 );
+						  						 );
 		iStatus = !g_ProcBridgeStats ? -1 : 0;
 #else
 		iStatus = CreateProcReadEntry("bridge_stats", printLinuxBridgeStats);

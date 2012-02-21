@@ -562,7 +562,7 @@ static PVRSRV_ERROR FreeResourceByPtr(RESMAN_ITEM	*psItem,
 	if (bExecuteCallback)
 	{
 		eError = psItem->pfnFreeResource(psItem->pvParam, psItem->ui32Param);
-		if (eError != PVRSRV_OK)
+	 	if (eError != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "FreeResourceByPtr: ERROR calling FreeResource function"));
 		}
@@ -633,9 +633,9 @@ static PVRSRV_ERROR FreeResourceByCriteria(PRESMAN_CONTEXT	psResManContext,
 										FreeResourceByCriteria_AnyVaCb,
 										ui32SearchCriteria,
 										ui32ResType,
-										pvParam,
-										ui32Param)) != IMG_NULL
-			&& eError == PVRSRV_OK)
+						 				pvParam,
+						 				ui32Param)) != IMG_NULL
+		  	&& eError == PVRSRV_OK)
 	{
 		eError = FreeResourceByPtr(psCurItem, bExecuteCallback);
 	}
@@ -700,3 +700,5 @@ static IMG_VOID ValidateResList(PRESMAN_LIST psResList)
 	}
 }
 #endif
+
+

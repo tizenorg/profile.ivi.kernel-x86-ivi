@@ -109,3 +109,4 @@ IMG_VOID   IMG_CALLCONV ExtDBGDrivSetStreamOffset(PDBG_STREAM psStream, IMG_UINT
 IMG_VOID   IMG_CALLCONV ExtDBGDrivWaitForEvent(DBG_EVENT eEvent);
 
 #endif
+

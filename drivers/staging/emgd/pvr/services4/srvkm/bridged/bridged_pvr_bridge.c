@@ -2451,6 +2451,44 @@ PVRSRVGetBCBufferBW(IMG_UINT32 ui32BridgeID,
 
 
 static IMG_INT
+PVRSRVGetBCBufferIdFromTagBW(IMG_UINT32 ui32BridgeID,
+					PVRSRV_BRIDGE_IN_GET_BUFFERCLASS_BUFFER *psGetBufferClassBufferIN,
+					PVRSRV_BRIDGE_OUT_GET_BUFFERCLASS_BUFFER *psGetBufferClassBufferOUT,
+					PVRSRV_PER_PROCESS_DATA *psPerProc)
+{
+	IMG_VOID *pvBufClassInfo = IMG_NULL;
+	IMG_HANDLE pidx = IMG_NULL;
+
+	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_GET_BUFFERCLASS_BUFFER_ID_FROM_TAG);
+
+	NEW_HANDLE_BATCH_OR_ERROR(psGetBufferClassBufferOUT->eError, psPerProc, 1);
+
+	psGetBufferClassBufferOUT->eError =
+		PVRSRVLookupHandle(psPerProc->psHandleBase,
+						   &pvBufClassInfo,
+						   psGetBufferClassBufferIN->hDeviceKM,
+						   PVRSRV_HANDLE_TYPE_BUF_INFO);
+	if(psGetBufferClassBufferOUT->eError != PVRSRV_OK)
+	{
+		return 0;
+	}
+
+	psGetBufferClassBufferOUT->eError =
+		PVRSRVGetBCBufferIdFromTagKM(pvBufClassInfo,
+							psGetBufferClassBufferIN->ui32BufferIndex,
+							&pidx);
+
+	if(psGetBufferClassBufferOUT->eError != PVRSRV_OK)
+	{
+		return 0;
+	}
+
+	psGetBufferClassBufferOUT->hBuffer = pidx;
+
+	return 0;
+}
+
+static IMG_INT
 PVRSRVAllocSharedSysMemoryBW(IMG_UINT32 ui32BridgeID,
 							 PVRSRV_BRIDGE_IN_ALLOC_SHARED_SYS_MEM *psAllocSharedSysMemIN,
 							 PVRSRV_BRIDGE_OUT_ALLOC_SHARED_SYS_MEM *psAllocSharedSysMemOUT,
@@ -2778,7 +2816,7 @@ PVRSRVInitSrvConnectBW(IMG_UINT32 ui32BridgeID,
 	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_INITSRV_CONNECT);
 	PVR_UNREFERENCED_PARAMETER(psBridgeIn);
 
-	if(!OSProcHasPrivSrvInit() || PVRSRVGetInitServerState(PVRSRV_INIT_SERVER_RUNNING) || PVRSRVGetInitServerState(PVRSRV_INIT_SERVER_RAN))
+	if(PVRSRVGetInitServerState(PVRSRV_INIT_SERVER_RUNNING) || PVRSRVGetInitServerState(PVRSRV_INIT_SERVER_RAN))
 	{
 		psRetOUT->eError = PVRSRV_ERROR_GENERIC;
 		return 0;
@@ -3216,7 +3254,7 @@ CommonBridgeInit(IMG_VOID)
 	SetDispatchTableEntry(PVRSRV_BRIDGE_CLOSE_BUFFERCLASS_DEVICE, PVRSRVCloseBCDeviceBW);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_GET_BUFFERCLASS_INFO, PVRSRVGetBCInfoBW);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_GET_BUFFERCLASS_BUFFER, PVRSRVGetBCBufferBW);
-
+	SetDispatchTableEntry(PVRSRV_BRIDGE_GET_BUFFERCLASS_BUFFER_ID_FROM_TAG, PVRSRVGetBCBufferIdFromTagBW);
 
 	SetDispatchTableEntry(PVRSRV_BRIDGE_WRAP_EXT_MEMORY, PVRSRVWrapExtMemoryBW);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_UNWRAP_EXT_MEMORY, PVRSRVUnwrapExtMemoryBW);
@@ -3406,3 +3444,4 @@ return_fault:
 	ReleaseHandleBatch(psPerProc);
 	return err;
 }
+

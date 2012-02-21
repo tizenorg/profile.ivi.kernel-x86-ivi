@@ -211,3 +211,4 @@ IMG_VOID BM_FreeExport(BM_HANDLE hBuf, IMG_UINT32 ui32Flags);
 #endif
 
 #endif
+

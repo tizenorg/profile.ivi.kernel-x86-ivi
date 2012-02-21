@@ -235,7 +235,10 @@ PVRSRV_ERROR PVRSRVGetBCBufferKM(IMG_HANDLE	hDeviceKM,
 								 IMG_UINT32	ui32BufferIndex,
 								 IMG_HANDLE	*phBuffer);
 
-
+IMG_EXPORT
+PVRSRV_ERROR PVRSRVGetBCBufferIdFromTagKM(IMG_HANDLE hDeviceKM,
+								  IMG_UINT32 ui32BufferIndex,
+								  IMG_HANDLE pidx);
 IMG_IMPORT
 PVRSRV_ERROR IMG_CALLCONV PVRSRVMapDeviceClassMemoryKM(PVRSRV_PER_PROCESS_DATA	*psPerProc,
 													   IMG_HANDLE				hDevMemContext,
@@ -276,8 +279,14 @@ PVRSRVFreeSharedSysMemoryKM(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
 IMG_IMPORT PVRSRV_ERROR
 PVRSRVDissociateMemFromResmanKM(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
 
+IMG_IMPORT PVRSRV_ERROR
+PVRSRVGetPageListKM(PVRSRV_KERNEL_MEM_INFO *psMemInfo, struct page ***pvPageList,
+	unsigned long *numpages,
+	unsigned long *offset);
+
 #if defined (__cplusplus)
 }
 #endif
 
 #endif
+

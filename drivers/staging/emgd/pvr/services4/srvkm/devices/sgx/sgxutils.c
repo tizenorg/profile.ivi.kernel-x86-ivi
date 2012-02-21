@@ -1049,3 +1049,6 @@ IMG_UINT32 SGXConvertTimeStamp(PVRSRV_SGXDEV_INFO	*psDevInfo,
 	return ui32Clocksx16;
 #endif
 }
+
+
+

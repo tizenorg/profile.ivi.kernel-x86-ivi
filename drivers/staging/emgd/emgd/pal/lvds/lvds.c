@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: lvds.c
- * $Revision: 1.17 $
+ * $Revision: 1.18 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -466,6 +466,7 @@ int lvds_close(void *device_context)
 	if (device_context) {
 		if ( NULL != pd_context->timing_table) {
 			pd_free(pd_context->timing_table);
+			pd_context->timing_table = NULL;
 		}
 
 		/* Free attribute list, if necessary */
@@ -1059,11 +1060,14 @@ int lvds_set_power(void *context, unsigned long state)
 	PD_DEBUG("lvds_set_power() to state = %lu\n",state);
 	/* Basic parameter check */
 	if (!context) {
+		PD_DEBUG("No context");
 		return PD_ERR_NULL_PTR;
 	}
+	PD_DEBUG("pd_context=0x%lx", (unsigned long)pd_context);
 
 	/* Check for invalid state */
 	if (state > PD_POWER_MODE_D3) {
+		PD_DEBUG("Invalid power state");
 		return PD_ERR_INVALID_POWER;
 	}
 
@@ -1337,6 +1341,8 @@ static void lvds_write_reg(lvds_context_t *pd_context, unsigned long reg,
 	pd_reg_t list[2];
 	int ret;
 
+	PD_DEBUG("ENTER");
+
 	list[0].reg = reg;
 	list[0].value = (lvds_read_reg(pd_context, reg, PD_REG_MIO) & ~change_bits) | value;
 	list[1].reg = PD_REG_LIST_END;
@@ -1345,6 +1351,7 @@ static void lvds_write_reg(lvds_context_t *pd_context, unsigned long reg,
 	if (ret) {
 		PD_ERROR("LVDS write regs: Failed.");
 	}
+	PD_DEBUG("EXIT");
 	return;
 }                                                         /* lvds_write_reg */
 

@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: igd_ovl.h
- * $Revision: 1.10 $
+ * $Revision: 1.13 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -226,6 +226,9 @@ typedef struct _igd_ovl_video_quality_info{
  */
 #define IGD_OVL_GAMMA_DISABLE               0x00000000
 #define IGD_OVL_GAMMA_ENABLE				0x00000001
+/* UM only flag to indicate individual
+ * plane color correction values should be applied */
+#define IGD_OVL_GAMMA_OVERRIDE               0x00000002
 /*! @} */
 
 /*!
@@ -288,6 +291,8 @@ typedef struct _video_surface_data {
 /* User mode overlay context */
 typedef struct _ovl_um_context {
 	/* OVLADD add additional overlay initialization parameters here. */
+
+	int in_dihclone;
 	int chiptype;
 	void *dispatch; /* can't make this igd_dispatch_t due to circular reference */
 	unsigned long dc;
@@ -303,7 +308,9 @@ typedef struct _ovl_um_context {
 	igd_surface_t blend_surf[OVL_MAX_HW][MAX_BLEND_SURF];
 
 	vid_surf_data_t *vid_surf_data_ptr;
-
+	igd_display_h ovl_display_um[OVL_MAX_HW];
+	igd_ovl_info_t ovl_info_um[OVL_MAX_HW];
+	igd_display_h active_single_ovl;
 } ovl_um_context_t;
 
 

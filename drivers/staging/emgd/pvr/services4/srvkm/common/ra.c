@@ -1701,8 +1701,8 @@ RA_DumpSegs(IMG_CHAR *page, IMG_CHAR **start, off_t off, IMG_INT count, IMG_INT 
 	if (pBT)
 	{
 		len = printAppend(page, count, 0, "%08x %8x %4s %08x\n",
-							(IMG_UINT)pBT->base, (IMG_UINT)pBT->uSize, _BTType (pBT->type),
-							(IMG_UINT)pBT->psMapping);
+				 			(IMG_UINT)pBT->base, (IMG_UINT)pBT->uSize, _BTType (pBT->type),
+				 			(IMG_UINT)pBT->psMapping);
 	}
 	else
 	{
@@ -1864,3 +1864,4 @@ PVRSRV_ERROR RA_GetStats(RA_ARENA *pArena,
 	return PVRSRV_OK;
 }
 #endif
+

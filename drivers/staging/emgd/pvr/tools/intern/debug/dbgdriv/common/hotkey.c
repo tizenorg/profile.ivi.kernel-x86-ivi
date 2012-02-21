@@ -127,3 +127,5 @@ IMG_VOID DeactivateHotKeys(IMG_VOID)
 		g_PrivateHotKeyData.sHotKeyInfo.hHotKey = 0;
 	}
 }
+
+

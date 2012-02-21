@@ -1622,19 +1622,9 @@ PVRSRV_ERROR OSPCIReleaseDev(PVRSRV_PCI_DEV_HANDLE hPVRPCI)
 PVRSRV_ERROR OSPCISuspendDev(PVRSRV_PCI_DEV_HANDLE hPVRPCI)
 {
     PVR_PCI_DEV *psPVRPCI = (PVR_PCI_DEV *)hPVRPCI;
-    int i;
     int err;
 
     PVR_TRACE(("OSPCISuspendDev"));
-
-
-    for (i = 0; i < DEVICE_COUNT_RESOURCE; i++)
-    {
-        if (psPVRPCI->abPCIResourceInUse[i])
-        {
-            pci_release_region(psPVRPCI->psPCIDev, i);
-        }
-    }
 
     err = pci_save_state(psPVRPCI->psPCIDev);
     if (err != 0)
@@ -1668,7 +1658,6 @@ PVRSRV_ERROR OSPCIResumeDev(PVRSRV_PCI_DEV_HANDLE hPVRPCI)
 {
     PVR_PCI_DEV *psPVRPCI = (PVR_PCI_DEV *)hPVRPCI;
     int err;
-    int i;
 
     PVR_TRACE(("OSPCIResumeDev"));
 
@@ -1708,20 +1697,6 @@ PVRSRV_ERROR OSPCIResumeDev(PVRSRV_PCI_DEV_HANDLE hPVRPCI)
 
     if (psPVRPCI->ePCIFlags & HOST_PCI_INIT_FLAG_BUS_MASTER)
         pci_set_master(psPVRPCI->psPCIDev);
-
-
-    for (i = 0; i < DEVICE_COUNT_RESOURCE; i++)
-    {
-        if (psPVRPCI->abPCIResourceInUse[i])
-        {
-            err = pci_request_region(psPVRPCI->psPCIDev, i, "PowerVR");
-            if (err != 0)
-            {
-                PVR_DPF((PVR_DBG_ERROR, "OSPCIResumeDev: pci_request_region_failed (region %d, error %d)", i, err));
-            }
-        }
-
-    }
 
     return PVRSRV_OK;
 }

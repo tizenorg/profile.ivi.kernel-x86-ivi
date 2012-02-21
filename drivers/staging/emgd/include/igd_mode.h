@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: igd_mode.h
- * $Revision: 1.12 $
+ * $Revision: 1.14 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -322,6 +322,11 @@ typedef unsigned long igd_pf_t;
 typedef void* igd_display_h;
 
 /*!
+ * The opaque timing_info handle.
+ */
+typedef void* igd_timing_info_h;
+
+/*!
  * The maximum number of displays available in the display configurations
  * below.
  */
@@ -538,6 +543,12 @@ typedef struct _igd_framebuffer_info {
 	 * (e.g. a PVR services swap-chain buffer) and not the frame buffer.
 	 */
 	unsigned long visible_offset;
+
+	/* this is the offset that will be restored when swithcing back to dih mode from
+	 * dihclone mode
+	 */
+
+	unsigned long saved_offset;
 	/*!
 	 * @brief pixel format of the fb. See @ref pixel_formats
 	 *

@@ -47,7 +47,7 @@ static emgd_error_t disable_event_notification(emgddc_devinfo_t *devinfo);
 static void flush_flip_queue(emgddc_swapchain_t *swap_chain);
 static PVRSRV_ERROR do_mode_change(igd_context_t *context,
 		emgddc_devinfo_t *devinfo,
-		drm_emgd_private *priv,
+		drm_emgd_priv_t *priv,
 		DISPLAY_SURF_ATTRIBUTES *dst_surf_attrib);
 
 
@@ -473,6 +473,7 @@ static PVRSRV_ERROR GetDCBufferAddr(IMG_HANDLE device_h,
 
 
 	if (!device_h) {
+		printk(KERN_ERR "[EMGD] %s() Null device handle.\n", __FUNCTION__);
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
 
@@ -484,8 +485,13 @@ static PVRSRV_ERROR GetDCBufferAddr(IMG_HANDLE device_h,
 	}
 
 	context = devinfo->priv->context;
+	if (!context || (context->dispatch.gmm_get_page_list == NULL)) {
+		printk(KERN_ERR "[EMGD] %s() HAL not configured.\n", __FUNCTION__);
+		return PVRSRV_ERROR_INVALID_PARAMS;
+	}
 
 	if (!buffer_h) {
+		printk(KERN_ERR "[EMGD] %s() Null buffer handle.\n", __FUNCTION__);
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
 
@@ -497,6 +503,7 @@ static PVRSRV_ERROR GetDCBufferAddr(IMG_HANDLE device_h,
 
 	EMGD_DEBUG("  phys_addr = 0x%p", phys_addr);
 	EMGD_DEBUG("  *phys_addr = 0x%p", (*phys_addr));
+
 	if ((ret = context->dispatch.gmm_get_page_list(system_buffer->offset,
 		(unsigned long **) phys_addr, &page_count)) != 0) {
 		printk(KERN_ERR"Cannot get the page addresses for the buffer at offset "
@@ -727,7 +734,7 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE device_h,
 	unsigned long lock_flags;
 
 	struct drm_device* drm_dev;
-	drm_emgd_private *priv;
+	drm_emgd_priv_t *priv;
 	igd_context_t *context;
 	igd_dispatch_t *dispatch;
 	int flipable;
@@ -1026,7 +1033,7 @@ static PVRSRV_ERROR DestroyDCSwapChain(IMG_HANDLE device_h,
 	IMG_HANDLE swap_chain_h)
 {
 	emgddc_devinfo_t	*devinfo;
-	drm_emgd_private *priv;
+	drm_emgd_priv_t *priv;
 	igd_context_t *context;
 	igd_dispatch_t *dispatch;
 	emgddc_swapchain_t *swap_chain;
@@ -2014,7 +2021,7 @@ void emgddc_free_all_devinfos(void)
 static emgd_error_t emgddc_init_devinfo(struct drm_device *dev,
 	emgddc_devinfo_t *devinfo, int which_devinfo)
 {
-	drm_emgd_private *priv = dev->dev_private;
+	drm_emgd_priv_t *priv = dev->dev_private;
 	PVRSRV_DC_DISP2SRV_KMJTABLE	*pvr_jtable;
 	PFN_CMD_PROC cmd_proc_list[EMGDDC_COMMAND_COUNT];
 	IMG_UINT32 sync_count_list[EMGDDC_COMMAND_COUNT][2];
@@ -2099,8 +2106,8 @@ static emgd_error_t emgddc_init_devinfo(struct drm_device *dev,
 	cmd_proc_list[DC_FLIP_COMMAND] = emgddc_process_flip;
 
 	/* FIXME:  Not sure what these are for: */
-	sync_count_list[DC_FLIP_COMMAND][0] = 0;
-	sync_count_list[DC_FLIP_COMMAND][1] = 2;
+	sync_count_list[DC_FLIP_COMMAND][0] = 0; 
+	sync_count_list[DC_FLIP_COMMAND][1] = 2; 
 
 	if (pvr_jtable->pfnPVRSRVRegisterCmdProcList(devinfo->device_id,
 		&cmd_proc_list[0],
@@ -2132,7 +2139,7 @@ static emgd_error_t init_display(emgddc_devinfo_t *devinfo,
 	igd_display_h display,
 	unsigned short port_number)
 {
-	drm_emgd_private *priv = devinfo->priv;
+	drm_emgd_priv_t *priv = devinfo->priv;
 	igd_context_t *context = priv->context;
 	unsigned long dc = priv->dc;
 	igd_framebuffer_info_t fb_info;
@@ -2200,7 +2207,9 @@ static emgd_error_t init_display(emgddc_devinfo_t *devinfo,
 	 * - virt_addr = gmm_map(framebuffer offset);
 	 */
 	buffer->offset = fb_info.fb_base_offset;
-	buffer->virt_addr = context->dispatch.gmm_map(fb_info.fb_base_offset);
+	if(NULL == buffer->virt_addr){
+		buffer->virt_addr = context->dispatch.gmm_map(fb_info.fb_base_offset);
+	}
 	EMGD_DEBUG("buffer->virt_addr = 0x%p", buffer->virt_addr);
 	/* This is the offset of the allocated framebuffer (e.g. the
 	 * 1024x768 surface of gmm-managed memory):
@@ -2349,7 +2358,7 @@ static emgd_error_t init_display(emgddc_devinfo_t *devinfo,
 static int emgddc_reinit_3dd(struct drm_device *dev)
 {
 	emgddc_devinfo_t *devinfo;
-	drm_emgd_private *priv = dev->dev_private;
+	drm_emgd_priv_t *priv = dev->dev_private;
 	int ret;
 
 	EMGD_TRACE_ENTER;
@@ -2433,7 +2442,7 @@ static int emgddc_reinit_3dd(struct drm_device *dev)
 emgd_error_t emgddc_init(struct drm_device *dev)
 {
 	emgddc_devinfo_t *devinfo;
-	drm_emgd_private *priv = dev->dev_private;
+	drm_emgd_priv_t *priv = dev->dev_private;
 	int ret;
 
 	EMGD_TRACE_ENTER;
@@ -2562,7 +2571,7 @@ emgd_error_t emgddc_deinit(void)
  */
 static PVRSRV_ERROR do_mode_change(igd_context_t *context,
 		emgddc_devinfo_t *devinfo,
-		drm_emgd_private *priv,
+		drm_emgd_priv_t *priv,
 		DISPLAY_SURF_ATTRIBUTES *dst_surf_attrib)
 {
 	struct drm_device* drm_dev;

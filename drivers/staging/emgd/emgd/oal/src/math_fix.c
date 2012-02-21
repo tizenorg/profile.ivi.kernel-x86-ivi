@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: math_fix.c
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -135,3 +135,4 @@ unsigned int os_pow_fix( const int base, const int power )
 
   return total;
 }
+

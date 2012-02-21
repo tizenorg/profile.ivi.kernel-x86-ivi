@@ -36,6 +36,7 @@ typedef struct PVRSRV_BC_SRV2BUFFER_KMJTABLE_TAG
 	PFN_GET_BC_INFO						pfnGetBCInfo;
 	PFN_GET_BC_BUFFER					pfnGetBCBuffer;
 	PFN_GET_BUFFER_ADDR					pfnGetBufferAddr;
+	PFN_GET_BUFFER_ID_FROM_TAG			pfnGetBufferIdFromTag;
 
 } PVRSRV_BC_SRV2BUFFER_KMJTABLE;
 

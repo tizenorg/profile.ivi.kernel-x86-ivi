@@ -342,7 +342,7 @@ IMG_VOID PVRSRVDebugPrintf	(
 				if (pszLeafName)
 				{
 					pszFileName = pszLeafName;
-			}
+		       	}
 #endif
 
 				if (BAppend(pszBuf, ui32BufSiz, " [%lu, %s]", ui32Line, pszFileName))

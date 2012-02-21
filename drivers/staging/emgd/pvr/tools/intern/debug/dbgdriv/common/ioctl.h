@@ -80,3 +80,4 @@ IMG_UINT32 (*g_DBGDrivProc[])(IMG_VOID *, IMG_VOID *) =
 #define MAX_DBGVXD_W32_API (sizeof(g_DBGDrivProc)/sizeof(IMG_UINT32))
 
 #endif
+

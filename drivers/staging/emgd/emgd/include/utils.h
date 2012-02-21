@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: utils.h
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -171,3 +171,4 @@ extern void write_mmio_reg_tnc(unsigned long port_type, unsigned long reg,
 
 
 #endif // _UTILS_H_
+

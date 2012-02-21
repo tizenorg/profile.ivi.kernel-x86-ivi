@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: psb_regs.h
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -655,3 +655,4 @@ extern unsigned long _sgx_base;
 #define PSB_EUR_CR_2D_BLIT_STATUS               (SGX_BASE + 0x0e04)
 
 #endif /* _REGS_H_ */
+

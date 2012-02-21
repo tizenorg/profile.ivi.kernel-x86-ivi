@@ -1,7 +1,7 @@
 /* -*- syscommon-c -*-
  *-----------------------------------------------------------------------------
  * Filename: syscommon.c
- * $Revision: 1.8 $
+ * $Revision: 1.11 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -569,8 +569,8 @@ static PVRSRV_ERROR SysCreateVersionString(SYS_DATA *psSysData)
             ui32SGXRevision = OSReadHWReg(pvSGXRegs, EUR_CR_CORE_REVISION);
 
 	     OSUnMapPhysToLin(pvSGXRegs,
-												gsSGXDeviceMap.ui32RegsSize,
-												PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
+		   									 	gsSGXDeviceMap.ui32RegsSize,
+											 	PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
 												IMG_NULL);
 	}
 	else
@@ -957,8 +957,8 @@ PVRSRV_ERROR SysDeinitialise (SYS_DATA *psSysData)
 		}
 	}
 #endif
-
-#if defined(SUPPORT_MSVDX)
+/* Commenting this out to clean up allocation made in SysInitialise */
+/*#if defined(SUPPORT_MSVDX)*/
 	if (SYS_SPECIFIC_DATA_TEST(psSysSpecData, SYS_SPECIFIC_DATA_MSVDX_INITIALISED))
 	{
 
@@ -969,7 +969,7 @@ PVRSRV_ERROR SysDeinitialise (SYS_DATA *psSysData)
 			return eError;
 		}
 	}
-#endif
+/*#endif*/
 
 	if (SYS_SPECIFIC_DATA_TEST(psSysSpecData, SYS_SPECIFIC_DATA_SGX_INITIALISED))
 	{
@@ -1239,232 +1239,6 @@ PVRSRV_ERROR SysOEMFunction (	IMG_UINT32	ui32ID,
 }
 
 
-static PVRSRV_ERROR SysMapInRegisters(IMG_VOID)
-{
-	PVRSRV_DEVICE_NODE *psDeviceNodeList;
-
-	psDeviceNodeList = gpsSysData->psDeviceNodeList;
-
-	while (psDeviceNodeList)
-	{
-		switch(psDeviceNodeList->sDevId.eDeviceType)
-		{
-		case PVRSRV_DEVICE_TYPE_SGX:
-		{
-			PVRSRV_SGXDEV_INFO *psDevInfo = (PVRSRV_SGXDEV_INFO *)psDeviceNodeList->pvDevice;
-#if defined(NO_HARDWARE) && defined(__linux__)
-
-			PVR_ASSERT(gsSGXRegsCPUVAddr);
-
-			psDevInfo->pvRegsBaseKM = gsSGXRegsCPUVAddr;
-#else
-
-			if (SYS_SPECIFIC_DATA_TEST(&gsSysSpecificData, SYS_SPECIFIC_DATA_PM_UNMAP_SGX_REGS))
-			{
-				psDevInfo->pvRegsBaseKM = OSMapPhysToLin(gsSGXDeviceMap.sRegsCpuPBase,
-									 gsSGXDeviceMap.ui32RegsSize,
-									 PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
-									 IMG_NULL);
-
-				if (!psDevInfo->pvRegsBaseKM)
-				{
-					PVR_DPF((PVR_DBG_ERROR,"SysMapInRegisters : Failed to map in SGX registers\n"));
-					return PVRSRV_ERROR_BAD_MAPPING;
-				}
-				SYS_SPECIFIC_DATA_CLEAR(&gsSysSpecificData, SYS_SPECIFIC_DATA_PM_UNMAP_SGX_REGS);
-			}
-#endif
-
-			psDevInfo->ui32RegSize   = gsSGXDeviceMap.ui32RegsSize;
-			psDevInfo->sRegsPhysBase = gsSGXDeviceMap.sRegsSysPBase;
-
-#if defined(SGX_FEATURE_HOST_PORT)
-			if (gsSGXDeviceMap.ui32Flags & SGX_HOSTPORT_PRESENT)
-			{
-				if (SYS_SPECIFIC_DATA_TEST(&gsSysSpecificData, SYS_SPECIFIC_DATA_PM_UNMAP_SGX_HP))
-				{
-
-					psDevInfo->pvHostPortBaseKM = OSMapPhysToLin(gsSGXDeviceMap.sHPCpuPBase,
-														     gsSGXDeviceMap.ui32HPSize,
-														     PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
-														     IMG_NULL);
-					if (!psDevInfo->pvHostPortBaseKM)
-					{
-						PVR_DPF((PVR_DBG_ERROR,"SysMapInRegisters : Failed to map in host port\n"));
-						return PVRSRV_ERROR_BAD_MAPPING;
-					}
-					SYS_SPECIFIC_DATA_CLEAR(&gsSysSpecificData, SYS_SPECIFIC_DATA_PM_UNMAP_SGX_HP);
-				}
-				psDevInfo->ui32HPSize  = gsSGXDeviceMap.ui32HPSize;
-				psDevInfo->sHPSysPAddr = gsSGXDeviceMap.sHPSysPBase;
-			}
-#endif
-			break;
-		}
-#ifdef SUPPORT_MSVDX
-		case PVRSRV_DEVICE_TYPE_MSVDX:
-		{
-			PVRSRV_MSVDXDEV_INFO *psDevInfo = (PVRSRV_MSVDXDEV_INFO *)psDeviceNodeList->pvDevice;
-#if defined(NO_HARDWARE) && defined(__linux__)
-
-			PVR_ASSERT(gsMSVDXRegsCPUVAddr);
-			psDevInfo->pvRegsBaseKM = gsMSVDXRegsCPUVAddr;
-#else
-			if (SYS_SPECIFIC_DATA_TEST(&gsSysSpecificData, SYS_SPECIFIC_DATA_PM_UNMAP_MSVDX_REGS))
-			{
-
-				psDevInfo->pvRegsBaseKM = OSMapPhysToLin (
-					gsMSVDXDeviceMap.sRegsCpuPBase,
-					gsMSVDXDeviceMap.ui32RegsSize,
-					PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
-					IMG_NULL);
-				if (!psDevInfo->pvRegsBaseKM)
-				{
-					PVR_DPF((PVR_DBG_ERROR,"SysMapInRegisters : Failed to map MSVDX registers\n"));
-					return PVRSRV_ERROR_BAD_MAPPING;
-				}
-				SYS_SPECIFIC_DATA_CLEAR(&gsSysSpecificData, SYS_SPECIFIC_DATA_PM_UNMAP_MSVDX_REGS);
-			}
-#endif
-			psDevInfo->ui32RegSize = gsMSVDXDeviceMap.ui32RegsSize;
-			psDevInfo->sRegsPhysBase = gsMSVDXDeviceMap.sRegsSysPBase;
-			break;
-		}
-#endif
-		default:
-			break;
-		}
-		psDeviceNodeList = psDeviceNodeList->psNext;
-	}
-
-	return PVRSRV_OK;
-}
-
-
-static PVRSRV_ERROR SysUnmapRegisters(IMG_VOID)
-{
-	PVRSRV_DEVICE_NODE *psDeviceNodeList;
-
-	psDeviceNodeList = gpsSysData->psDeviceNodeList;
-
-	while (psDeviceNodeList)
-	{
-		switch (psDeviceNodeList->sDevId.eDeviceType)
-		{
-		case PVRSRV_DEVICE_TYPE_SGX:
-		{
-			PVRSRV_SGXDEV_INFO *psDevInfo = (PVRSRV_SGXDEV_INFO *)psDeviceNodeList->pvDevice;
-#if !(defined(NO_HARDWARE) && defined(__linux__))
-
-			if (psDevInfo->pvRegsBaseKM)
-			{
-				OSUnMapPhysToLin(psDevInfo->pvRegsBaseKM,
-				                 gsSGXDeviceMap.ui32RegsSize,
-				                 PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
-				                 IMG_NULL);
-
-				SYS_SPECIFIC_DATA_SET(&gsSysSpecificData, SYS_SPECIFIC_DATA_PM_UNMAP_SGX_REGS);
-			}
-#endif
-
-			psDevInfo->pvRegsBaseKM = IMG_NULL;
-			psDevInfo->ui32RegSize          = 0;
-			psDevInfo->sRegsPhysBase.uiAddr = 0;
-
-#if defined(SGX_FEATURE_HOST_PORT)
-			if (gsSGXDeviceMap.ui32Flags & SGX_HOSTPORT_PRESENT)
-			{
-
-				if (psDevInfo->pvHostPortBaseKM)
-				{
-					OSUnMapPhysToLin(psDevInfo->pvHostPortBaseKM,
-					                 gsSGXDeviceMap.ui32HPSize,
-					                 PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
-					                 IMG_NULL);
-
-					SYS_SPECIFIC_DATA_SET(&gsSysSpecificData, SYS_SPECIFIC_DATA_PM_UNMAP_SGX_HP);
-
-					psDevInfo->pvHostPortBaseKM = IMG_NULL;
-				}
-
-				psDevInfo->ui32HPSize  = 0;
-				psDevInfo->sHPSysPAddr.uiAddr = 0;
-			}
-#endif
-			break;
-		}
-#ifdef SUPPORT_MSVDX
-		case PVRSRV_DEVICE_TYPE_MSVDX:
-		{
-			PVRSRV_MSVDXDEV_INFO *psDevInfo = (PVRSRV_MSVDXDEV_INFO *)psDeviceNodeList->pvDevice;
-#if !(defined(NO_HARDWARE) && defined(__linux__))
-			if (psDevInfo->pvRegsBaseKM)
-			{
-				OSUnMapPhysToLin(psDevInfo->pvRegsBaseKM,
-					psDevInfo->ui32RegSize,
-					PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
-					IMG_NULL);
-
-				SYS_SPECIFIC_DATA_SET(&gsSysSpecificData, SYS_SPECIFIC_DATA_PM_UNMAP_MSVDX_REGS);
-			}
-#endif
-			psDevInfo->pvRegsBaseKM = IMG_NULL;
-			psDevInfo->ui32RegSize = 0;
-			psDevInfo->sRegsPhysBase.uiAddr = 0;
-			break;
-		}
-#endif
-		default:
-			break;
-		}
-		psDeviceNodeList = psDeviceNodeList->psNext;
-	}
-
-#if !(defined(NO_HARDWARE) || defined(__linux__))
-
-	OSUnMapPhysToLin(gsPoulsboRegsCPUVaddr,
-				REG_SIZE,
-				PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
-				IMG_NULL);
-
-
-#if defined(MAP_UNUSED_MAPPINGS)
-	OSUnMapPhysToLin(gsPoulsboDisplayRegsCPUVaddr,
-				DISPLAY_REG_SIZE,
-				PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
-				IMG_NULL);
-#endif
-
-#endif
-
-#if defined(NO_HARDWARE)
-#ifdef SUPPORT_MSVDX
-	if (SYS_SPECIFIC_DATA_TEST(&gsSysSpecificData, SYS_SPECIFIC_DATA_ALLOC_DUMMY_MSVDX_REGS))
-	{
-		PVR_ASSERT(gsMSVDXRegsCPUVAddr)
-
-		OSBaseFreeContigMemory(MSVDX_REG_SIZE, gsMSVDXRegsCPUVAddr, gsMSVDXDeviceMap.sRegsCpuPBase);
-
-		gsMSVDXRegsCPUVAddr = IMG_NULL;
-
-		SYS_SPECIFIC_DATA_CLEAR(&gsSysSpecificData, SYS_SPECIFIC_DATA_ALLOC_DUMMY_MSVDX_REGS);
-	}
-#endif
-
-	if (SYS_SPECIFIC_DATA_TEST(&gsSysSpecificData, SYS_SPECIFIC_DATA_ALLOC_DUMMY_SGX_REGS))
-	{
-		PVR_ASSERT(gsSGXRegsCPUVAddr);
-
-		OSBaseFreeContigMemory(SGX_REG_SIZE, gsSGXRegsCPUVAddr, gsSGXDeviceMap.sRegsCpuPBase);
-		gsSGXRegsCPUVAddr = IMG_NULL;
-
-		SYS_SPECIFIC_DATA_CLEAR(&gsSysSpecificData, SYS_SPECIFIC_DATA_ALLOC_DUMMY_SGX_REGS);
-	}
-#endif
-
-	return PVRSRV_OK;
-}
-
 
 PVRSRV_ERROR SysSystemPrePowerState(PVRSRV_SYS_POWER_STATE eNewPowerState)
 {
@@ -1498,7 +1272,6 @@ PVRSRV_ERROR SysSystemPrePowerState(PVRSRV_SYS_POWER_STATE eNewPowerState)
 #endif
 
 
-			SysUnmapRegisters();
 #ifdef	__linux__
 			eError = OSPCISuspendDev(gsSysSpecificData.hSGXPCI);
 			if (eError != PVRSRV_OK)
@@ -1529,22 +1302,6 @@ PVRSRV_ERROR SysSystemPostPowerState(PVRSRV_SYS_POWER_STATE eNewPowerState)
 			}
 #endif
 
-
-
-			eError = SysLocateDevices(gpsSysData);
-			if (eError != PVRSRV_OK)
-			{
-				PVR_DPF((PVR_DBG_ERROR,"SysSystemPostPowerState: Failed to locate devices"));
-				return eError;
-			}
-
-
-			eError = SysMapInRegisters();
-			if (eError != PVRSRV_OK)
-			{
-				PVR_DPF((PVR_DBG_ERROR,"SysSystemPostPowerState: Failed to map in registers"));
-				return eError;
-			}
 
 #if defined(SYS_USING_INTERRUPTS)
 			if (SYS_SPECIFIC_DATA_TEST(&gsSysSpecificData, SYS_SPECIFIC_DATA_PM_UNINSTALL_LISR))
@@ -1604,3 +1361,7 @@ PVRSRV_ERROR SysDevicePostPowerState(IMG_UINT32				ui32DeviceIndex,
 
 	return PVRSRV_OK;
 }
+
+
+
+

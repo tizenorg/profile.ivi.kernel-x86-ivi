@@ -481,8 +481,10 @@ typedef PVRSRV_ERROR (*PFN_GET_BUFFER_ADDR)(IMG_HANDLE,
 											IMG_SIZE_T*,
 											IMG_VOID**,
 											IMG_HANDLE*,
+											IMG_BOOL*,
 											IMG_BOOL*);
 
+typedef PVRSRV_ERROR (*PFN_GET_BUFFER_ID_FROM_TAG)(IMG_HANDLE, IMG_UINT32, IMG_HANDLE);
 
 typedef struct DISPLAY_DIMS_TAG
 {

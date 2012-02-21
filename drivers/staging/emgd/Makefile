@@ -7,7 +7,9 @@ SYSCONFIGDIR = pvr/services4/system/common
 SGXDIR = pvr/services4/srvkm/devices/sgx
 DISPCLASSDIR = pvr/services4/3rdparty/emgd_displayclass
 DBGDRVDIR = pvr/tools/intern/debug/dbgdriv
+BUFFERCLASSDIR = pvr/services4/3rdparty/emgd_bufferclass
 
+BUILDDATE ?= $(shell date +%Y%m%d)
 
 include_dirs := \
 	-I$(EMGD_MOD_DIR)/include \
@@ -17,8 +19,10 @@ include_dirs := \
         -I$(EMGD_MOD_DIR)/emgd/include \
         -I$(EMGD_MOD_DIR)/emgd/cfg \
         -I$(EMGD_MOD_DIR)/emgd/pal/lpd \
+        -I$(EMGD_MOD_DIR)/emgd/pal/lvds \
+        -I$(EMGD_MOD_DIR)/emgd/pal/ch7036 \
         -I$(EMGD_MOD_DIR)/emgd/drm \
-	-Iinclude/drm \
+        -Iinclude/drm \
         -I$(EMGD_MOD_DIR)/pvr/include4 \
         -I$(EMGD_MOD_DIR)/pvr/services4/include \
         -I$(EMGD_MOD_DIR)/pvr/services4/include/env/linux \
@@ -31,6 +35,7 @@ include_dirs := \
         -I$(EMGD_MOD_DIR)/pvr/services4/srvkm/hwdefs \
         -I$(EMGD_MOD_DIR)/pvr/services4/srvkm/bridged/sgx \
         -I$(EMGD_MOD_DIR)/pvr/services4/srvkm/devices/sgx \
+        -I$(EMGD_MOD_DIR)/pvr/services4/3rdparty/emgd_bufferclass \
         -I$(EMGD_MOD_DIR)/pvr/tools/intern/debug \
 
 ccflags-y += $(include_dirs)
@@ -39,7 +44,7 @@ ccflags-y += \
 	-DSUPPORT_DRI_DRM_EXT \
         -DLINUX \
         -DPVR_BUILD_DIR="\"emgd\"" \
-        -DPVR_BUILD_DATE="20100408" \
+		-DPVR_BUILD_DATE="\"$(BUILDDATE)\"" \
         -DPVR_SECURE_HANDLES \
         -DPVR_PROC_USE_SEQ_FILE \
         -DLDM_PCI \
@@ -81,6 +86,10 @@ ccflags-$(COFNIG_DRM_EMGD_PDUMP) += -DPDUMP=1
 
 EMGD_OBJS := \
 	emgd/drm/emgd_fb.o \
+    emgd/drm/emgd_fbcon.o \
+    emgd/drm/emgd_crtc.o \
+    emgd/drm/emgd_encoder.o \
+    emgd/drm/emgd_connector.o \
 	emgd/drm/emgd_mmap.o \
 	emgd/drm/emgd_drv.o \
 	emgd/drm/emgd_interface.o \
@@ -103,10 +112,12 @@ EMGD_OBJS := \
 	emgd/display/mode/cmn/igd_mode.o \
 	emgd/display/mode/tnc/micro_mode_tnc.o \
 	emgd/display/mode/tnc/mode_tnc.o \
+	emgd/display/mode/tnc/kms_mode_tnc.o \
 	emgd/display/mode/tnc/clocks_tnc.o \
 	emgd/display/mode/plb/micro_mode_plb.o \
 	emgd/display/mode/plb/clocks_plb.o \
 	emgd/display/mode/plb/mode_plb.o \
+	emgd/display/mode/plb/kms_mode_plb.o \
 	emgd/display/dsp/cmn/dsp.o \
 	emgd/display/dsp/tnc/dsp_tnc.o \
 	emgd/display/dsp/plb/dsp_plb.o \
@@ -143,6 +154,15 @@ EMGD_OBJS := \
 	emgd/pal/sdvo/sdvo_hdmi.o \
 	emgd/pal/sdvo/sdvo_port.o \
 	emgd/pal/sdvo/sdvo_intf.o \
+	emgd/pal/ch7036/ch7036_attr.o \
+	emgd/pal/ch7036/ch7036_fw.o \
+	emgd/pal/ch7036/ch7036_intf.o \
+	emgd/pal/ch7036/ch7036_port.o \
+	emgd/pal/ch7036/ch7036.o \
+	emgd/pal/ch7036/ch7036_iic.o \
+	emgd/pal/ch7036/ch7036_pm.o \
+	emgd/pal/ch7036/ch7036_reg_table.o \
+	emgd/pal/ch7036/lvds/lvds.o \
 	emgd/pal/lvds/lvds.o \
 	emgd/pal/lpd/lpd.o \
 	emgd/gmm/gmm.o \
@@ -210,6 +230,9 @@ SGX_OBJS = $(SGXDIR)/sgxinit.o \
 DC_OBJS = $(DISPCLASSDIR)/emgd_dc.o \
 	  $(DISPCLASSDIR)/emgd_dc_linux.o
 
+BC_OBJS = $(BUFFERCLASSDIR)/emgd_bc.o \
+		  $(BUFFERCLASSDIR)/emgd_bc_linux.o
+
 
 emgd-y := \
 	$(DC_OBJS) \
@@ -219,6 +242,7 @@ emgd-y := \
 	$(BRIDGED_OBJS) \
 	$(SYSCONFIG_OBJS) \
 	$(SGX_OBJS) \
+	$(BC_OBJS) \
 
 emgd-$(CONFIG_DRM_EMGD_PDUMP) += $(DBGDRV_OBJS)
 

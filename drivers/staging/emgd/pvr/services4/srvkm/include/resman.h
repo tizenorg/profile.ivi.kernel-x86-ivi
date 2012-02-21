@@ -106,3 +106,4 @@ IMG_VOID PVRSRVResManDisconnect(PRESMAN_CONTEXT hResManContext,
 #endif
 
 #endif
+

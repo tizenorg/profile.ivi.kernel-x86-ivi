@@ -120,3 +120,4 @@ IMG_IMPORT IMG_VOID IMG_CALLCONV PVRSRVTrace(const IMG_CHAR* pszFormat, ... );
 #endif
 
 #endif
+

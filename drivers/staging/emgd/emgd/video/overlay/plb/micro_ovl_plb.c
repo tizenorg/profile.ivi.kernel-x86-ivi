@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: micro_ovl_plb.c
- * $Revision: 1.16 $
+ * $Revision: 1.17 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -1462,7 +1462,7 @@ static unsigned int micro_spritec_update_regs_plb(
 			( (dest_rect->y1 << 16) | dest_rect->x1 );
 		ovl_cache.ovl2_regs.dest_rect_x2y2 =
 			( (dest_rect->y2 - dest_rect->y1 - 1) << 16) |
-			  (dest_rect->x2 - dest_rect->x1 - 1)        ;
+		 	  (dest_rect->x2 - dest_rect->x1 - 1)        ;
 	}
 
 	/* ----------------------------------------------------------*/
@@ -1722,3 +1722,4 @@ int micro_alter_ovl2_plb(igd_display_context_t *display,
 	EMGD_TRACE_EXIT;
 	return ret;
 }
+

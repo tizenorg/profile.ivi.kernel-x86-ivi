@@ -336,3 +336,4 @@ typedef struct _SGXMKIF_HWPERF_CB_
 
 
 #endif
+

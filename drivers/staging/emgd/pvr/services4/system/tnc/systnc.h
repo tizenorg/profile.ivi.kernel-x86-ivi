@@ -30,3 +30,4 @@
 #define SYS_SGX_CLOCK_SPEED_TNC                     (400000000)
 #define SYS_SGX_ACTIVE_POWER_LATENCY_MS_TNC         (50)
 #endif
+

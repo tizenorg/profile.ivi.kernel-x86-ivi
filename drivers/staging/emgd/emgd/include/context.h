@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: context.h
- * $Revision: 1.16 $
+ * $Revision: 1.22 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -54,7 +54,8 @@ struct _cmd_queue;
  * Flags for reg_set_mod_state and reg_get_mode_state
  */
 typedef enum _reg_state_id {
-	REG_MODE_STATE = 1
+	REG_MODE_STATE_REG = 1,
+	REG_MODE_STATE_CON = 2
 } reg_state_id_t;
 
 /* module_state handle */
@@ -108,6 +109,12 @@ typedef struct _inter_module_dispatch {
 		struct _igd_plane **secondary_display_plane,
 		struct _igd_display_pipe **primary_pipe,
 		struct _igd_display_pipe **secondary_pipe);
+	int (*dsp_alloc)(igd_context_t *context, unsigned long dc,
+		unsigned long flags);
+	void (*dsp_control_plane_format)(int enable, int display_plane, struct _igd_plane *plane_override);
+
+	/* Flag to indicate FB Blend + Overlay override */
+	unsigned int fb_blend_ovl_override;
 
 	unsigned long *dsp_current_dc;
 	/* Firmware  programmed DC. This information needs to be
@@ -115,13 +122,18 @@ typedef struct _inter_module_dispatch {
      */
 	unsigned long dsp_fw_dc;
 
+	/* flag to tell if in dih_clone mode */
+	unsigned long in_dih_clone_mode;
+	unsigned long dih_clone_display;
+
 	struct _igd_display_port **dsp_port_list;
 	struct _igd_display_context **dsp_display_list;
 
 	/* i2c and GMBus interfaces */
 	int (*i2c_read_regs)(igd_context_t *context, unsigned long i2c_bus,
 		unsigned long i2c_speed, unsigned long dab, unsigned char reg,
-		unsigned char FAR *buffer, unsigned long num_bytes);
+		unsigned char FAR *buffer, unsigned long num_bytes,
+		unsigned long flags);
 	int (*i2c_write_reg_list)(igd_context_t *context,
 		unsigned long i2c_bus, unsigned long i2c_speed, unsigned long dab,
 		struct _pd_reg *reg_list, unsigned long flags);
@@ -134,19 +146,13 @@ typedef struct _inter_module_dispatch {
 	int (*reg_get_mod_state)(reg_state_id_t id, module_state_h **state,
 		unsigned long **flags);
 
-	/* Command Module Calls */
-	int (*alloc_queues)(igd_context_t *context,
-		struct _igd_display_pipe *pipe, unsigned long flags);
-	void (*free_queues)(igd_context_t *context,
-		struct _igd_display_pipe *pipe);
-	int (*cmd_control)(struct _cmd_queue *cmd_queue, unsigned long flags);
-
-
 	/* Power Module Calls to Reg module */
 	void *(*reg_alloc)(igd_context_t *context, unsigned long flags);
 	void (*reg_free)(igd_context_t *context, void *reg_set);
 	int (*reg_save)(igd_context_t *context, void *reg_set);
 	int (*reg_restore)(igd_context_t *context, void *reg_set);
+	void (*reg_crtc_lut_get)(igd_context_t *context, void *emgd_crtc);
+	void (*reg_crtc_lut_set)(igd_context_t *context, void *emgd_crtc);
 
 	/* Reg Module callbacks */
 	int (*mode_save)(igd_context_t *context, module_state_h *state,
@@ -158,6 +164,7 @@ typedef struct _inter_module_dispatch {
 	int (*mode_pwr)(igd_context_t *context, unsigned long powerstate);
 	int (*overlay_pwr)(igd_context_t *context, unsigned long powerstate);
 	int (*msvdx_pwr)(igd_context_t *context, unsigned long powerstate);
+	int (*msvdx_status)(igd_context_t *context, unsigned long *queue_status, unsigned long *mtx_msg_status);
 
 	/* Shutdown functions for use by init module only */
 	void (*mode_shutdown)(igd_context_t *context);
@@ -173,12 +180,12 @@ typedef struct _inter_module_dispatch {
 	void (*cmd_shutdown)(igd_context_t *context);
 	void (*reg_shutdown)(igd_context_t *context);
 
-
 	/* Mode module Callbacks */
 	int (*get_dd_timing)(struct _igd_display_context *display,
 		struct _pd_timing *in_list);
 	int (*check_port_supported)(void *port_tmp);
 	int (*get_refresh_in_border)(struct _pd_timing *in_list);
+
 } inter_module_dispatch_t;
 
 /*
@@ -245,3 +252,4 @@ typedef struct _igd_display_context {
 } igd_display_context_t;
 
 #endif
+

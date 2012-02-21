@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: igd_init.h
- * $Revision: 1.12 $
+ * $Revision: 1.14 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -525,8 +525,15 @@ typedef struct _igd_param {
 	unsigned long		bunit_chicken_bits;
 	unsigned long		bunit_write_flush;
 	unsigned long		disp_chicken_bits;
+	int					punt_to_3dblit;
 
 } igd_param_t;
+
+typedef struct {
+	unsigned debug : 1;
+	unsigned ddk_version : 16;
+	unsigned emgd_version : 15;
+} igd_build_config_t;
 
 /*! @} */
 
@@ -851,15 +858,19 @@ void igd_query_2d_caps_hwhint(igd_driver_h driver_handle,
  * Flags for use with dispatch->driver_save()
  * @{
  */
-#define IGD_REG_SAVE_VGA       0x001
-#define IGD_REG_SAVE_DAC       0x002
-#define IGD_REG_SAVE_MMIO      0x004
-#define IGD_REG_SAVE_RB        0x008
-#define IGD_REG_SAVE_VGA_MEM   0x010
-#define IGD_REG_SAVE_MODE      0x020
-#define IGD_REG_SAVE_BACKLIGHT 0x040
-#define IGD_REG_SAVE_3D        0x080
-#define IGD_REG_SAVE_GTT       0x100
+#define IGD_REG_SAVE_VGA       0x00001
+#define IGD_REG_SAVE_DAC       0x00002
+#define IGD_REG_SAVE_MMIO      0x00004
+#define IGD_REG_SAVE_RB        0x00008
+#define IGD_REG_SAVE_VGA_MEM   0x00010
+#define IGD_REG_SAVE_MODE      0x00020
+#define IGD_REG_SAVE_BACKLIGHT 0x00040
+#define IGD_REG_SAVE_3D        0x00080
+#define IGD_REG_SAVE_GTT       0x00100
+#define IGD_REG_SAVE_TYPE_REG  0x10000
+#define IGD_REG_SAVE_TYPE_CON  0x20000
+#define IGD_REG_SAVE_TYPE_MISC 0x40000
+#define IGD_REG_SAVE_TYPE_MASK 0xF0000
 
 #define IGD_REG_SAVE_ALL (IGD_REG_SAVE_VGA | IGD_REG_SAVE_DAC |  \
 		IGD_REG_SAVE_MMIO | IGD_REG_SAVE_RB | IGD_REG_SAVE_VGA_MEM | \

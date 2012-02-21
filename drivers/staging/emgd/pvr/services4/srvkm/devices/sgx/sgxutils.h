@@ -91,3 +91,5 @@ IMG_UINT32 SGXConvertTimeStamp(PVRSRV_SGXDEV_INFO	*psDevInfo,
 IMG_VOID SGXCleanupRequest(PVRSRV_DEVICE_NODE	*psDeviceNode,
 							IMG_DEV_VIRTADDR	*psHWDataDevVAddr,
 							IMG_UINT32			ui32CleanupType);
+
+

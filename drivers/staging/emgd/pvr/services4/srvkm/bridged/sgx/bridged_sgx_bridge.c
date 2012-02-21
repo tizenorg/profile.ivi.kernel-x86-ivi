@@ -2220,7 +2220,7 @@ SGXPDump3DSignatureRegistersBW(IMG_UINT32 ui32BridgeID,
 	}
 
 	if(CopyFromUserWrapper(psPerProc,
-					ui32BridgeID,
+			        	ui32BridgeID,
 					pui32Registers,
 					psPDump3DSignatureRegistersIN->pui32Registers,
 					ui32RegisterArraySize) != PVRSRV_OK)
@@ -2287,7 +2287,7 @@ SGXPDumpCounterRegistersBW(IMG_UINT32 ui32BridgeID,
 	}
 
 	if(CopyFromUserWrapper(psPerProc,
-					ui32BridgeID,
+			        	ui32BridgeID,
 					pui32Registers,
 					psPDumpCounterRegistersIN->pui32Registers,
 					ui32RegisterArraySize) != PVRSRV_OK)
@@ -2369,7 +2369,7 @@ SGXPDumpTASignatureRegistersBW(IMG_UINT32 ui32BridgeID,
 	}
 
 	if(CopyFromUserWrapper(psPerProc,
-					ui32BridgeID,
+			        	ui32BridgeID,
 					pui32Registers,
 					psPDumpTASignatureRegistersIN->pui32Registers,
 					ui32RegisterArraySize) != PVRSRV_OK)

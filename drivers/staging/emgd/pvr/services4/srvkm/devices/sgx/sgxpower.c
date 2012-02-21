@@ -461,3 +461,5 @@ PVRSRV_ERROR SGXPostClockSpeedChange (IMG_HANDLE				hDevHandle,
 
 	return PVRSRV_OK;
 }
+
+

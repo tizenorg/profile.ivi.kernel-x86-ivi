@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: rb.h
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -183,3 +183,4 @@ static __inline int rb_update(rb_buffer_t *buffer,
 #endif
 
 #endif /* _RB_H */
+

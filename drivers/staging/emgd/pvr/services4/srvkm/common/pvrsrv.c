@@ -163,7 +163,7 @@ IMG_VOID PVRSRVEnumerateDevicesKM_ForEachVaCb(PVRSRV_DEVICE_NODE *psDeviceNode, 
 
 IMG_EXPORT
 PVRSRV_ERROR IMG_CALLCONV PVRSRVEnumerateDevicesKM(IMG_UINT32 *pui32NumDevices,
-												   PVRSRV_DEVICE_IDENTIFIER *psDevIdList)
+											 	   PVRSRV_DEVICE_IDENTIFIER *psDevIdList)
 {
 	SYS_DATA			*psSysData;
 	IMG_UINT32 			i;
@@ -301,7 +301,7 @@ IMG_VOID IMG_CALLCONV PVRSRVDeInit(PSYS_DATA psSysData)
 PVRSRV_ERROR IMG_CALLCONV PVRSRVRegisterDevice(PSYS_DATA psSysData,
 											  PVRSRV_ERROR (*pfnRegisterDevice)(PVRSRV_DEVICE_NODE*),
 											  IMG_UINT32 ui32SOCInterruptBit,
-											  IMG_UINT32 *pui32DeviceIndex)
+			 								  IMG_UINT32 *pui32DeviceIndex)
 {
 	PVRSRV_ERROR		eError;
 	PVRSRV_DEVICE_NODE	*psDeviceNode;
@@ -745,7 +745,7 @@ PVRSRV_ERROR PVRSRVGetMiscInfoKM_Device_AnyVaCb(PVRSRV_DEVICE_NODE *psDeviceNode
 
 	return List_BM_CONTEXT_PVRSRV_ERROR_Any_va(psDeviceNode->sDevMemoryInfo.pBMContext,
 												PVRSRVGetMiscInfoKM_BMContext_AnyVaCb,
-												pui32StrLen,
+							 					pui32StrLen,
 												pi32Count,
 												ppszStr);
 }
@@ -1190,3 +1190,5 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVSaveRestoreLiveSegments(IMG_HANDLE hArena, IMG_P
 
 	return (PVRSRV_OK);
 }
+
+

@@ -323,3 +323,4 @@ static inline IMG_VOID SysWriteHWReg(IMG_PVOID pvLinRegBaseAddr, IMG_UINT32 ui32
 #endif
 
 #endif
+

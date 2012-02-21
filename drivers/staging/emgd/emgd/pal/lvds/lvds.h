@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: lvds.h
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -161,3 +161,4 @@ extern int lvds_restore(void *context, void *state, unsigned long flags);
 extern int lvds_get_port_status(void *context, pd_port_status_t *port_status);
 
 #endif
+

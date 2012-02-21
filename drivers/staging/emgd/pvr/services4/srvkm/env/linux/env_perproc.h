@@ -49,3 +49,4 @@ PVRSRV_ERROR LinuxMMapPerProcessHandleOptions(PVRSRV_HANDLE_BASE *psHandleBase);
 IMG_HANDLE LinuxTerminatingProcessPrivateData(IMG_VOID);
 
 #endif
+

@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: sdvo_intf.h
- * $Revision: 1.8 $
+ * $Revision: 1.10 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -268,6 +268,7 @@ typedef struct {
 #define LVDS_DISP_MASK    (BIT(6)|BIT(14))  /* LVDS */
 #define TMDS_DISP_MASK (BIT(0)|BIT(8))
 #define TV_SVIDEO_DISP_MASK (BIT(3))   /* S-VIDEO */
+#define TV_YPBPR_DISP_MASK (BIT(4))    /* YPBPR/Yipper */
 #define DRGB_DISP_MASK  (BIT(7))       /* DRGB0 */
 typedef struct {
 	union {
@@ -478,3 +479,4 @@ sdvo_status_t sdvo_execute_command_read(sdvo_device_context_t *p_ctx,
 	i2c_reg_t num_returns, i2c_reg_t *p_ret_value);
 
 #endif  /*  _SDVO_INTF_H_ */
+

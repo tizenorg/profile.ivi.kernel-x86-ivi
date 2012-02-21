@@ -217,7 +217,7 @@ PVRSRV_ERROR LinuxEventObjectSignal(IMG_HANDLE hOSEventObjectList)
 		psLinuxEventObject = (PVRSRV_LINUX_EVENT_OBJECT *)list_entry(psListEntry, PVRSRV_LINUX_EVENT_OBJECT, sList);
 
 		atomic_inc(&psLinuxEventObject->sTimeStamp);
-		wake_up_interruptible(&psLinuxEventObject->sWait);
+	 	wake_up_interruptible(&psLinuxEventObject->sWait);
 	}
 
 	return 	PVRSRV_OK;
@@ -262,3 +262,4 @@ PVRSRV_ERROR LinuxEventObjectWait(IMG_HANDLE hOSEventObject, IMG_UINT32 ui32MSTi
 	return ui32TimeOutJiffies ? PVRSRV_OK : PVRSRV_ERROR_TIMEOUT;
 
 }
+

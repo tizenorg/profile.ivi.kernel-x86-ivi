@@ -756,16 +756,16 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpCommentWithFlagsf(IMG_CONST PVRSRV_CONNECTI
 
 IMG_IMPORT
 PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpDriverInfo(IMG_CONST PVRSRV_CONNECTION *psConnection,
-												IMG_CHAR *pszString,
+								 				IMG_CHAR *pszString,
 												IMG_BOOL bContinuous);
 
 IMG_IMPORT
 PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpIsCapturing(IMG_CONST PVRSRV_CONNECTION *psConnection,
-												IMG_BOOL *pbIsCapturing);
+								 				IMG_BOOL *pbIsCapturing);
 
 IMG_IMPORT
 PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpBitmap(IMG_CONST PVRSRV_CONNECTION *psConnection,
-											IMG_CHAR *pszFileName,
+								 			IMG_CHAR *pszFileName,
 											IMG_UINT32 ui32FileOffset,
 											IMG_UINT32 ui32Width,
 											IMG_UINT32 ui32Height,
@@ -778,7 +778,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpBitmap(IMG_CONST PVRSRV_CONNECTION *psConne
 
 IMG_IMPORT
 PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpRegRead(IMG_CONST PVRSRV_CONNECTION *psConnection,
-											IMG_CONST IMG_CHAR *pszFileName,
+								 			IMG_CONST IMG_CHAR *pszFileName,
 											IMG_UINT32 ui32FileOffset,
 											IMG_UINT32 ui32Address,
 											IMG_UINT32 ui32Size,
@@ -863,3 +863,4 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVModifyCompleteSyncOps(PVRSRV_CONNECTION *psConne
 }
 #endif
 #endif
+

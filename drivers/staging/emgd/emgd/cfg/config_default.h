@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: config_default.h
- * $Revision: 1.12 $
+ * $Revision: 1.16 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -101,6 +101,7 @@
 #define CONFIG_PD_HDMI
 #define CONFIG_PD_SDVO
 #define CONFIG_PD_SOFTPD
+#define CONFIG_PD_CH7036
 #endif
 
 #ifdef CONFIG_DEPRECATED
@@ -138,6 +139,7 @@
 		0,	/* Port Driver Module */  \
 		0,	/* Video Decode Module */ \
 		0,	/* PVR 3-Ptr Disp Drv */  \
+		0,	/* Buffer Class Module */ \
 \
 		0,	/* Global Tracing */	  \
 		0,	/* Global Instructions */ \
@@ -194,3 +196,4 @@
 
 
 #endif /* _HAL_CONFIG_DEFAULT_H */
+

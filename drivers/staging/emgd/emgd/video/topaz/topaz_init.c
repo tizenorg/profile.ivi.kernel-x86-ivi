@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: topaz_init.c
- * $Revision: 1.22 $
+ * $Revision: 1.23 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -395,7 +395,7 @@ static enc_fw_info_t firmware[10] = {
 
 int topaz_init_tnc(unsigned long wb_offset, void *wb_addr, void *firmware_addr)
 {
-	drm_emgd_private *priv;
+	drm_emgd_priv_t *priv;
 	igd_context_t *context;
 	unsigned char *mmio;
 	unsigned long size;
@@ -439,8 +439,8 @@ int topaz_init_tnc(unsigned long wb_offset, void *wb_addr, void *firmware_addr)
 	printk(KERN_INFO "Topaz write back offset = %lx", topaz_priv->topaz_wb_offset);
 	printk(KERN_INFO "Topaz write back sync memory = %p", topaz_priv->topaz_sync_addr);
 	printk(KERN_INFO "Topaz write back sync offset = %lx", topaz_priv->topaz_sync_offset);
-	*/
-
+	*/	
+	
 	*(topaz_priv->topaz_sync_addr) = 0; /*reset sync seq */
 	topaz_priv->topaz_sync_id = 0; /*reset sync id */
 
@@ -896,7 +896,7 @@ void release_mtx_control_from_dash(igd_context_t *context)
 
 int process_video_encode_tnc(igd_context_t *context, unsigned long offset, void *virt_addr, unsigned long *fence_id)
 {
-	unsigned long *mtx_buf;
+    unsigned long *mtx_buf;
 	unsigned long size=0;
 	int ret = 0;
 	platform_context_plb_t *platform;
@@ -909,14 +909,14 @@ int process_video_encode_tnc(igd_context_t *context, unsigned long offset, void 
 	mtx_buf = (unsigned long *) virt_addr;
 
 	EMGD_DEBUG("process_video_encode_tnc where buf=%p, offset=%lx\n",
-			mtx_buf, offset);
+		mtx_buf, offset);
 
 	platform->topaz_busy = 1;
 	ret = process_encode_mtx_messages(context, mtx_buf, size);
 	if (ret){
 		printk(KERN_INFO "Invalid topaz encode cmd");
-		ret = -EINVAL;
-	}
+	ret = -EINVAL;
+        }
 
 	*fence_id = topaz_priv->topaz_sync_id;
 	platform->topaz_busy = 0;

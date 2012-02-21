@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: igd_tnc_wa.h
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -55,9 +55,9 @@
 /* flag to enable clipping hardware fix in TNC B1 */
 #define IGD_CLIP_FIX_DISABLE            0x0000
  /* Completely disable throttling */
-#define IGD_CLIP_FIX_DISABLE_THROTTLE   0x0001
+#define IGD_CLIP_FIX_DISABLE_THROTTLE   0x0001          
 /* Replaces the original stall_pixel from FSM with external stall from cDVO */
-#define IGD_CLIP_FIX_REPLACE_STALL      0x0002
+#define IGD_CLIP_FIX_REPLACE_STALL      0x0002    
 #define IGD_CLIP_FIX_GLOBAL_ENABLE      0x8000
 #define CLIP_HW_FIX_DEFAULT             0x8001
 

@@ -481,3 +481,5 @@ IMG_VOID SGXReset(PVRSRV_SGXDEV_INFO	*psDevInfo,
 
 	PDUMPCOMMENTWITHFLAGS(ui32PDUMPFlags, "End of SGX reset sequence\r\n");
 }
+
+

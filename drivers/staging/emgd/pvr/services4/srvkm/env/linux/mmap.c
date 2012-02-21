@@ -729,11 +729,11 @@ static void* ProcSeqOff2ElementMMapRegistrations(struct seq_file *sfile, loff_t 
     {
         PKV_OFFSET_STRUCT psOffsetStruct;
 
-		list_for_each_entry(psOffsetStruct, &psLinuxMemArea->sMMapOffsetStructList, sAreaItem)
+	 	list_for_each_entry(psOffsetStruct, &psLinuxMemArea->sMMapOffsetStructList, sAreaItem)
         {
-			off--;
-			if (off == 0)
-			{
+	    	off--;
+	    	if (off == 0)
+	    	{
 				PVR_ASSERT(psOffsetStruct->psLinuxMemArea == psLinuxMemArea);
 				return (void*)psOffsetStruct;
 		    }

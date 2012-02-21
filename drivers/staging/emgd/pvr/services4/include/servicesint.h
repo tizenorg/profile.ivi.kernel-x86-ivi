@@ -269,3 +269,4 @@ PVRSRVMapMemInfoMem(const PVRSRV_CONNECTION *psConnection,
 }
 #endif
 #endif
+

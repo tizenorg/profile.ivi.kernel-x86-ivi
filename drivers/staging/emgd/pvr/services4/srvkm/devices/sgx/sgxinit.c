@@ -606,9 +606,9 @@ PVRSRV_ERROR DevInitSGXPart2KM (PVRSRV_PER_PROCESS_DATA *psPerProc,
 	{
 
 		psDevInfo->pvHostPortBaseKM = OSMapPhysToLin(psSGXDeviceMap->sHPCpuPBase,
-										           psSGXDeviceMap->ui32HPSize,
-										           PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
-										           IMG_NULL);
+									  	           psSGXDeviceMap->ui32HPSize,
+									  	           PVRSRV_HAP_KERNEL_ONLY|PVRSRV_HAP_UNCACHED,
+									  	           IMG_NULL);
 		if (!psDevInfo->pvHostPortBaseKM)
 		{
 			PVR_DPF((PVR_DBG_ERROR,"DevInitSGXPart2KM: Failed to map in host port\n"));
@@ -2263,3 +2263,5 @@ PVRSRV_ERROR SGXReadHWPerfCBKM(IMG_HANDLE					hDevHandle,
 }
 #else
 #endif
+
+

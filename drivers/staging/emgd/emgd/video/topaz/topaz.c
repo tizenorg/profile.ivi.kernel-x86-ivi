@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: topaz.c
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -294,7 +294,7 @@ int process_encode_mtx_messages(igd_context_t *context,
 		cur_cmd_size = cur_cmd_header->size;
 		cur_cmd_id = cur_cmd_header->id;
 	}
-	topaz_sync_tnc(context);
+	topaz_sync_tnc(context); 
 
 	return 0;
 }

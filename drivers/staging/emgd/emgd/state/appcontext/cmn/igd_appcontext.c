@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: igd_appcontext.c
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -145,3 +145,4 @@ int appcontext_init(igd_context_t *context)
 
 	return 0;
 }
+

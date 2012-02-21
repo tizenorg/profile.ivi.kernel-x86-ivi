@@ -320,3 +320,4 @@ typedef struct _SGX_KICKTA_PDUMP_
 #endif
 
 #endif
+

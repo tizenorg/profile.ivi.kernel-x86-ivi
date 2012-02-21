@@ -740,3 +740,4 @@ IMG_VOID PVRSRVDevicePostClockSpeedChange(IMG_UINT32	ui32DeviceIndex,
 		PVRSRVPowerUnlock(KERNEL_ID);
 	}
 }
+

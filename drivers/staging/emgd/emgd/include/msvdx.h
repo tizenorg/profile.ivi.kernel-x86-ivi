@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: msvdx.h
- * $Revision: 1.17 $
+ * $Revision: 1.19 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -229,7 +229,7 @@ typedef struct msvdx_fw_ {
 int process_video_decode_plb(igd_context_t *context, unsigned long offset, void *virt_addr, unsigned long *fence_id);
 int msvdx_query_plb(igd_context_t *context, unsigned long *status);
 int msvdx_init_plb(unsigned long base0, unsigned long base1,
-		           void *msvdx_fw, unsigned long msvdx_fw_size);
+		           void *msvdx_fw, unsigned long msvdx_fw_size, int reset_flag);
 int msvdx_uninit_plb(igd_context_t *context);
 int msvdx_close_context(igd_context_t *context);
 int msvdx_create_context(igd_context_t *context);

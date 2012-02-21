@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: appcontext_plb.c
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -204,3 +204,4 @@ static void appcontext_shutdown_plb(igd_context_t *context)
 {
 	return;
 }
+

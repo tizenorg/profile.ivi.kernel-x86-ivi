@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: micro_mode_tnc.c
- * $Revision: 1.44 $
+ * $Revision: 1.47 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -59,9 +59,11 @@
 #include <tnc/mi.h>
 #include <tnc/instr.h>
 #include <tnc/igd_tnc_wa.h>
+#include "drm_emgd_private.h"
 
 #include "../cmn/match.h"
 #include "../cmn/mode_dispatch.h"
+#include "mode_tnc.h"
 
 /*
 	Turning on FIB part workaround for all IALs, for vBIOS this will limit
@@ -82,10 +84,14 @@
 extern int program_clock_tnc(igd_display_context_t *display,
 	igd_clock_t *clock, unsigned long dclk);
 
+int program_cdvo_tnc(void);
+
+extern unsigned long get_port_type(int crtc_id);
+
 extern mode_full_dispatch_t mode_full_dispatch_tnc;
 
 int wait_for_vblank_tnc(unsigned long pipe_reg);
-static void wait_pipe(unsigned long pipe_reg, unsigned long check_on_off);
+void wait_pipe(unsigned long pt, unsigned long pipe_reg, unsigned long check_on_off);
 
 void shutdown_ST_bridge(igd_context_t *context);
 void initialize_ST_bridge(igd_context_t *context, igd_display_port_t *port);
@@ -94,39 +100,8 @@ void initialize_ST_bridge(igd_context_t *context, igd_display_port_t *port);
 static void cdvo_signal(void);
 #endif
 
-typedef struct _mode_data_tnc {
-	unsigned long plane_a_preserve;
-	unsigned long plane_b_c_preserve;
-	unsigned long pipe_preserve;
-	unsigned long dsp_arb;
-	unsigned long fifo_watermark1;
-	unsigned long fifo_watermark2;
-	unsigned long fifo_watermark3;
-	unsigned long fifo_watermark4;
-	unsigned long fifo_watermark5;
-	unsigned long fifo_watermark6;
-} mode_data_tnc_t;
-
-static mode_data_tnc_t device_data[1] = {
-	{
-		0x000b0000, /* plane a preservation */
-		0x00000000, /* plane b c preservation */
-		0x60000000, /* pipe preservation */
-		0x00003232, /* DSP FIFO Size A=50 B=50 C=28 May require fine tuning*/
-		0x3f8f0404, /* FIFO watermark control1 */
-		0x04040f04, /* FIFO watermark control2 */
-		0x00000000, /* FIFO watermark control3 */
-		0x04040404, /* FIFO watermark1 control4 */
-		0x04040404, /* FIFO watermark1 control5 */
-		0x00000078, /* FIFO watermark1 control6 */
-	}
-};
-
-
-static unsigned long flag_clip_fix =    IGD_CLIP_FIX_GLOBAL_ENABLE | IGD_CLIP_FIX_DISABLE_THROTTLE;
-
-/* Do not change the order */
-static const unsigned long ports_tnc[2] = {IGD_PORT_LVDS, IGD_PORT_SDVO};
+static unsigned long flag_clip_fix = IGD_CLIP_FIX_GLOBAL_ENABLE |
+	IGD_CLIP_FIX_DISABLE_THROTTLE;
 
 /* Extern defines for Device2, device3 and device31 iobases.
  * For Atom E6xx all devices are always io_mapped. */
@@ -143,30 +118,38 @@ extern unsigned short io_base_sdvo_st;
 extern unsigned char io_mapped_sdvo_st_gpio;
 extern unsigned short io_base_sdvo_st_gpio;
 
-static tnc_wa_timing_t tune = {0, 0, 0, 0, 0, 0, 0,};
-
-#ifndef CONFIG_MICRO
-#define CHECK_VGA(a) MODE_IS_VGA(a)
 #ifdef DEBUG_BUILD_TYPE
-#define FLAG(a) a
-/* Debug configuration flag for B0 workaround. Workaround is turned on by default */
-static int flag_turn_off_port_wa = 1;			/* Turn off port when sweeping */
-static int flag_enable_tuning_wa = 1;			/* Disable sweeping flag */
-static int flag_basic_htotal_formula_wa = 1;    /* Enable formula workaround flag */
-#else
-/* Turn all workaround for release driver */
-#define FLAG(a) 1
+/* Debug configuration flag for B0 workaround. Workaround is turned on by default. */
+int flag_basic_htotal_formula_wa = 1;    /* Enable formula workaround flag */
+int flag_turn_off_port_wa = 1;           /* Turn off port when sweeping */
+int flag_enable_tuning_wa = 1;           /* Disable sweeping flag */
 #endif
 
-/* VPhase variable */
-static int vphase = 0;							/* The current value to enable  vphase is 5 */
+/* Do not change the order */
+const unsigned long ports_tnc[2] = {IGD_PORT_LVDS, IGD_PORT_SDVO};
+
+tnc_wa_timing_t tune = {0, 0, 0, 0, 0, 0, 0,};
 
 /* Temporary frame buffer */
 static igd_framebuffer_info_t fb_info_tmp = {0,0,0,0,0,0,0};
 
-#else
-#define CHECK_VGA(a) 1
-#endif
+/* VPhase variable */
+int vphase = 0;	/* The current value to enable  vphase is 5 */
+
+mode_data_tnc_t device_data_tnc[1] = {
+	{
+		0x000b0000, /* plane a preservation */
+		0x00000000, /* plane b c preservation */
+		0x60000000, /* pipe preservation */
+		0x00003232, /* DSP FIFO Size A=50 B=50 C=28 May require fine tuning*/
+		0x3f8f0404, /* FIFO watermark control1 */
+		0x04040f04, /* FIFO watermark control2 */
+		0x00000000, /* FIFO watermark control3 */
+		0x04040404, /* FIFO watermark1 control4 */
+		0x04040404, /* FIFO watermark1 control5 */
+		0x00000078, /* FIFO watermark1 control6 */
+	}
+};
 
 pixel_crc_t compute_pixel_crc( pixel_crc_t  pixel, pixel_crc_t  new_pixel)
 {
@@ -572,132 +555,13 @@ int check_display_tnc(igd_display_context_t *display,
 }
 #endif
 
-#if 0
-/* Setting the CDVO Signal */
-static void cdvo_signal()
-{
-	// Low
-	WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x700c, 0x00008000);
-	WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x700c, 0x0008B400);
-	//OS_SLEEP(25);
-
-	// High
-	WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x700c, 0x0008B4FF);
-	//OS_SLEEP(25);
-}
-#endif
-
-#if 0
-/* disable this function now */
-/* This is the initialization code for B0 stepping */
-void program_cdvo(
-	igd_display_context_t *display,
-	unsigned long pipe_reg,
-	unsigned long pd_type)
-{
-	/* unsigned long pipe_conf; */
-	int i;
-	unsigned long pipe_conf;
-
-	EMGD_TRACE_ENTER;
-
-	/* For external lvds, pipe needs to be disabled and
-	 * run cdvo reset sequence only once during boot up.
-	 * All other pd type needs to run cdvo reset sequence
-	 * all the time so no display corruption.
-	 */
-	if ((!(pd_type & PD_DISPLAY_LVDS_EXT)) ||
-		(READ_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000) != 0x50)) {
-
-		if (READ_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000) != 0x50) {
-
-			pipe_conf = device_data->pipe_preserve &
-				READ_MMIO_REG_TNC(IGD_PORT_SDVO, PIPE(display)->pipe_reg);
-
-			/* Disable pipe */
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, PIPE(display)->pipe_reg,
-				pipe_conf & (~0x80000000L));
-
-			/* check when the pipe is disabled. */
-			wait_pipe(PIPE(display)->pipe_reg, 0);
-
-			/* Disable DPLL */
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO,
-				PIPE(display)->clock_reg->dpll_control,
-				READ_MMIO_REG_TNC(IGD_PORT_SDVO,
-				PIPE(display)->clock_reg->dpll_control) & ~0x80000000L);
-		}
-
-		if ((!(pd_type & PD_DISPLAY_LVDS_EXT)) ||
-			(READ_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000) != 0x50)) {
-
-			//programmable cdvo stall
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x6102c, 0xf);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000, 0x40);
-
-			//reset
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000, 0x51);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000, 0x50);
-
-			// High
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7014, 0x00004800);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x700c, 0x000BB4FF);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, SDVO_BUFF_CTRL_REG, 0x20022160);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7010, 0x06000200);
-
-			/* loop 3 pixels, 6 calls to cdvo_signal() */
-			for(i=0;i<6;i++){
-				cdvo_signal();
-			}
-
-			//reset
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000, 0x51);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000, 0x50);
-
-			// High
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7014, 0x00004800);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x700c, 0x000BB4FF);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, SDVO_BUFF_CTRL_REG, 0x20022160);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7010, 0x06000200);
-
-			/* loop 3 pixels, 6 calls to cdvo_signal() */
-			for(i=0;i<6;i++){
-				cdvo_signal();
-			}
-
-			//reset
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000, 0x51);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000, 0x50);
-
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7010, 0x02000200);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7014, 0x00004000);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, SDVO_BUFF_CTRL_REG, 0x20022160);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7010, 0x02000200);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7014, 0x00000800);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7014, 0x00004800);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7014, 0x00000000);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000, 0x40);
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7000, 0x50);
-
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, 0x7014, 0x00004000);
-
-			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, SDVO_BUFF_CTRL_REG, 0x20022160);//enable sdvo
-
-			//WRITE_MMIO_REG_TNC(IGD_PORT_LVDS, 0x70400, 0x4088);//enable sdvo
-		}
-	}
-
-	EMGD_TRACE_EXIT;
-}
-#endif
-
 /*!
  *
  * @param mmio dev2 mmio
  *
  * @return void
  */
-static void disable_vga_tnc (unsigned char *mmio)
+void disable_vga_tnc (unsigned char *mmio)
 {
 	unsigned long temp;
 	unsigned char sr01;
@@ -829,6 +693,8 @@ int wait_for_vblank_tnc(unsigned long pipe_reg)
 		OS_SCHEDULE();
 		tmp = mode_context->dispatch->full->vblank_occured(request_for);
 	} while ((tmp == 0x00) && (!OS_TEST_ALARM(timeout)));
+
+
 	if (tmp == 0) {
 		EMGD_ERROR_EXIT("Timeout waiting for VBLANK");
 		ret = 0;
@@ -844,6 +710,8 @@ int wait_for_vblank_tnc(unsigned long pipe_reg)
 	EMGD_TRACE_EXIT;
 	return ret;
 } /* wait_for_vblank_tnc */
+
+
 
 /*!
  * This procedure waits for the next vertical blanking (vertical retrace)
@@ -862,6 +730,7 @@ int igd_wait_vblank_tnc(igd_display_h display_handle)
 	return wait_for_vblank_tnc(PIPE(display_handle)->pipe_reg);
 
 }
+
 
 /*!
  * Get the stride and stereo values based on the display.  This is also used
@@ -979,6 +848,7 @@ int mode_get_stride_stereo_tnc(igd_display_context_t *display,
  * Disable panel fitter
  * Disable DPLL
  */
+
 
 /*!
  *
@@ -1157,9 +1027,9 @@ void program_plane_tnc(igd_display_context_t *display,
 
 	plane_control = EMGD_READ32(MMIO(display) + plane_reg);
 	if(PLANE(display)->plane_reg == DSPACNTR) {
-		plane_control &= device_data->plane_a_preserve;
+		plane_control &= device_data_tnc->plane_a_preserve;
 	} else { /* if it's plane b or plane c */
-		plane_control &= device_data->plane_b_c_preserve;
+		plane_control &= device_data_tnc->plane_b_c_preserve;
 	}
 
 	/* TODO: Bspec: For EagleLake this Trickle Feed must always disable */
@@ -1263,40 +1133,41 @@ void program_plane_tnc(igd_display_context_t *display,
 	/* Set watermark for Atom E6xx */
 #ifndef  CONFIG_MICRO
 	if (!mode_context->en_reg_override) {
-	if (plane_reg == DSPACNTR) {
-		other_plane_reg = DSPBCNTR;
-	} else {
-		other_plane_reg = DSPACNTR;
-	}
+		if (plane_reg == DSPACNTR) {
+			other_plane_reg = DSPBCNTR;
+		} else {
+			other_plane_reg = DSPACNTR;
+		}
 
-	if (EMGD_READ32(MMIO(display) + other_plane_reg) & 0x80000000) {
-		EMGD_WRITE32(device_data->dsp_arb, MMIO(display) + DSP_ARB);
-	} else if (plane_reg == DSPACNTR) {
-		EMGD_WRITE32(0x00003fff, MMIO(display) + DSP_ARB);
-	} else {
-		EMGD_WRITE32(0x00003f80, MMIO(display) + DSP_ARB);
-	}
+		if (EMGD_READ32(MMIO(display) + other_plane_reg) & 0x80000000) {
+			EMGD_WRITE32(device_data_tnc->dsp_arb, MMIO(display) +
+				PIPEA_DISP_ARB_CTRL);
+		} else if (plane_reg == DSPACNTR) {
+			EMGD_WRITE32(0x00003fff, MMIO(display) + PIPEA_DISP_ARB_CTRL);
+		} else {
+			EMGD_WRITE32(0x00003f80, MMIO(display) + PIPEA_DISP_ARB_CTRL);
+		}
 
-	/*
-	 * Setting WM priority level to 11
-	 * to workaround display bouncing issues
-	 * TODO: Mode set from Clone->Single(Primary)
-	 * DSP_ARB does not get updated
-	 */
-	ulreg = EMGD_READ32(MMIO(display) + 0x00020f8);
-	EMGD_WRITE32(ulreg | 0x000003f0, MMIO(display) + 0x00020f8);
+		/*
+		 * Setting WM priority level to 11
+		 * to workaround display bouncing issues
+		 * TODO: Mode set from Clone->Single(Primary)
+		 * PIPEA_DISP_ARB_CTRL does not get updated
+		 */
+		ulreg = EMGD_READ32(MMIO(display) + 0x00020f8);
+		EMGD_WRITE32(ulreg | 0x000003f0, MMIO(display) + 0x00020f8);
 
-	EMGD_WRITE32(device_data->fifo_watermark1, MMIO(display) + FW_1);
-	EMGD_WRITE32(device_data->fifo_watermark2, MMIO(display) + FW_2);
-	EMGD_WRITE32(device_data->fifo_watermark3, MMIO(display) + FW_3);
-	EMGD_WRITE32(device_data->fifo_watermark4, MMIO(display) + FW_4);
-	EMGD_WRITE32(device_data->fifo_watermark5, MMIO(display) + FW_5);
-	EMGD_WRITE32(device_data->fifo_watermark6, MMIO(display) + FW_6);
+		EMGD_WRITE32(device_data_tnc->fifo_watermark1, MMIO(display) + FW_1);
+		EMGD_WRITE32(device_data_tnc->fifo_watermark2, MMIO(display) + FW_2);
+		EMGD_WRITE32(device_data_tnc->fifo_watermark3, MMIO(display) + FW_3);
+		EMGD_WRITE32(device_data_tnc->fifo_watermark4, MMIO(display) + FW_4);
+		EMGD_WRITE32(device_data_tnc->fifo_watermark5, MMIO(display) + FW_5);
+		EMGD_WRITE32(device_data_tnc->fifo_watermark6, MMIO(display) + FW_6);
 	} else {
 		/* en_reg_override=1 */
 		/* Override display registers */
 		EMGD_WRITE32(mode_context->gvd_hp_control, MMIO(display) + 0x00020f8);
-		EMGD_WRITE32(mode_context->disp_arb, MMIO(display) + DSP_ARB);
+		EMGD_WRITE32(mode_context->disp_arb, MMIO(display) + PIPEA_DISP_ARB_CTRL);
 		EMGD_WRITE32(mode_context->fifo_watermark1, MMIO(display) + FW_1);
 		EMGD_WRITE32(mode_context->fifo_watermark2, MMIO(display) + FW_2);
 		EMGD_WRITE32(mode_context->fifo_watermark3, MMIO(display) + FW_3);
@@ -1311,7 +1182,7 @@ void program_plane_tnc(igd_display_context_t *display,
 	}
 
 	EMGD_DEBUG(" GVD HP_CONTROL: 0x%lx", ulreg);
-	ulreg = EMGD_READ32(MMIO(display) + DSP_ARB);
+	ulreg = EMGD_READ32(MMIO(display) + PIPEA_DISP_ARB_CTRL);
 	EMGD_DEBUG(" Display Arbitration register: 0x%lx", ulreg);
 	ulreg = EMGD_READ32(MMIO(display) + FW_1);
 	EMGD_DEBUG(" FIFO Watermark Control Register 1: 0x%lx", ulreg);
@@ -1333,8 +1204,8 @@ void program_plane_tnc(igd_display_context_t *display,
 	EMGD_DEBUG(" Bunit Write Flush: 0x%lx", b_reg);
 #else
 	/* ITP Script is doing this and so go ahead */
-	/* The DSP_ARB set fixed the issue with 32bit vesa modes */
-	EMGD_WRITE32(0x00001FBF, MMIO(display) + DSP_ARB);
+	/* The PIPEA_DISP_ARB_CTRL set fixed the issue with 32bit vesa modes */
+	EMGD_WRITE32(0x00001FBF, MMIO(display) + PIPEA_DISP_ARB_CTRL);
 	EMGD_WRITE32(0x3F8F0F18, MMIO(display) + FW_1);
 #endif
 	/* FIXME: Not required for TNC.
@@ -1373,7 +1244,7 @@ void program_plane_tnc(igd_display_context_t *display,
  *
  * @return void
  */
-static void wait_pipe(unsigned long pipe_reg, unsigned long check_on_off)
+void wait_pipe(unsigned long pt, unsigned long pipe_reg, unsigned long check_on_off)
 {
 	unsigned long temp;
 	os_alarm_t timeout;
@@ -1381,7 +1252,7 @@ static void wait_pipe(unsigned long pipe_reg, unsigned long check_on_off)
 	EMGD_TRACE_ENTER;
 
 	/* 0:3:0 doesn't wait pipe, only LNC device does. */
-	if (pipe_reg == 0x71008) {
+	if (pt == IGD_PORT_SDVO) {
 		return;
 	}
 
@@ -1399,6 +1270,17 @@ static void wait_pipe(unsigned long pipe_reg, unsigned long check_on_off)
 
 	EMGD_TRACE_EXIT;
 	return;
+}
+
+unsigned long get_port_type(int crtc_id) {
+	if (crtc_id == IGD_KMS_PIPEA) {
+		return IGD_PORT_LVDS;
+	}
+	if (crtc_id == IGD_KMS_PIPEB) {
+		return IGD_PORT_SDVO;
+	}
+	EMGD_ERROR("Unrecognized port type based on crtc_id of %d", crtc_id);
+	return 0;
 }
 
 /*!
@@ -1436,14 +1318,12 @@ void program_pipe_tnc(igd_display_context_t *display,
 
 	platform_context = (platform_context_tnc_t *)display->context->platform_context;
 
-#ifndef CONFIG_MICRO
 	/* For Windows OS, flag_clip_fix will be overridden by configurable parameter in registry.
 	* This section of code is excluded in VBIOS, VBIOS will always use the pre-assigned value.
 	*/
 	flag_clip_fix = mode_context->clip_hw_fix;
-#endif
 
-	pipe_conf = device_data->pipe_preserve &
+	pipe_conf = device_data_tnc->pipe_preserve &
 		READ_MMIO_REG_TNC(pt, PIPE(display)->pipe_reg);
 
 	if((status == FALSE) ||
@@ -1452,13 +1332,16 @@ void program_pipe_tnc(igd_display_context_t *display,
 		if (pt == IGD_PORT_SDVO) {
 			WRITE_MMIO_REG_TNC(IGD_PORT_LVDS, PIPE(display)->pipe_reg,
 				pipe_conf & (~0x80000000L));
+			/* After disable pipe B in 0:2:0, wait_pipe must be
+ 			 * called to ensure the pipe B to be turned off */
+			wait_pipe(IGD_PORT_LVDS, PIPE(display)->pipe_reg, 0);
 		}
 		/* Disable pipe */
 		WRITE_MMIO_REG_TNC(pt, PIPE(display)->pipe_reg,
 			pipe_conf & (~0x80000000L));
 
 		/* check when the pipe is disabled. */
-		wait_pipe(PIPE(display)->pipe_reg, 0);
+		wait_pipe(pt, PIPE(display)->pipe_reg, 0);
 
 		/* Disable DPLL */
 		//WRITE_MMIO_REG_TNC(pt, PIPE(display)->clock_reg->dpll_control,
@@ -1480,7 +1363,7 @@ void program_pipe_tnc(igd_display_context_t *display,
 				pipe_conf & (~0x80000000L));
 
 			/* check when the pipe is disabled. */
-			wait_pipe(PIPE(display)->pipe_reg, 0);
+			wait_pipe(IGD_PORT_LVDS, PIPE(display)->pipe_reg, 0);
 
 			/* Enable clipping hardware fix */
 			temp = READ_MMIO_REG_TNC(IGD_PORT_LVDS, DSP_CHICKENBITS);
@@ -1626,10 +1509,10 @@ void program_pipe_tnc(igd_display_context_t *display,
 			)){
 
 
-			if((!(pTimings->reserved_dd & TNC_HTOTAL_TUNED)) &&
-					(wa->counter < LIMIT_TOTAL_CHECK_DISPLAY) &&
+	 		if((!(pTimings->reserved_dd & TNC_HTOTAL_TUNED)) &&
+	 				(wa->counter < LIMIT_TOTAL_CHECK_DISPLAY) &&
 					(platform_context->tnc_dev3_rid == TNC_B0_DEV3_RID) &&
-					(FLAG(flag_enable_tuning_wa))) {
+ 					(FLAG(flag_enable_tuning_wa))) {
 
 				/* Modify blanks so it always begin after active pixel and ends at the
 				 * end. Do not change it if we are already tuned to maintain
@@ -1670,14 +1553,15 @@ void program_pipe_tnc(igd_display_context_t *display,
 							is the LNC clock minus the optimum margin found from experiment */
 							calc = (pTimings->htotal * (mode_context->ref_freq - LNC_B1_OPTIMUM_MARGIN));
 						} else {
-						        calc = (pTimings->htotal * mode_context->ref_freq);
+						calc = (pTimings->htotal * mode_context->ref_freq);
 						}
 					} else {
-					        if((platform_context->tnc_dev3_rid == TNC_B1_DEV3_RID)){
-						       calc = (pTimings->htotal * (LNC_CLOCK - LNC_B1_OPTIMUM_MARGIN));
-					        } else {
-						       calc = (pTimings->htotal * LNC_CLOCK);
-					        }
+						if((platform_context->tnc_dev3_rid == TNC_B1_DEV3_RID)){
+							calc = (pTimings->htotal * (LNC_CLOCK - LNC_B1_OPTIMUM_MARGIN));
+					} else {
+						calc = (pTimings->htotal * LNC_CLOCK);
+						}
+
 					}
 
 					calc = (calc / (PIPE(display)->clock_reg->actual_dclk));
@@ -1786,7 +1670,7 @@ void program_pipe_tnc(igd_display_context_t *display,
 
 
 	/* Gen4 can check when the pipe is enabled. */
-	wait_pipe(PIPE(display)->pipe_reg, 0x40000000);
+	wait_pipe(IGD_PORT_LVDS, PIPE(display)->pipe_reg, 0x40000000);
 
 	/*
 	 * Set the VGA address range to 0xa0000 so that a normal (not VGA)
@@ -1856,7 +1740,7 @@ void reset_plane_pipe_ports_tnc(igd_context_t *context)
 	 * Disable all plane, pipe and port registers because the
 	 * bios may have been using a different set. Only unset the
 	 * enable bit.
-	 */
+ */
 	mmio = EMGD_MMIO(context->device_context.virt_mmadr);
 	md = &context->mod_dispatch;
 	/* Turn off LVDS and SDVO ports */
@@ -1908,7 +1792,7 @@ void reset_plane_pipe_ports_tnc(igd_context_t *context)
 			i = 0x71008;  /* PIPE B */
 			if (temp & BIT31) {
 				if(plane->plane_reg == DSPACNTR) {
-					temp = temp & device_data->plane_a_preserve;
+					temp = temp & device_data_tnc->plane_a_preserve;
 					i = 0x70008;  /* use i as pipe_reg */
 				}
 				EMGD_WRITE32((temp & ~BIT31), EMGD_MMIO(mmio) + plane->plane_reg);
@@ -1951,10 +1835,10 @@ void reset_plane_pipe_ports_tnc(igd_context_t *context)
 					continue;
 				}
 				WRITE_MMIO_REG_TNC(ports_tnc[i], pipe->pipe_reg,
-					(temp & device_data->pipe_preserve));
+					(temp & device_data_tnc->pipe_preserve));
 
 				/* Gen4 can check when the pipe is disabled. */
-				wait_pipe(pipe->pipe_reg, 0);
+				wait_pipe(ports_tnc[i], pipe->pipe_reg, 0);
 
 				/* Disable VGA display */
 				disable_vga_tnc(EMGD_MMIO(mmio));
@@ -2662,6 +2546,7 @@ mode_dispatch_t mode_dispatch_tnc = {
 	program_port_tnc,
 	post_program_port_tnc,
 	program_clock_tnc,
+	program_cdvo_tnc,
 	reset_plane_pipe_ports_tnc,
 	get_gpio_sets_tnc,
 	filter_modes_tnc,
@@ -2670,7 +2555,7 @@ mode_dispatch_t mode_dispatch_tnc = {
 	OPT_MICRO_VALUE(check_port_supported, NULL),
 	OPT_MICRO_VALUE(get_refresh_in_border, NULL),
 	OPT_MICRO_VALUE(dsp_is_force_alter_required_tnc, NULL),
-	OPT_MICRO_VALUE(&mode_full_dispatch_tnc, NULL)
+	OPT_MICRO_VALUE(&mode_full_dispatch_tnc, NULL),
 };
 
 /* VBIOS does not use the virtual mapped address

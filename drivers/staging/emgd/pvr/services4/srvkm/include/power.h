@@ -113,3 +113,4 @@ IMG_VOID PVRSRVDevicePostClockSpeedChange(IMG_UINT32	ui32DeviceIndex,
 }
 #endif
 #endif
+

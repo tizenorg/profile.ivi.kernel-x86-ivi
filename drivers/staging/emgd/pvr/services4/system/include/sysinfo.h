@@ -33,7 +33,10 @@ typedef enum _SYS_DEVICE_TYPE_
 	SYS_DEVICE_FORCE_I16 				= 0x7fff
 
 } SYS_DEVICE_TYPE;
-
+#if 0
 #define SYS_DEVICE_COUNT 5
+#endif
+
+#define SYS_DEVICE_COUNT 11
 
 #endif

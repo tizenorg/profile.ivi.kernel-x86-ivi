@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: msvdx_init.c
- * $Revision: 1.27 $
+ * $Revision: 1.30 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -83,13 +83,14 @@ extern int alloc_ramdec_region(unsigned long *base_addr0, unsigned long *base_ad
 static int poll_mtx_irq(igd_context_t *context);
 static int reg_ready_psb(igd_context_t *context, unsigned long reg,
         unsigned long mask, unsigned long value);
-static int context_count = 0;
+int context_count = 0;
 
 void msvdx_reset_plb(igd_context_t *context);
 
 static msvdx_fw_t *priv_fw = NULL;
 
 extern unsigned long jiffies_at_last_dequeue;
+extern int mtx_message_complete;
 
 
 int msvdx_query_plb(igd_context_t *context,
@@ -114,6 +115,19 @@ int msvdx_query_plb(igd_context_t *context,
 	return 0;
 }
 
+int msvdx_status(igd_context_t *context, unsigned long *queue_status, unsigned long *mtx_msg_status)
+{
+	platform_context_plb_t *platform = NULL;
+	platform = (platform_context_plb_t *)context->platform_context;
+	if (init_msvdx_first_time) {
+		*queue_status = 1;
+		*mtx_msg_status = 1;
+	} else {
+			*queue_status = list_empty(&platform->msvdx_queue);
+			*mtx_msg_status = mtx_message_complete;
+	}
+	return IGD_SUCCESS;
+}
 int msvdx_pwr_plb(
 	igd_context_t *context,
 	unsigned long power_state)
@@ -125,14 +139,14 @@ int msvdx_pwr_plb(
 	if(power_state != IGD_POWERSTATE_D0){
 		platform->msvdx_needs_reset = 1;
 	}
-
+	
 	EMGD_TRACE_EXIT;
 	return IGD_SUCCESS;
 }
 
 int msvdx_pre_init_plb(struct drm_device *dev)
 {
-    drm_emgd_private *priv;
+    drm_emgd_priv_t *priv;
     igd_context_t *context;
 
 	EMGD_TRACE_ENTER;
@@ -140,17 +154,18 @@ int msvdx_pre_init_plb(struct drm_device *dev)
     gpDrmDevice = dev;
 	priv = gpDrmDevice->dev_private;
 	context = priv->context;
-
+		
 	context->mod_dispatch.msvdx_pwr = msvdx_pwr_plb;
+	context->mod_dispatch.msvdx_status = msvdx_status;
 
 	EMGD_TRACE_EXIT;
 	return IGD_SUCCESS;
 }
 
 int msvdx_init_plb(unsigned long base0, unsigned long base1,
-		           void *msvdx_fw, unsigned long msvdx_fw_size)
+		           void *msvdx_fw, unsigned long msvdx_fw_size, int reset_flag)
 {
-    drm_emgd_private *priv;
+    drm_emgd_priv_t *priv;
     igd_context_t *context;
     unsigned char *mmio;
     unsigned long ram_bank;
@@ -197,46 +212,46 @@ int msvdx_init_plb(unsigned long base0, unsigned long base1,
     priv = gpDrmDevice->dev_private;
     context = priv->context;
     mmio = context->device_context.virt_mmadr;
+	if(!context_count || reset_flag){
+		//init_msvdx_first_time = 1;
+	    /* Reset MSVDX engine */
+	    EMGD_WRITE32(0x00000100, mmio + PSB_MSVDX_CONTROL);
+	    reg_ready_psb(context, PSB_MSVDX_CONTROL, 0x00000100, 0);
 
-	//init_msvdx_first_time = 1;
-    /* Reset MSVDX engine */
-    EMGD_WRITE32(0x00000100, mmio + PSB_MSVDX_CONTROL);
-    reg_ready_psb(context, PSB_MSVDX_CONTROL, 0x00000100, 0);
+	    /*
+	    * Make sure the clock is on.
+	    *
+	    * Clock enable bits are 0 - 6, with each bit controlling one of the
+	    * clocks.  For this, make sure all the clocks are enabled.
+	    */
+	    EMGD_WRITE32(PSB_CLK_ENABLE_ALL, mmio + PSB_MSVDX_MAN_CLK_ENABLE);
 
-    /*
-    * Make sure the clock is on.
-    *
-    * Clock enable bits are 0 - 6, with each bit controlling one of the
-    * clocks.  For this, make sure all the clocks are enabled.
-    */
-    EMGD_WRITE32(PSB_CLK_ENABLE_ALL, mmio + PSB_MSVDX_MAN_CLK_ENABLE);
+	    /* Set default MMU PTD to the same value used by the SGX */
+	    ctrl = EMGD_READ32(mmio + PSB_CR_BIF_DIR_LIST_BASE1);
 
-    /* Set default MMU PTD to the same value used by the SGX */
-    ctrl = EMGD_READ32(mmio + PSB_CR_BIF_DIR_LIST_BASE1);
-
-    address = EMGD_READ32(mmio + PSB_CR_BIF_DIR_LIST_BASE1);
-    EMGD_WRITE32(address, mmio + PSB_MSVDX_MMU_DIR_LIST_BASE0);
-    EMGD_WRITE32(address, mmio + PSB_MSVDX_MMU_DIR_LIST_BASE1);
-    EMGD_WRITE32(address, mmio + PSB_MSVDX_MMU_DIR_LIST_BASE2);
-    EMGD_WRITE32(address, mmio + PSB_MSVDX_MMU_DIR_LIST_BASE3);
-
-
-    /*
-    * MMU Page size = 12
-    * MMU best count = 7
-    * MMU ADT TTE = 0
-    * MMU TTE threshold = 12
-    */
-    EMGD_WRITE32(0xc070000c, mmio + PSB_MSVDX_MMU_CONTROL1);
+	    address = EMGD_READ32(mmio + PSB_CR_BIF_DIR_LIST_BASE1);
+	    EMGD_WRITE32(address, mmio + PSB_MSVDX_MMU_DIR_LIST_BASE0);
+	    EMGD_WRITE32(address, mmio + PSB_MSVDX_MMU_DIR_LIST_BASE1);
+	    EMGD_WRITE32(address, mmio + PSB_MSVDX_MMU_DIR_LIST_BASE2);
+	    EMGD_WRITE32(address, mmio + PSB_MSVDX_MMU_DIR_LIST_BASE3);
 
 
-    /* Flush the directory cache */
-    ctrl = EMGD_READ32(mmio + PSB_MSVDX_MMU_CONTROL0) | 0x0C; /* Flush */
-    EMGD_WRITE32(ctrl, mmio + PSB_MSVDX_MMU_CONTROL0);
+	    /*
+	    * MMU Page size = 12
+	    * MMU best count = 7
+	    * MMU ADT TTE = 0
+	    * MMU TTE threshold = 12
+	    */
+	    EMGD_WRITE32(0xc070000c, mmio + PSB_MSVDX_MMU_CONTROL1);
 
-    /* Enable MMU by removing all bypass bits */
-    EMGD_WRITE32(0, mmio + PSB_MSVDX_MMU_CONTROL0);
 
+	    /* Flush the directory cache */
+	    ctrl = EMGD_READ32(mmio + PSB_MSVDX_MMU_CONTROL0) | 0x0C; /* Flush */
+	    EMGD_WRITE32(ctrl, mmio + PSB_MSVDX_MMU_CONTROL0);
+
+	    /* Enable MMU by removing all bypass bits */
+	    EMGD_WRITE32(0, mmio + PSB_MSVDX_MMU_CONTROL0);
+	}
 
     /* Set up the RENDEC.
     *   The RENDEC requires two blocks of virtual address space so those
@@ -286,6 +301,11 @@ int msvdx_init_plb(unsigned long base0, unsigned long base1,
         /* Init link list */
         if(!context_count) {
 			INIT_LIST_HEAD(&platform->msvdx_queue);
+		} else {
+			if(!reset_flag){
+				EMGD_TRACE_EXIT;
+				return 0;
+			}
 		}
     }
 
@@ -546,7 +566,7 @@ int msvdx_uninit_plb(igd_context_t *context)
 	EMGD_TRACE_ENTER;
 
 	if(!context_count) {
-		msvdx_reset_plb(context);
+		//msvdx_reset_plb(context);
 	}
 	EMGD_TRACE_EXIT;
 	return 0;
@@ -618,7 +638,7 @@ int process_video_decode_plb(igd_context_t *context, unsigned long offset, void 
 
 			if (platform->msvdx_needs_reset) {
 				msvdx_reset_plb(context);
-				msvdx_init_plb(0, 0, NULL, 0);
+				msvdx_init_plb(0, 0, NULL, 0, 1);
 				jiffies_at_last_dequeue = 0;
 			}
 			// Send message buffer to MSVDX Firmware
@@ -656,7 +676,7 @@ int process_video_decode_plb(igd_context_t *context, unsigned long offset, void 
 			}
 			if (platform->msvdx_needs_reset) {
 				msvdx_reset_plb(context);
-				msvdx_init_plb(0, 0, NULL, 0);
+				msvdx_init_plb(0, 0, NULL, 0, 1);
 				platform->msvdx_busy = 0;
 				jiffies_at_last_dequeue = 0;
 			}
@@ -806,3 +826,4 @@ static int poll_mtx_irq(igd_context_t *context)
 
     return ret;
 }
+

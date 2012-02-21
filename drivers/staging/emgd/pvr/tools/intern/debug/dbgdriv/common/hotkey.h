@@ -53,3 +53,4 @@ IMG_VOID DefineHotKey (IMG_UINT32 ui32ScanCode, IMG_UINT32 ui32ShiftState, PHOTK
 IMG_VOID RegisterKeyPressed (IMG_UINT32 ui32ScanCode, PHOTKEYINFO psInfo);
 
 #endif
+

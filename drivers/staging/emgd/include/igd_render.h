@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: igd_render.h
- * $Revision: 1.14 $
+ * $Revision: 1.17 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -65,7 +65,7 @@ typedef struct _igd_yuv_coeffs {
 	char ry;
 	char ru;
 	char rv;
-	char gy;
+   	char gy;
 	char gu;
 	char gv;
 	char by;
@@ -224,6 +224,7 @@ typedef struct _igd_surface_list {
 #define IGD_RENDER_OP_ROT_270    0x000300
 #define IGD_RENDER_OP_FLIP       0x000400
 #define IGD_RENDER_OP_SKIP_ROT	 0x000800
+#define IGD_RENDER_OP_SKIP_FLIP	 0x008000
 
 /*
  * flags for post process - Deinterlacing and ProcAmpControl.
@@ -269,7 +270,8 @@ typedef struct _igd_dma {
 typedef enum _igd_buffertype {
 	IGD_BUFFER_DISPLAY = 0,
 	IGD_BUFFER_COLOR,
-	IGD_BUFFER_DEPTH
+	IGD_BUFFER_DEPTH,
+	IGD_BUFFER_SAVE
 } igd_buffertype_t;
 
 /*----------------------------------------------------------------------

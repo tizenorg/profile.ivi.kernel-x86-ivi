@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: i2c_plb.c
- * $Revision: 1.12 $
+ * $Revision: 1.14 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -62,7 +62,8 @@ static int i2c_read_regs_plb(
 	unsigned long dab,
 	unsigned char reg,
 	unsigned char FAR *buffer,
-	unsigned long num_bytes);
+	unsigned long num_bytes,
+	unsigned long flags);
 
 static int i2c_write_reg_list_plb(
 	igd_context_t *context,
@@ -189,6 +190,7 @@ static int gmbus_error_handler(unsigned char *mmio);
  * @param reg I2C Reg Index
  * @param num_bytes <= 508
  * @param buffer Data read
+ * @param flags unused, put in to match TNC func signature
  *
  * @return 0 on success
  * @return 1 on failure
@@ -199,7 +201,8 @@ static int i2c_read_regs_plb(igd_context_t *context,
 	unsigned long dab,
 	unsigned char reg,
 	unsigned char FAR *buffer,
-	unsigned long num_bytes)
+	unsigned long num_bytes,
+	unsigned long flags)
 {
 	unsigned char *mmio = EMGD_MMIO(context->device_context.virt_mmadr);
 	unsigned long slave_addr;
@@ -937,3 +940,4 @@ static int gmbus_write_reg(unsigned char *mmio,
 
 	return 1;
 }
+

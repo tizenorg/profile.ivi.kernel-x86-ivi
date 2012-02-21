@@ -1,9 +1,9 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
- * Filename: bitmap_data.h
- * $Revision: 1.4 $
+ * Filename: mode_plb.h
+ * $Revision: 1.2 $
  *-----------------------------------------------------------------------------
- * Copyright (c) 2002-2010, Intel Corporation.
+ * Copyright (c) 2002-2011, Intel Corporation.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,9 +24,24 @@
  * THE SOFTWARE.
  *
  *-----------------------------------------------------------------------------
- * Description:
- *
- *-----------------------------------------------------------------------------
- */static unsigned char bitmap_data[] = {
+ */
 
-};
+#define MODULE_NAME hal.mode
+
+
+#ifdef CONFIG_PLB
+
+typedef struct _mode_data_plb {
+	unsigned long plane_a_preserve;
+	unsigned long plane_b_c_preserve;
+	unsigned long pipe_preserve;
+	unsigned long port_preserve;
+	unsigned long fw_blc1;
+	unsigned long fw_blc2;
+	unsigned long fw_blc3;
+	unsigned long fw_self;
+	unsigned long mem_mode;
+	unsigned long dsp_arb;
+}mode_data_plb_t;
+
+#endif

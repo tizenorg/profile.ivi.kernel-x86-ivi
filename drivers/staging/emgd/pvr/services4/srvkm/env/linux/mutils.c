@@ -123,3 +123,4 @@ PVRLinuxMUtilsInit(IMG_VOID)
 	PVRLinuxX86PATProbe();
 #endif
 }
+

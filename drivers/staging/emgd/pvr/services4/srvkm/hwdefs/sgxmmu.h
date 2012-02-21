@@ -72,3 +72,4 @@
 #define SGX_MMU_PTE_EDMPROTECT			(0x00000010UL)
 
 #endif
+

@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: pd_print.h
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -62,3 +62,4 @@ extern void pd_trace_exit(const char *funcname);
 #define PD_MODULE_EXIT(func, params) func params
 
 #endif
+

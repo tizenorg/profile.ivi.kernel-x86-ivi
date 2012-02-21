@@ -614,11 +614,11 @@ PVRSRV_ERROR PVRSRVOpenDCDeviceKM (PVRSRV_PER_PROCESS_DATA	*psPerProc,
 
 
 	psDeviceNode = (PVRSRV_DEVICE_NODE*)
-		List_PVRSRV_DEVICE_NODE_Any_va(psSysData->psDeviceNodeList,
-				MatchDeviceKM_AnyVaCb,
-				ui32DeviceID,
-				IMG_FALSE,
-				PVRSRV_DEVICE_CLASS_DISPLAY);
+			List_PVRSRV_DEVICE_NODE_Any_va(psSysData->psDeviceNodeList,
+										   MatchDeviceKM_AnyVaCb,
+										   ui32DeviceID,
+										   IMG_FALSE,
+										   PVRSRV_DEVICE_CLASS_DISPLAY);
 	if (!psDeviceNode)
 	{
 		PVR_DPF((PVR_DBG_ERROR,"PVRSRVOpenDCDeviceKM: no devnode matching index %d", ui32DeviceID));
@@ -630,9 +630,9 @@ PVRSRV_ERROR PVRSRVOpenDCDeviceKM (PVRSRV_PER_PROCESS_DATA	*psPerProc,
 
 
 	if(OSAllocMem(PVRSRV_OS_PAGEABLE_HEAP,
-				sizeof(*psDCPerContextInfo),
-				(IMG_VOID **)&psDCPerContextInfo, IMG_NULL,
-				"Display Class per Context Info") != PVRSRV_OK)
+				  sizeof(*psDCPerContextInfo),
+				  (IMG_VOID **)&psDCPerContextInfo, IMG_NULL,
+				  "Display Class per Context Info") != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR,"PVRSRVOpenDCDeviceKM: Failed psDCPerContextInfo alloc"));
 		return PVRSRV_ERROR_OUT_OF_MEMORY;
@@ -649,8 +649,8 @@ PVRSRV_ERROR PVRSRVOpenDCDeviceKM (PVRSRV_PER_PROCESS_DATA	*psPerProc,
 
 
 		eError = PVRSRVAllocSyncInfoKM(IMG_NULL,
-				(IMG_HANDLE)psDeviceNode->sDevMemoryInfo.pBMKernelContext,
-				&psDCInfo->sSystemBuffer.sDeviceClassBuffer.psKernelSyncInfo);
+									(IMG_HANDLE)psDeviceNode->sDevMemoryInfo.pBMKernelContext,
+									&psDCInfo->sSystemBuffer.sDeviceClassBuffer.psKernelSyncInfo);
 		if(eError != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR,"PVRSRVOpenDCDeviceKM: Failed sync info alloc"));
@@ -660,8 +660,8 @@ PVRSRV_ERROR PVRSRVOpenDCDeviceKM (PVRSRV_PER_PROCESS_DATA	*psPerProc,
 
 
 		eError = psDCInfo->psFuncTable->pfnOpenDCDevice(ui32DeviceID,
-				&psDCInfo->hExtDevice,
-				(PVRSRV_SYNC_DATA*)psDCInfo->sSystemBuffer.sDeviceClassBuffer.psKernelSyncInfo->psSyncDataMemInfoKM->pvLinAddrKM);
+	&psDCInfo->hExtDevice,
+								(PVRSRV_SYNC_DATA*)psDCInfo->sSystemBuffer.sDeviceClassBuffer.psKernelSyncInfo->psSyncDataMemInfoKM->pvLinAddrKM);
 		if(eError != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR,"PVRSRVOpenDCDeviceKM: Failed to open external DC device"));
@@ -675,10 +675,10 @@ PVRSRV_ERROR PVRSRVOpenDCDeviceKM (PVRSRV_PER_PROCESS_DATA	*psPerProc,
 
 	psDCPerContextInfo->psDCInfo = psDCInfo;
 	psDCPerContextInfo->hResItem = ResManRegisterRes(psPerProc->hResManContext,
-			RESMAN_TYPE_DISPLAYCLASS_DEVICE,
-			psDCPerContextInfo,
-			0,
-			CloseDCDeviceCallBack);
+													 RESMAN_TYPE_DISPLAYCLASS_DEVICE,
+													 psDCPerContextInfo,
+													 0,
+													 CloseDCDeviceCallBack);
 
 
 	*phDeviceKM = (IMG_HANDLE)psDCPerContextInfo;
@@ -1004,7 +1004,7 @@ PVRSRV_ERROR PVRSRVCreateDCSwapChainKM (PVRSRV_PER_PROCESS_DATA	*psPerProc,
 		psSwapChain = PVRSRVFindSharedDCSwapChainKM(psDCInfo, *pui32SwapChainID );
 		if( psSwapChain  )
 		{
-			PVR_DPF((PVR_DBG_ERROR,"PVRSRVCreateDCSwapChainKM: found query"));
+			PVR_DPF((PVR_DBG_MESSAGE,"PVRSRVCreateDCSwapChainKM: found query"));
 
 			eError = PVRSRVCreateDCSwapChainRefKM(psPerProc,
 												  psSwapChain,
@@ -1846,7 +1846,7 @@ PVRSRV_ERROR PVRSRVOpenBCDeviceKM (PVRSRV_PER_PROCESS_DATA	*psPerProc,
 		eError = OSAllocMem(PVRSRV_OS_PAGEABLE_HEAP,
 							  sizeof(PVRSRV_BC_BUFFER) * sBufferInfo.ui32BufferCount,
 							  (IMG_VOID **)&psBCInfo->psBuffer,
-							  IMG_NULL,
+						 	  IMG_NULL,
 							  "Array of Buffer Class Buffer");
 		if(eError != PVRSRV_OK)
 		{
@@ -1985,6 +1985,33 @@ PVRSRV_ERROR PVRSRVGetBCBufferKM (IMG_HANDLE hDeviceKM,
 	return PVRSRV_OK;
 }
 
+IMG_EXPORT
+PVRSRV_ERROR PVRSRVGetBCBufferIdFromTagKM(IMG_HANDLE hDeviceKM,
+								  IMG_UINT32 ui32BufferIndex,
+								  IMG_HANDLE pidx)
+{
+	PVRSRV_BUFFERCLASS_INFO *psBCInfo;
+	PVRSRV_ERROR 			eError = PVRSRV_ERROR_INVALID_PARAMS;
+
+	if(NULL == hDeviceKM)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"%s: Invalid parameters", __FUNCTION__));
+		return PVRSRV_ERROR_INVALID_PARAMS;
+	}
+	psBCInfo = BCDeviceHandleToBCInfo(hDeviceKM);
+
+	if (NULL != psBCInfo->psFuncTable->pfnGetBufferIdFromTag) {
+		eError = psBCInfo->psFuncTable->pfnGetBufferIdFromTag(psBCInfo->hExtDevice,
+				ui32BufferIndex,
+				pidx);
+		if(eError != PVRSRV_OK) {
+			PVR_DPF((PVR_DBG_ERROR,"%s : Failed to get BC Buffer Index", __FUNCTION__));
+			return PVRSRV_ERROR_GENERIC;
+		}
+	}
+
+	return PVRSRV_OK;
+}
 
 IMG_EXPORT
 IMG_BOOL PVRGetBufferClassJTable(PVRSRV_BC_BUFFER2SRV_KMJTABLE *psJTable)
@@ -1996,3 +2023,4 @@ IMG_BOOL PVRGetBufferClassJTable(PVRSRV_BC_BUFFER2SRV_KMJTABLE *psJTable)
 
 	return IMG_TRUE;
 }
+

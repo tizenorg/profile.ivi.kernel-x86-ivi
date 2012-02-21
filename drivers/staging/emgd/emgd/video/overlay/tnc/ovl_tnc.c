@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: ovl_tnc.c
- * $Revision: 1.24 $
+ * $Revision: 1.27 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -1480,10 +1480,19 @@ static unsigned int ovl_update_regs_tnc(
 		ovl_cache_tnc->command |= OVL_CMD_FIELD_MODE;
 		/* Need to enable FIELD SYNC OVERLAY FLIP in field mode. */
 		ovl_cache_tnc->command |= OVL_CMD_FIELD_SYNC_FLIP;
+		/* HSD# 203821 Mplayer outputs single buffer including both even and odd fields. */
 		if (flags & IGD_OVL_ALTER_FLIP_ODD) {
 			ovl_cache_tnc->command |= OVL_CMD_ACT_FLD1;
+			/* HSD# 203821 To display odd field, starts from first odd field. */
+			if (0 == src_rect->y1 & 1) {
+				src_rect->y1 += 1;
+			}
 		} else {
 			ovl_cache_tnc->command |= OVL_CMD_ACT_FLD0;
+			/* HSD# 203821 To display even field, starts from first even field. */
+			if (0 != src_rect->y1 & 1) {
+				src_rect->y1 += 1;
+			}
 		}
 	} else {
 		ovl_cache_tnc->command |= OVL_CMD_FRAME_MODE;
@@ -1715,10 +1724,19 @@ static unsigned int ovl_update_regs_tnc(
 			ovl_cache_regs->command |= OVL_CMD_FIELD_MODE;
 			/* enable FIELD SYNC OVERLAY FLIP in field mode. */
 			ovl_cache_regs->command |= OVL_CMD_FIELD_SYNC_FLIP;
+			/* HSD# 203821 Mplayer outputs single buffer including both even and odd fields. */
 			if (flags & IGD_OVL_ALTER_FLIP_ODD) {
 				ovl_cache_regs->command |= OVL_CMD_ACT_FLD1;
+				/* HSD: 203821 To display odd field, starts from first odd field. */
+				if (0 == (src_rect->y1 & 1)) {
+					src_rect->y1 += 1;
+				}
 			} else {
 				ovl_cache_regs->command |= OVL_CMD_ACT_FLD0;
+				/* HSD: 203821 To display even field, starts from first even field. */
+				if (0 != (src_rect->y1 & 1)) {
+					src_rect->y1 += 1;
+				}
 			}
 		} else {
 			ovl_cache_regs->command |= OVL_CMD_FRAME_MODE;

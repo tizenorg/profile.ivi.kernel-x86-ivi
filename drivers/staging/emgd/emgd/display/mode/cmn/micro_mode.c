@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: micro_mode.c
- * $Revision: 1.25 $
+ * $Revision: 1.30 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -61,6 +61,7 @@
 #include <general.h>
 #include <module_init.h>
 
+#include "drm_emgd_private.h"
 #include "match.h"
 #include "mode_dispatch.h"
 
@@ -78,6 +79,7 @@
 
 #define MODE_MIN(x, y) (x<y)?x:y
 
+extern emgd_drm_config_t config_drm;
 
 /*
  * NOTE: Do not add comma's to this dispatch table. The macro's
@@ -88,6 +90,19 @@ static dispatch_table_t mode_dispatch[] = {
 	DISPATCH_TNC( &mode_dispatch_tnc )
 	DISPATCH_END
 };
+
+
+
+/*
+ * Kernel Mode Setting (KMS) dispatch table
+ */
+static dispatch_table_t mode_kms_dispatch[] = {
+	DISPATCH_PLB( &mode_kms_dispatch_plb )
+	DISPATCH_TNC( &mode_kms_dispatch_tnc )
+	DISPATCH_END
+};
+
+
 
 /*
  * Do not malloc the context for two reasons.
@@ -341,6 +356,11 @@ static int mode_update_plane_pipe_ports(
 		} else {
 			/* If not reallocating, use back the offset in plane_fb_info */
 			fb_info->fb_base_offset = plane_fb_info->fb_base_offset;
+			 /* We must set the visible offset and screen pitch
+			  * to proper value if we use back the plane.
+			  */
+                        fb_info->visible_offset = fb_info->fb_base_offset;
+                        fb_info->screen_pitch = plane_fb_info->screen_pitch;
 		}
 
 		OS_MEMCPY(plane_fb_info, fb_info, sizeof(igd_framebuffer_info_t));
@@ -449,7 +469,7 @@ static int calculate_infoframes(
  *
  * @return 0
  */
-static int calculate_eld(
+int calculate_eld(
 	igd_display_port_t *port,
 	igd_timing_info_t *timing_info)
 {
@@ -854,6 +874,36 @@ static int configure_display(
 
 	EMGD_TRACE_EXIT;
 	return 0;
+}
+
+int igd_configure_display(
+	igd_driver_h driver_handle,
+	igd_display_h *display,
+	igd_display_info_t *pt_info,
+	igd_framebuffer_info_t *fb_info,
+	unsigned long dc,
+	int fb_index,
+	unsigned long flags)
+{
+	int p0, pn;
+	int ret;
+
+	EMGD_TRACE_ENTER;
+
+    /* Which ports do we loop through in the dc */
+    if (fb_index == 0) {
+        p0 = 0;
+        pn = 4;
+    } else {
+        p0 = 4;
+        pn = 7;
+    }
+
+	ret = configure_display(driver_handle, (igd_display_context_t *)display,
+		pt_info, fb_info, dc, p0, pn, flags);
+
+	EMGD_TRACE_EXIT;
+	return ret;
 }
 
 
@@ -1268,29 +1318,11 @@ int igd_alter_displays(
 	/* Attach the displays to the caller's pointers */
 	if (primary) {
 		*primary = context->mod_dispatch.dsp_display_list[IGD_DC_PRIMARY(dc)];
-#ifndef CONFIG_MICRO
-		if (*primary && context->mod_dispatch.alloc_queues) {
-			ret = context->mod_dispatch.alloc_queues(driver_handle,
-				(*primary)->pipe, flags);
-			if (ret) {
-				EMGD_ERROR("unable to allocate command queues");
-			}
-		}
-#endif
 	}
 	if (secondary) {
 		EMGD_DEBUG("Attaching display 1 to secondary pointer");
 		*secondary = context->mod_dispatch.
 			dsp_display_list[IGD_DC_SECONDARY(dc)];
-#ifndef CONFIG_MICRO
-		if (*secondary && context->mod_dispatch.alloc_queues) {
-			ret = context->mod_dispatch.alloc_queues(driver_handle,
-				(*secondary)->pipe, flags);
-			if (ret) {
-				EMGD_ERROR("unable to allocate command queues");
-			}
-		}
-#endif
 	}
 
 	/*
@@ -1489,7 +1521,8 @@ static int igd_get_EDID_block(igd_driver_h driver_handle,
 		port->ddc_dab,
 		128*block_number,
 		edid_ptr,
-		128);
+		128,
+		0);
 
 	if (ret) {
 		EMGD_TRACE_EXIT;
@@ -1636,6 +1669,15 @@ int mode_init(igd_context_t *context)
 		return -IGD_ERROR_NODEV;
 	}
 
+	/* Hook up KMS dispatch table */
+	mode_context->kms_dispatch = (mode_kms_dispatch_t *)
+		dispatch_acquire(context, mode_kms_dispatch);
+	if(!mode_context->kms_dispatch) {
+		EMGD_ERROR_EXIT("Unsupported Device");
+		return -IGD_ERROR_NODEV;
+	}
+
+
 	md = &context->mod_dispatch;
 
 	/* Set the fw_info to 0 */
@@ -1646,6 +1688,7 @@ int mode_init(igd_context_t *context)
 	dispatch->power_display = igd_power_display;
 	dispatch->query_mode_list = igd_query_mode_list;
 	dispatch->alter_displays = igd_alter_displays;
+	dispatch->igd_configure_display = igd_configure_display;
 
 	OPT_MICRO_CALL(full_mode_init(context, mode_context));
 
@@ -1678,11 +1721,19 @@ int mode_init(igd_context_t *context)
 	}
 
 	if (mode_context->dispatch->full && md->reg_get_mod_state) {
-		/* Save mode state */
 		module_state_h *state = NULL;
+
+		/* Save mode state for the regular case*/
 		unsigned long *flags = NULL;
-		md->reg_get_mod_state(REG_MODE_STATE, &state, &flags);
+		md->reg_get_mod_state(REG_MODE_STATE_REG, &state, &flags);
 		md->mode_save(context, state, flags);
+
+		/*Save mode state for the console case */
+		if (config_drm.init) {
+			state = NULL;
+			md->reg_get_mod_state(REG_MODE_STATE_CON, &state, &flags);
+			md->mode_save(context, state, flags);
+		}
 	}
 
 	/* Initialize the Display Configuration List */

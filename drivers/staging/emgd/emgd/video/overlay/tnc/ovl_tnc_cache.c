@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: ovl_tnc_cache.c
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -243,3 +243,4 @@ unsigned int get_cache_changes_tnc(
 
 	return cache_changed;
 }
+

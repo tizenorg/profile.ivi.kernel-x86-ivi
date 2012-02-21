@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: igd_debug.h
- * $Revision: 1.8 $
+ * $Revision: 1.10 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -52,6 +52,7 @@ typedef struct _igd_debug {
 		short dpd      ;
 		short video    ;
 		short pvr3dd   ;
+		short buf_class;
 		/* Global Debug Bits */
 		short trace    ;
 		short instr    ;

@@ -1,7 +1,7 @@
-/* -*- pse-c -*-
+/*
  *-----------------------------------------------------------------------------
  * Filename: micro_init_tnc.c
- * $Revision: 1.23 $
+ * $Revision: 1.25 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -106,11 +106,10 @@ extern int full_get_param_tnc(igd_context_t *context, unsigned long id,
 	unsigned long *value);
 extern void full_shutdown_tnc(igd_context_t *context);
 
-
 extern int query_2d_caps_hwhint_tnc(
-	         igd_context_t *context,
-	         unsigned long caps_val,
-	         unsigned long *status);
+  	         igd_context_t *context,
+  	         unsigned long caps_val,
+  	         unsigned long *status);
 
 static int query_tnc(igd_context_t *context,init_dispatch_t *dispatch,
 	os_pci_dev_t vga_dev, unsigned int *bus, unsigned int *slot,
@@ -206,6 +205,10 @@ static void gtt_shutdown_tnc(igd_context_t *context)
 
 		context->device_context.virt_gttadr = NULL;
 	}
+	if(context->device_context.scratch_page){
+		__free_page(context->device_context.scratch_page);
+		context->device_context.scratch_page = NULL;
+	}
 }
 
 
@@ -252,7 +255,9 @@ static void gtt_init_tnc(igd_context_t *context)
 	gtt_phys_start = pge_ctl & PAGE_MASK;
 
 	/* Create a scratch page to initialize empty GTT entries */
-	context->device_context.scratch_page = alloc_page(GFP_DMA32 | __GFP_ZERO);
+	if(NULL == context->device_context.scratch_page){
+		context->device_context.scratch_page = alloc_page(GFP_DMA32 | __GFP_ZERO);
+	}
 
 	/*
 	* Is pci_resource_start(dev->pdev, PSB_GATT_RESOURCE); the same
@@ -968,7 +973,7 @@ int get_revision_id_tnc(igd_context_t *context,
 	platform_context_tnc_t *platform_context;
 
 	EMGD_TRACE_ENTER;
-
+  	 
 	platform_context = (platform_context_tnc_t *)context->platform_context;
 
 	/* Read RID */
@@ -977,15 +982,15 @@ int get_revision_id_tnc(igd_context_t *context,
 		EMGD_ERROR_EXIT("Error occured reading RID");
 		return -IGD_ERROR_NODEV;
 	}
-
+  	 
 	if(OS_PCI_READ_CONFIG_8(sdvo_dev, PCI_RID,
 		&platform_context->tnc_dev3_rid)) {
 		EMGD_ERROR_EXIT("Error occured reading TNC SDVO RID");
 		return -IGD_ERROR_NODEV;
 	}
-
+  	 
 	EMGD_DEBUG(" rid = 0x%lx", context->device_context.rid);
-
+	
 	EMGD_TRACE_EXIT;
 	return 0;
 }

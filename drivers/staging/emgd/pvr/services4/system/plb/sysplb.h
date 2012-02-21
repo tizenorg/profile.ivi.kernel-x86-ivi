@@ -30,3 +30,4 @@
 #define SYS_SGX_CLOCK_SPEED_PLB                     (200000000)
 #define SYS_SGX_ACTIVE_POWER_LATENCY_MS_PLB         (1)
 #endif
+

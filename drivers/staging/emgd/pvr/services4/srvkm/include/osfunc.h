@@ -78,7 +78,7 @@ PVRSRV_ERROR OSUnReservePhys(IMG_VOID *pvCpuVAddr, IMG_SIZE_T ui32Bytes, IMG_UIN
 #if defined(SUPPORT_CPU_CACHED_BUFFERS)
 IMG_VOID OSFlushCPUCacheKM(IMG_VOID);
 IMG_VOID OSFlushCPUCacheRangeKM(IMG_VOID *pvRangeAddrStart,
-							IMG_VOID *pvRangeAddrEnd);
+						 	IMG_VOID *pvRangeAddrEnd);
 #endif
 
 #if defined(__linux__)
@@ -480,3 +480,4 @@ static inline IMG_BOOL OSInLISR(IMG_VOID unref__ *pvSysData)
 #endif
 
 #endif
+

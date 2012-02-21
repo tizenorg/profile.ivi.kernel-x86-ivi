@@ -17,13 +17,13 @@
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-#
+# THE SOFTWARE. 
+# 
 #
 
 MODULE		?= pvrsrvkm
 
-MODULE_CFLAGS =
+MODULE_CFLAGS = 
 
 ifeq ($(PVR_KBUILD_IN_KERNEL),1)
 # PVRKROOT is the relative path to the PVR sources.
@@ -43,7 +43,7 @@ INCLUDES = 	-I$(EURASIAROOT)/include4 \
 			-I$(EURASIAROOT)/services4/srvkm/bridged \
 			-I$(EURASIAROOT)/services4/system/include \
 			-I$(EURASIAROOT)/services4/system/plb \
-			-I$(EURASIAROOT)/services4/system/tnc
+			-I$(EURASIAROOT)/services4/system/tnc 
 
 
 SOURCES	      = $(KBUILDROOT)/srvkm/env/linux/osfunc.c \
@@ -82,7 +82,7 @@ SOURCES	     += $(KBUILDROOT)/srvkm/common/buffer_manager.c \
 				$(KBUILDROOT)/srvkm/common/lists.c \
 				$(KBUILDROOT)/srvkm/common/mem_debug.c
 
-INCLUDES += -I$(EURASIAROOT)/services4/srvkm/hwdefs
+INCLUDES += -I$(EURASIAROOT)/services4/srvkm/hwdefs 
 
 SYM_VERS_DEPS = $(EURASIAROOT)/tools/intern/debug/dbgdriv/linux
 
@@ -106,14 +106,14 @@ SOURCES		+= 	$(KBUILDROOT)/srvkm/bridged/sgx/bridged_sgx_bridge.c \
 				$(KBUILDROOT)/srvkm/devices/sgx/mmu.c \
 				$(KBUILDROOT)/srvkm/devices/sgx/pb.c
 
-else
+else  
 
 ifeq ($(SUPPORT_VGX), 1)
 
 INCLUDES 	+=	-I$(EURASIAROOT)/services4/srvkm/bridged/vgx \
 				-I$(EURASIAROOT)/services4/srvkm/devices/vgx
 
-#FIXME: We need to cerate a subset of vgxdefs.h from $(EURASIAROOT)/hwdefs
+#FIXME: We need to cerate a subset of vgxdefs.h from $(EURASIAROOT)/hwdefs 
 # and put it into srvkm/hwdefs for GPL compliance
 INCLUDES 	+=	-I$(EURASIAROOT)/hwdefs
 
