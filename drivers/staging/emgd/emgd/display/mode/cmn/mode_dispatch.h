@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: mode_dispatch.h
- * $Revision: 1.16 $
+ * $Revision: 1.17 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -240,6 +240,10 @@ typedef struct _mode_context {
 	unsigned long bunit_write_flush;
 	unsigned long disp_chicken_bits;
 
+	/* Flags specifying whether to notify user-space of a v-blank event.
+	 * This is used when synchronizing back-buffer blits */
+	bool batch_blits[IGD_MAX_PORTS];
+
 } mode_context_t;
 
 extern int full_mode_init(igd_context_t *context,
@@ -262,6 +266,8 @@ extern void swap_fb_cursor( void );
 
 extern int set_color_correct(igd_display_context_t *display,
 	const igd_range_attr_t *attr_to_set);
+
+extern void toggle_vblank_interrupts(bool status);
 
 extern mode_context_t mode_context[];
 

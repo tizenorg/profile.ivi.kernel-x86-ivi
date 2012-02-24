@@ -308,7 +308,7 @@ emgd_error_t bc_ts_uninit(IMG_UINT32 id) {
     if (psDevInfo == NULL){
         return (EMGD_ERROR_GENERIC);
     }
-  	EMGD_DEBUG("To Unregister the Device: ID - %lu, RefCount - %lu, idx - %lu",
+	EMGD_DEBUG("To Unregister the Device: ID - %lu, RefCount - %lu, idx - %lu",
   		psDevInfo->Device_ID,
   		psDevInfo->ulRefCount,
   		psDevInfo->sBufferInfo.ui32BufferDeviceID);

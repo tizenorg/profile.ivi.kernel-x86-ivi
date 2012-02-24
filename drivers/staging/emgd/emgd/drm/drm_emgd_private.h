@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: drm_emgd_private.h
- * $Revision: 1.20 $
+ * $Revision: 1.21 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -161,6 +161,9 @@ typedef struct _drm_emgd_private {
 	struct drm_device *ddev;
 	bool               kms_enabled;
 	int qb_seamless; /* Store the state of seamless/quickboot */
+
+	/* The fd of the drm master - used to send vblank events to userspace */
+	struct drm_file   *drm_master_fd;
 } drm_emgd_priv_t;
 
 

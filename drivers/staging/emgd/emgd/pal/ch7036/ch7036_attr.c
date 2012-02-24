@@ -927,7 +927,3 @@ void ch7036_redo_edid_if_needed(ch7036_device_context_t *p_ctx, void* p_edidblk)
 	}
 
 }
-
-
-
-

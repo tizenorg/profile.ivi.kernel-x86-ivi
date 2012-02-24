@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: igd_ovl.h
- * $Revision: 1.13 $
+ * $Revision: 1.14 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -83,6 +83,10 @@
 #define IGD_OVL_FORCE_USE_DISP   0x10
 #define IGD_OVL_OSD_ON_SPRITEC   0x20
 #define IGD_OVL_GET_SURFACE_DATA 0x50
+
+/* Note: VEXT: Keep this bitwise! */
+#define IGD_OVL_ALTER_VEXT_PRIMARY			0x100
+#define IGD_OVL_ALTER_VEXT_SECONDARY		0x200
 /*! @} */
 
 /* These are not actually used by any IAL
@@ -293,6 +297,7 @@ typedef struct _ovl_um_context {
 	/* OVLADD add additional overlay initialization parameters here. */
 
 	int in_dihclone;
+	int vext;
 	int chiptype;
 	void *dispatch; /* can't make this igd_dispatch_t due to circular reference */
 	unsigned long dc;

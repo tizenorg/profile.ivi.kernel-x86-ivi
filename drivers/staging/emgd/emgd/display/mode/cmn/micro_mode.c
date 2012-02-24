@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: micro_mode.c
- * $Revision: 1.30 $
+ * $Revision: 1.31 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -1612,6 +1612,8 @@ int mode_init(igd_context_t *context)
 {
 	igd_dispatch_t     *dispatch = &context->dispatch;
 	inter_module_dispatch_t *md;
+	int port_num;
+	int i;
 
 	EMGD_TRACE_ENTER;
 
@@ -1660,6 +1662,13 @@ int mode_init(igd_context_t *context)
 	mode_context->disp_chicken_bits =
 		context->mod_dispatch.init_params->disp_chicken_bits;
 #endif
+
+	for (i=0; i < IGD_MAX_PORTS; i++) {
+		port_num = context->mod_dispatch.init_params->display_params[i].port_number;
+		mode_context->batch_blits[port_num - 1] =
+			(context->mod_dispatch.init_params->display_params[i].flags
+			& IGD_DISPLAY_BATCH_BLITS);
+	}
 
 	/* Get mode's dispatch table */
 	mode_context->dispatch = (mode_dispatch_t *)
@@ -1736,6 +1745,7 @@ int mode_init(igd_context_t *context)
 		}
 	}
 
+	toggle_vblank_interrupts(TRUE);
 	/* Initialize the Display Configuration List */
 	/* FIXME: This should be done in dsp init */
 	dsp_dc_init(context);

@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: displayid.c
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -772,6 +772,55 @@ void displayid_enable_std_timings(pd_timing_t *tt1, unsigned char *db_data,
 	}
 }
 
+static void displayid_parse_orientation_info (unsigned char orientation_blob,
+	igd_DID_rotation_info_t * rotation_info) {
+
+	unsigned int def_orientation = DEFAULT_ORIENTATION(orientation_blob);
+	unsigned int zero_pixel = ZERO_PIXEL(orientation_blob);
+	unsigned int scan_dir = SCAN_DIRECTION(orientation_blob);
+
+	/* Start with no rotation */
+	rotation_info->rotation = 0;
+	rotation_info->flip = 0;
+
+
+	if (def_orientation >= DEF_ORIENTATION_UNKNOWN) {
+		/* Display ID blob is corrupted or unknown configuration set */
+		EMGD_DEBUG("DisplayID: Unknown default orientation value: %d",
+			def_orientation);
+		return;
+	}
+
+	if (scan_dir == SCAN_DIRECTION_LONG) {
+		if (def_orientation == DEF_ORIENTATION_PORTRAIT) {
+			rotation_info->flip =
+				(zero_pixel == ZP_UPPER_LEFT || zero_pixel == ZP_LOWER_RIGHT);
+			rotation_info->rotation += 90;
+		} else { /* Landscape */
+			rotation_info->flip =
+				(zero_pixel == ZP_UPPER_RIGHT || zero_pixel == ZP_LOWER_LEFT);
+		}
+
+	} else if (scan_dir == SCAN_DIRECTION_SHORT) {
+		if (def_orientation == DEF_ORIENTATION_PORTRAIT) {
+			rotation_info->flip =
+				(zero_pixel == ZP_UPPER_RIGHT || zero_pixel == ZP_LOWER_LEFT);
+		}
+		else { /* Landscape */
+			rotation_info->flip =
+				(zero_pixel == ZP_UPPER_LEFT || zero_pixel == ZP_LOWER_RIGHT);
+			rotation_info->rotation += 90;
+		}
+	} else { /* Unknown scan direction */
+		EMGD_DEBUG("DisplayID: Unknown scan direction value: %d", scan_dir);
+		return;
+	}
+
+	/* zero pixel is in the lower-half: need to rotate by 180 degs */
+	if (zero_pixel == ZP_LOWER_LEFT || zero_pixel == ZP_LOWER_RIGHT)
+		rotation_info->rotation += 180;
+}
+
 /*!
  * Function to parse DisplayID
  *
@@ -939,6 +988,8 @@ int displayid_parse(
 				did->attr_list[did->num_attrs].flags=PD_ATTR_FLAG_VALUE_CHANGED;
 				did->attr_list[did->num_attrs++].current_value =
 					(did->display_dev.display_color_depth+1)*3;
+				displayid_parse_orientation_info(did->display_dev.orientation,
+												&(did->rotation_info));
 				break;
 
 			case DATABLOCK_LVDS_INTERFACE:

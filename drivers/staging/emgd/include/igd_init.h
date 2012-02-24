@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: igd_init.h
- * $Revision: 1.14 $
+ * $Revision: 1.15 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -436,6 +436,7 @@ typedef struct _igd_display_params {
 #define IGD_DISPLAY_MULTI_DVO     0x00000002  /* igd_param_t.display_flags  */
 #define IGD_DISPLAY_DETECT        0x00000004  /* igd_param_t.display_flags  */
 #define IGD_DISPLAY_FB_BLEND_OVL  0x00000008  /* igd_param_t.display_flags  */
+#define IGD_DISPLAY_BATCH_BLITS   0x00000010
 	/*! @brief enable dynamic blending of display frame buffer with overlay */
 
 
@@ -640,6 +641,8 @@ typedef struct _igd_config_info {
 	unsigned long stolen_memory_base_virt;
 	/* pixel format that matches the bpp that was passed in */
 	unsigned long pixel_format;
+	/* port-specific rotation read from DisplayID */
+	igd_DID_rotation_info_t displayid_rotation[IGD_MAX_PORTS];
 } igd_config_info_t;
 
 

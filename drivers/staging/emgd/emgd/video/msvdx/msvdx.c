@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: msvdx.c
- * $Revision: 1.25 $
+ * $Revision: 1.26 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -106,8 +106,7 @@ unsigned long save_msg_cnt;
  */
 unsigned long jiffies_at_last_dequeue = 0;
 
-int mtx_message_complete = 1;
-int msvdx_dequeue_send(igd_context_t *context) 
+int msvdx_dequeue_send(igd_context_t *context)
 {
     platform_context_plb_t *platform;
     struct msvdx_cmd_queue *msvdx_cmd = NULL;
@@ -179,12 +178,32 @@ int process_mtx_messages(igd_context_t *context,
 		unsigned long fence)
 {
 	unsigned char *mmio = context->device_context.virt_mmadr;
+	platform_context_plb_t *platform;
 	unsigned long submit_size;
 	unsigned long submit_id;
 	unsigned int msg;
 	unsigned long skipped_msg_cnt;
+    unsigned long msvdx_status;
 
 	EMGD_TRACE_ENTER;
+
+	platform = (platform_context_plb_t *)context->platform_context;
+
+    // message processing is about to start .. set the flag=bit 2
+    spin_lock(&platform->msvdx_init_plb);
+    platform->msvdx_status = platform->msvdx_status | 2;
+    msvdx_status = platform->msvdx_status;
+    spin_unlock(&platform->msvdx_init_plb);
+
+	if (msvdx_status & 1)
+	{
+	    // OOPS: reset/fw load in progress ... return from here
+        spin_lock(&platform->msvdx_init_plb);
+        platform->msvdx_status = platform->msvdx_status & ~2;  // unset message processing status.
+        spin_unlock(&platform->msvdx_init_plb);
+
+        return 0;
+    }
 
 	save_msg = mtx_msgs;
 	save_msg_cnt = mtx_msg_cnt;
@@ -202,7 +221,7 @@ int process_mtx_messages(igd_context_t *context,
 		}
 
 		/* reuse the sgx phy PD */
-		mtx_msgs[1] = EMGD_READ32(mmio + PSB_CR_BIF_DIR_LIST_BASE1) | 1;
+		mtx_msgs[1] = platform->psb_cr_bif_dir_list_base1 | 1;
 
 		/*
 		 * If the send returns busy, then retry sending the message, otherwise
@@ -220,6 +239,11 @@ int process_mtx_messages(igd_context_t *context,
 			/* Should this wait a bit? */
 		}
 	}
+
+    // We are done processing messages .. unset the flag
+	spin_lock(&platform->msvdx_init_plb);
+    platform->msvdx_status = platform->msvdx_status & ~2;
+    spin_unlock(&platform->msvdx_init_plb);
 
 	EMGD_TRACE_EXIT;
 	if (skipped_msg_cnt == mtx_msg_cnt) {
@@ -253,7 +277,6 @@ int send_to_mtx(igd_context_t *context, unsigned long *msg)
 	int padding_flag = 0;
 
 	EMGD_TRACE_ENTER;
-	mtx_message_complete = 0;
 
 	/* Enable all clocks before touching VEC local ram */
 	EMGD_WRITE32(PSB_CLK_ENABLE_ALL, mmio + PSB_MSVDX_MAN_CLK_ENABLE);
@@ -448,13 +471,12 @@ void msvdx_mtx_interrupt_plb(igd_context_t *context)
 
 			EMGD_WRITE32(read_idx, mmio + PSB_MSVDX_COMMS_TO_HOST_RD_INDEX);
 
-			mtx_message_complete = 1;
 			/* Check message ID */
 			switch ((msg[0] & 0x0000ff00) >> 8) {
 			case IGD_MSGID_CMD_FAILED:
 				fence  = msg[1]; /* Fence value */
 				status = msg[2]; /* Failed IRQ Status */
-				printk(KERN_ERR "MSGID_CMD_FAILED, status = 0x%lx, "
+				printk(KERN_ERR "MSGID_CMD, status = 0x%lx, "
 					"fence = 0x%lx\n", status, fence);
 
 				/* This message from MTX is for informational purposes and
@@ -527,7 +549,7 @@ int msvdx_poll_mtx_irq(igd_context_t *context)
 	while (poll_cnt) {
 		status = EMGD_READ32(mmio + PSB_MSVDX_INTERRUPT_STATUS);
 		if (status & MSVDX_MMU_FAULT_IRQ_MASK) {
-			EMGD_ERROR("MMU FAULT Interrupt");
+			EMGD_DEBUG("MMU FAULT Interrupt");
 			/* Pause the MMU */
 			EMGD_WRITE32(MSVDX_MMU_CONTROL0_CR_MMU_PAUSE_MASK,
 					mmio + PSB_MSVDX_MMU_CONTROL0);
@@ -624,7 +646,7 @@ IMG_BOOL msvdx_mtx_isr(IMG_VOID *pvData)
     igd_context_t *context;
 	unsigned char *mmio;
 	platform_context_plb_t *platform;
-    unsigned long msvdx_stat;
+    unsigned long msvdx_stat,temp;
 
 	//EMGD_TRACE_ENTER;
     dev = (struct drm_device *)pvData;
@@ -638,7 +660,16 @@ IMG_BOOL msvdx_mtx_isr(IMG_VOID *pvData)
 	//printk(KERN_ALERT "MSVDX_IRQ\n");
 
 	if (msvdx_stat & MSVDX_MMU_FAULT_IRQ_MASK) {
-		printk(KERN_ERR "MMU FAULT Interrupt\n");
+		EMGD_DEBUG(KERN_ERR "MMU FAULT Interrupt\n");
+		EMGD_DEBUG(KERN_ERR "INTERRUPT_STATUS Register=0x%x\n",msvdx_stat);
+		temp = EMGD_READ32(mmio + PSB_MSVDX_MMU_DIR_LIST_BASE0);
+        EMGD_DEBUG(KERN_ERR "MMU_DIR_LIST_BASE0 = 0x%x\n", temp);
+		temp = EMGD_READ32(mmio + PSB_MSVDX_MMU_DIR_LIST_BASE1);
+		EMGD_DEBUG(KERN_ERR "MMU_DIR_LIST_BASE1 = 0x%x\n", temp);
+		temp = EMGD_READ32(mmio + PSB_MSVDX_MMU_DIR_LIST_BASE2);
+		EMGD_DEBUG(KERN_ERR "MMU_DIR_LIST_BASE2 = 0x%x\n", temp);
+		temp = EMGD_READ32(mmio + PSB_MSVDX_MMU_DIR_LIST_BASE3);
+		EMGD_DEBUG(KERN_ERR "MMU_DIR_LIST_BASE3 = 0x%x\n", temp);
 		/* Pause the MMU */
 		EMGD_WRITE32(MSVDX_MMU_CONTROL0_CR_MMU_PAUSE_MASK,
 				mmio + PSB_MSVDX_MMU_CONTROL0);
@@ -647,7 +678,7 @@ IMG_BOOL msvdx_mtx_isr(IMG_VOID *pvData)
 		EMGD_WRITE32(MSVDX_MMU_FAULT_IRQ_MASK,
 				mmio + PSB_MSVDX_INTERRUPT_CLEAR);
 
-		printk(KERN_INFO "FAULT ADDR=%x\n", EMGD_READ32(mmio + PSB_MSVDX_MMU_STATUS));
+		//printk(KERN_INFO "FAULT ADDR=%x\n", EMGD_READ32(mmio + PSB_MSVDX_MMU_STATUS));
 		platform->msvdx_needs_reset = 1;
 		DUMP_ALL_MESSAGES(context);
 		//return 0;

@@ -497,6 +497,3 @@ void ch7036_dump( char *s, int size, unsigned char *regdata)
 
     return;
 }
-
-
-

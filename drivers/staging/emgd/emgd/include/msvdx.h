@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: msvdx.h
- * $Revision: 1.19 $
+ * $Revision: 1.20 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -51,14 +51,28 @@ extern unsigned long _msvdx_base;
 #define PSB_MSVDX_MTX_RAM_ACCESS_CONTROL          (MSVDX_BASE + 0x0108)
 #define PSB_MSVDX_MTX_RAM_ACCESS_STATUS           (MSVDX_BASE + 0x010c)
 #define PSB_MSVDX_MTX_SOFT_RESET                  (MSVDX_BASE + 0x0200)
+#define PSB_MSVDX_MTX_CORE_CR_MTX_SYSC_TIMERDIV_OFFSET (MSVDX_BASE + 0x0208)
+
+#define PSB_MSVDX_MTX_CORE_CR_MTX_SYSC_CDMAC      (MSVDX_BASE + 0x0340)
+#define PSB_MSVDX_MTX_CORE_CR_MTX_SYSC_CDMAA      (MSVDX_BASE + 0x0344)
+#define PSB_MSVDX_MTX_CORE_CR_MTX_SYSC_CDMAS0     (MSVDX_BASE + 0x0348)
+#define PSB_MSVDX_MTX_CORE_CR_MTX_SYSC_CDMAT      (MSVDX_BASE + 0x0350)
+
+#define PSB_MSVDX_DMAC_SETUP                      (MSVDX_BASE + 0x0500)
+#define PSB_MSVDX_DMAC_COUNT                      (MSVDX_BASE + 0x0504)
+#define PSB_MSVDX_DMAC_PERIPH                     (MSVDX_BASE + 0x0508)
+#define PSB_MSVDX_DMAC_IRQ_STAT                   (MSVDX_BASE + 0x050c)
+#define PSB_MSVDX_DMAC_PERIPHERAL_ADDR            (MSVDX_BASE + 0x0514)
 /* MSVDX registers */
 #define PSB_MSVDX_CONTROL                         (MSVDX_BASE + 0x0600)
 #define PSB_MSVDX_INTERRUPT_STATUS                (MSVDX_BASE + 0x0608)
 #define PSB_MSVDX_INTERRUPT_CLEAR                 (MSVDX_BASE + 0x060c)
 #define PSB_MSVDX_HOST_INTERRUPT_ENABLE           (MSVDX_BASE + 0x0610)
 #define PSB_MSVDX_MAN_CLK_ENABLE                  (MSVDX_BASE + 0x0620)
+#define PSB_MSVDX_CORE_REV                        (MSVDX_BASE + 0x0640)
 #define PSB_MSVDX_MMU_CONTROL0                    (MSVDX_BASE + 0x0680)
 #define PSB_MSVDX_MMU_CONTROL1                    (MSVDX_BASE + 0x0684)
+#define PSB_MSVDX_MMU_BANK_INDEX                  (MSVDX_BASE + 0x0688)
 #define PSB_MSVDX_MMU_STATUS                      (MSVDX_BASE + 0x068c)
 #define PSB_MSVDX_MMU_DIR_LIST_BASE0              (MSVDX_BASE + 0x0694)
 #define PSB_MSVDX_MMU_DIR_LIST_BASE1              (MSVDX_BASE + 0x0698)
@@ -228,8 +242,10 @@ typedef struct msvdx_fw_ {
 
 int process_video_decode_plb(igd_context_t *context, unsigned long offset, void *virt_addr, unsigned long *fence_id);
 int msvdx_query_plb(igd_context_t *context, unsigned long *status);
+int msvdx_preinit_mmu(unsigned long hmemcxt);
 int msvdx_init_plb(unsigned long base0, unsigned long base1,
-		           void *msvdx_fw, unsigned long msvdx_fw_size, int reset_flag);
+           void *msvdx_fw, unsigned long msvdx_fw_size, int reset_flag);
+int msvdx_init_compositor_mmu(unsigned long mmu_base);
 int msvdx_uninit_plb(igd_context_t *context);
 int msvdx_close_context(igd_context_t *context);
 int msvdx_create_context(igd_context_t *context);

@@ -425,7 +425,7 @@ int BC_CreateBuffers(BC_DEVINFO *psDevInfo, bc_buf_params_t *p, IMG_BOOL is_cont
 
 	if (p->count < 1) {
   		return -1;
-  	}
+	}
 
     if (p->width <= 1 || p->height <= 1) {
         return -1;
@@ -474,7 +474,7 @@ int BC_CreateBuffers(BC_DEVINFO *psDevInfo, bc_buf_params_t *p, IMG_BOOL is_cont
     	if (psDevInfo->sBufferInfo.ui32Width != p->width
     		|| psDevInfo->sBufferInfo.ui32Height != p->height
     		|| psDevInfo->sBufferInfo.ui32ByteStride != p->stride
-    		|| psDevInfo->sBufferInfo.pixelformat != pixel_fmt
+		|| psDevInfo->sBufferInfo.pixelformat != pixel_fmt
     		|| psDevInfo->buf_type != p->type) {
 
 			EMGD_ERROR("Request invalid buffers");

@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: displayid.h
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -378,6 +378,24 @@ typedef struct _type_std {
 #define CP_DTCP              0x2
 #define CP_DPCP              0x3  /* Display port content protection */
 
+/* Display physical orientation information */
+#define DEFAULT_ORIENTATION(a) 		((a & 0xC0) >> 6)
+#define ZERO_PIXEL(a) 				((a & 0x0C) >> 2)
+#define SCAN_DIRECTION(a) 			(a & 0x03)
+
+#define SCAN_DIRECTION_LONG 		0x1 /* Display scan direction (2 bits) */
+#define SCAN_DIRECTION_SHORT 		0x2
+
+#define ZP_UPPER_LEFT 				0x0 /* Zero pixel position (2 bits) */
+#define ZP_UPPER_RIGHT 				0x1
+#define ZP_LOWER_LEFT 				0x2
+#define ZP_LOWER_RIGHT 				0x3
+
+#define DEF_ORIENTATION_LANDSCAPE 	0x0 /* Default orientation (2 bits) */
+#define DEF_ORIENTATION_PORTRAIT 	0x1
+#define DEF_ORIENTATION_UNKNOWN 	0x2
+
+
 typedef struct _display_device {
 	unsigned char  tag;                /* data block type */
 	unsigned char  revision:3;
@@ -619,13 +637,14 @@ typedef struct _displayid {
 	pd_attr_t       attr_list[DISPLAYID_MAX_ATTRS];
 
 #ifndef CONFIG_MICRO
-	productid_t      productid;          /* product id block */
-	color_char_t     color_char;         /* color characteristics block */
-	serial_number_t  serial_num;         /* serial number ASCII string */
-	general_string_t general_string;     /* general purpose ASCII string */
-	transfer_char_t  transfer_char;      /* transfer characteristics block */
-	stereo_intf_t    stereo_intf;        /* stereo display interface */
-	vendor_t         vendor;             /* vendor specific data */
+	productid_t      		productid;       /* product id block */
+	color_char_t     		color_char;      /* color characteristics block */
+	serial_number_t  		serial_num;      /* serial number ASCII string */
+	general_string_t 		general_string;  /* general purpose ASCII string */
+	transfer_char_t  		transfer_char;   /* transfer characteristics block */
+	stereo_intf_t    		stereo_intf;     /* stereo display interface */
+	vendor_t 				vendor;          /* vendor specific data */
+	igd_DID_rotation_info_t rotation_info;   /* display orientation data */
 #endif
 } displayid_t;
 

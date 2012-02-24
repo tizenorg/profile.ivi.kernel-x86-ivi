@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: igd_pd.h
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -426,6 +426,11 @@
 #define PD_MAKE_ATTR(id, type, name, flags, def, cur, a, b, c) \
 	{id, type, name, flags, def, cur, a, b, c}
 #endif
+
+typedef struct _igd_DID_rotation_info_t {
+	int rotation;
+	int flip;
+} igd_DID_rotation_info_t;
 
 /* IMP NOTE: All below structures should be with same size.
  *         igd_attr_t            : General attribute structure

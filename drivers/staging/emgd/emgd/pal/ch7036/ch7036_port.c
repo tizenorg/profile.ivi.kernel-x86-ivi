@@ -1162,4 +1162,3 @@ int ch7036_initialize_device(ch7036_device_context_t *p_ctx)
 
 	return PD_SUCCESS;
 }
-

@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: emgd_drm.h
- * $Revision: 1.59 $
+ * $Revision: 1.60 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -56,6 +56,7 @@ enum {
 #define PSB_ENGINE_TA 3
 #define PSB_ENGINE_HPRAST 4
 #define TNC_ENGINE_ENCODE 5
+#define PSB_ENGINE_COMPOSITOR_MMU 6
 
 
 /* OEM flags for buffer allocation through the PVR2DCreateFlipChain */
@@ -410,6 +411,11 @@ typedef struct _kdrm_video_flush_tlb {
 	int engine;
 } emgd_drm_video_flush_tlb_t;
 
+typedef struct _kdrm_preinit_mmu {
+	int rtn;
+	unsigned long memcontext;
+} emgd_drm_preinit_mmu_t;
+
 typedef struct _kdrm_get_display_info {
 	int rtn; /* (UP) - return value of HAL procedure */
 	igd_display_info_t primary_pt_info; /* (UP) */
@@ -736,6 +742,7 @@ typedef struct _kdrm_bc_ts {
 #define DRM_IGD_ALTER_OVL2          0x2f
 #define DRM_IGD_GET_CHIPSET_INFO    0x30
 #define DRM_IGD_GET_DISPLAY_INFO    0x38
+#define DRM_IGD_PREINIT_MMU         0x39
 /* For Buffer Class of Texture Stream */
 #define DRM_IGD_BC_TS_INIT			0x40
 #define DRM_IGD_BC_TS_UNINIT		0x41
@@ -876,6 +883,8 @@ typedef struct _kdrm_bc_ts {
 		emgd_drm_video_get_info_t)
 #define DRM_IOCTL_IGD_VIDEO_FLUSH_TLB  DRM_IOR(DRM_IGD_VIDEO_FLUSH_TLB + BASE,\
 		emgd_drm_video_flush_tlb_t)
+#define DRM_IOCTL_IGD_PREINIT_MMU  DRM_IOR(DRM_IGD_PREINIT_MMU + BASE,\
+		emgd_drm_preinit_mmu_t)
 #define DRM_IOCTL_IGD_GET_DISPLAY_INFO  DRM_IOR(DRM_IGD_GET_DISPLAY_INFO + BASE,\
 		emgd_drm_get_display_info_t)
 /* For Buffer Class of Texture Stream */

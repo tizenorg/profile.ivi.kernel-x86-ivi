@@ -830,6 +830,7 @@ static PVRSRV_ERROR DestroyDCSwapChain(PVRSRV_DC_SWAPCHAIN *psSwapChain)
 	PVRSRV_ERROR				eError;
 	PVRSRV_DISPLAYCLASS_INFO	*psDCInfo = psSwapChain->psDCInfo;
 	IMG_UINT32 i;
+	int timeout = 30;
 
 
 
@@ -856,8 +857,14 @@ static PVRSRV_ERROR DestroyDCSwapChain(PVRSRV_DC_SWAPCHAIN *psSwapChain)
 		}
 	}
 
-
-	PVRSRVDestroyCommandQueueKM(psSwapChain->psQueue);
+    do
+    {
+        eError = PVRSRVDestroyCommandQueueKM(psSwapChain->psQueue);
+    } while (eError != PVRSRV_OK && (timeout-- > 0));
+	if (eError != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"DestroyDCSwapChainCallBack: Failed to destroy command queue"));
+	}
 
 
 	eError = psDCInfo->psFuncTable->pfnDestroyDCSwapChain(psDCInfo->hExtDevice,
@@ -970,6 +977,7 @@ PVRSRV_ERROR PVRSRVCreateDCSwapChainKM (PVRSRV_PER_PROCESS_DATA	*psPerProc,
 	PVRSRV_ERROR eError;
 	IMG_UINT32 i;
 	DISPLAY_INFO sDisplayInfo;
+	int timeout = 30;
 
 
 	if(!hDeviceKM
@@ -1032,10 +1040,15 @@ PVRSRV_ERROR PVRSRVCreateDCSwapChainKM (PVRSRV_PER_PROCESS_DATA	*psPerProc,
 		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
 		goto ErrorExit;
 	}
+
 	OSMemSet (psSwapChain, 0, sizeof(PVRSRV_DC_SWAPCHAIN));
 
+    // try few times to get the lock
+    do
+    {
+        eError = PVRSRVCreateCommandQueueKM(1024, &psQueue);
+    } while (eError != PVRSRV_OK && (timeout-- > 0));
 
-	eError = PVRSRVCreateCommandQueueKM(1024, &psQueue);
 	if(eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR,"PVRSRVCreateDCSwapChainKM: Failed to create CmdQueue"));

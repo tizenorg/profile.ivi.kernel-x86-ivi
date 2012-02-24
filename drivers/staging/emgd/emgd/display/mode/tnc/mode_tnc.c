@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: mode_tnc.c
- * $Revision: 1.32 $
+ * $Revision: 1.33 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -100,6 +100,7 @@ int check_flip_pending_tnc(unsigned char *mmio, unsigned long pipe_status_reg);
 
 /* KMS callback from emgd_crtc.c */
 int crtc_pageflip_handler(struct drm_device *dev, int port);
+void notify_userspace_vblank(struct drm_device *dev, int port);
 
 /*!
  * @addtogroup display_group
@@ -1459,7 +1460,7 @@ static int get_port_info_tnc(void)
  */
 static irqreturn_t interrupt_handler_tnc(int irq, void* mmio)
 {
-	unsigned long iir;
+	unsigned long iir, iir_dev3;
 	unsigned long lock_flags;
 	unsigned long tmp;
 	unsigned long port2_interrupt = 0;
@@ -1468,15 +1469,15 @@ static irqreturn_t interrupt_handler_tnc(int irq, void* mmio)
 
 	EMGD_TRACE_ENTER;
 
-
 	iir = EMGD_READ32(EMGD_MMIO(mmio) + IIR);
+	iir_dev3 = READ_MMIO_REG_TNC(IGD_PORT_SDVO, IIR);
 
 
 	/* Detect whether a vblank interrupt occured, and if so, what type of
 	 * processing is needed (do the simple processing now):
 	 */
 	spin_lock_irqsave(&vblank_lock_tnc, lock_flags);
-	if ((port2_interrupt = iir & BIT5 /* Port 2/Pipe A/SDVO-B */) != 0) {
+	if ((port2_interrupt = iir_dev3 & BIT5 /* Port 2/Pipe A/SDVO-B */) != 0) {
 		if ((tmp = vblank_interrupt_state & VBLANK_INT4_PORT2) != 0) {
 			/* Record "answers" for all requestors: */
 			vblank_interrupt_state |= VBINT_ANSWER4_REQUEST(tmp);
@@ -1500,10 +1501,21 @@ static irqreturn_t interrupt_handler_tnc(int irq, void* mmio)
 	if (port4_interrupt) {
 		crtc_pageflip_handler(mode_context->context->drm_dev,
 			IGD_PORT_TYPE_LVDS);
+
+		if (mode_context->batch_blits[IGD_PORT_TYPE_LVDS - 1]) {
+			notify_userspace_vblank(mode_context->context->drm_dev,
+				IGD_PORT_TYPE_LVDS);
+		}
 	} else if (port2_interrupt) {
 		crtc_pageflip_handler(mode_context->context->drm_dev,
 			IGD_PORT_TYPE_SDVOB);
+
+		if (mode_context->batch_blits[IGD_PORT_TYPE_SDVOB - 1]) {
+			notify_userspace_vblank(mode_context->context->drm_dev,
+				IGD_PORT_TYPE_SDVOB);
+		}
 	}
+
 
 	/* Notify KMS Hander:  The assignment of CRTC=0 for PIPE A and
 	 * CRTC=1 for PIPE B is not correct if somehow PIPE A is disabled.
@@ -1544,6 +1556,14 @@ static irqreturn_t interrupt_handler_tnc(int irq, void* mmio)
 			tmp = tmp & (~PIPESTAT_STS_BITS);
 			EMGD_WRITE32((tmp | VBLANK_STS), EMGD_MMIO(mmio) + PIPEB_STAT);
 			EMGD_READ32(EMGD_MMIO(mmio) + PIPEB_STAT);
+
+			tmp = READ_MMIO_REG_TNC(IGD_PORT_SDVO, PIPEB_STAT);
+			/* Clear bits that are written by a 1, so we don't clear them: */
+			tmp = tmp & (~PIPESTAT_STS_BITS);
+			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, PIPEB_STAT,
+					(tmp | VBLANK_STS));
+			READ_MMIO_REG_TNC(IGD_PORT_SDVO, PIPEB_STAT);
+			tmp = READ_MMIO_REG_TNC(IGD_PORT_LVDS, PIPEB_STAT);
 		}
 		if (port4_interrupt) {
 			tmp = EMGD_READ32(EMGD_MMIO(mmio) + PIPEA_STAT);
@@ -1554,6 +1574,7 @@ static irqreturn_t interrupt_handler_tnc(int irq, void* mmio)
 
 		/* Clear the corresponding bits in the IIR register: */
 		EMGD_WRITE32((port2_interrupt | port4_interrupt), EMGD_MMIO(mmio)+IIR);
+		WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, IIR, port2_interrupt);
 
 
 		EMGD_DEBUG("EXIT--IRQ_HANDLED");
@@ -1639,6 +1660,30 @@ int request_vblanks_tnc(unsigned long request_for, unsigned char *mmio)
 			/* 4. Set the Interrupt Enable Register bit for this pipe: */
 			tmp = EMGD_READ32(EMGD_MMIO(mmio) + IER);
 			EMGD_WRITE32((tmp | BIT5), EMGD_MMIO(mmio) + IER);
+
+			/* NOW LET'S PROGRAM DEVICE 3 */
+
+			tmp = READ_MMIO_REG_TNC(IGD_PORT_SDVO, PIPEB_STAT);
+			/* Clear bits that are written by a 1, so we don't clear them: */
+			tmp = tmp & (~PIPESTAT_STS_BITS);
+			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, PIPEB_STAT,
+					(tmp | VBLANK_STS_EN | VBLANK_STS));
+			READ_MMIO_REG_TNC(IGD_PORT_SDVO, PIPEB_STAT);
+
+			/* 2. Just in case, clear (by setting) the Interrupt Identity
+			 *    Register bit for this pipe:
+			 */
+			tmp = READ_MMIO_REG_TNC(IGD_PORT_SDVO, IIR);
+			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, IIR, (tmp | BIT5));
+
+			/* 3. Clear the Interrupt Mask Register bit for this pipe: */
+			tmp = READ_MMIO_REG_TNC(IGD_PORT_SDVO, IMR);
+			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, IMR, (tmp & (~BIT5)));
+
+			/* 4. Set the Interrupt Enable Register bit for this pipe: */
+			tmp = READ_MMIO_REG_TNC(IGD_PORT_SDVO, IER);
+			WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, IER, (tmp | BIT5));
+
 		}
 		vblank_interrupt_state |= request_for;
 		vblank_interrupt_ref_cnt_port2++;
@@ -1756,6 +1801,30 @@ int end_request_tnc(unsigned long request_for, unsigned char *mmio)
 				*/
 				tmp = EMGD_READ32(EMGD_MMIO(mmio) + IIR);
 				EMGD_WRITE32((tmp | BIT5), EMGD_MMIO(mmio) + IIR);
+
+				/* NOW LET'S PROGRAM DEVICE 3 */
+
+				tmp = READ_MMIO_REG_TNC(IGD_PORT_SDVO, PIPEB_STAT);
+					/* Clear bits that are written by a 1, so we don't clear them: */
+				tmp = tmp & (~PIPESTAT_STS_BITS);
+				WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, PIPEB_STAT,
+						((tmp & (~VBLANK_STS_EN)) | VBLANK_STS));
+				READ_MMIO_REG_TNC(IGD_PORT_SDVO, PIPEB_STAT);
+
+				/* 2. Clear the Interrupt Enable Register bit for this pipe: */
+				tmp = READ_MMIO_REG_TNC(IGD_PORT_SDVO, IER);
+				WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, IER, (tmp & (~BIT5)));
+
+				/* 3. Set the Interrupt Mask Register bit for this pipe: */
+				tmp = READ_MMIO_REG_TNC(IGD_PORT_SDVO, IMR);
+				WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, IMR, (tmp | BIT5));
+
+				/* 4. Just in case, clear (by setting) the Interrupt Identity
+				 *    Register bit for this pipe:
+				 */
+				tmp = READ_MMIO_REG_TNC(IGD_PORT_SDVO, IIR);
+				WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, IIR, (tmp | BIT5));
+
 			}
 		}
 	}

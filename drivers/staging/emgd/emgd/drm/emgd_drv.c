@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: emgd_drv.c
- * $Revision: 1.142 $
+ * $Revision: 1.145 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -73,6 +73,7 @@ extern void emgd_set_real_dispatch(igd_dispatch_t *drm_dispatch);
 extern void emgd_modeset_init(struct drm_device *dev);
 extern void emgd_modeset_destroy(struct drm_device *dev);
 extern int  msvdx_pre_init_plb(struct drm_device *dev);
+extern int msvdx_shutdown_plb(igd_context_t *context);
 extern emgd_drm_config_t config_drm;
 extern int context_count;
 
@@ -378,6 +379,7 @@ static struct drm_ioctl_desc emgd_ioctl[] = {
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_GET_CHIPSET_INFO, emgd_get_chipset_info,
 		DRM_MASTER),
 	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_DIHCLONE_SET_SURFACE, emgd_dihclone_set_surface, DRM_MASTER),
+	EMGD_IOCTL_DEF(DRM_IOCTL_IGD_PREINIT_MMU, emgd_preinit_mmu, DRM_MASTER),
 
 	/*
 	 * For VIDEO (MSVDX/TOPAZ
@@ -698,7 +700,7 @@ void emgd_init_display(int merge_mod_params, drm_emgd_priv_t *priv)
 	unsigned char          *fb          = NULL;
 	int                     mode_flags = IGD_QUERY_LIVE_MODES;
 	unsigned long           temp_bg_color;
-
+	int temp_dc;
 	EMGD_TRACE_ENTER;
 
 
@@ -711,14 +713,12 @@ void emgd_init_display(int merge_mod_params, drm_emgd_priv_t *priv)
 		 *************************************/
 		if (-1 != drm_emgd_dc) {
 			/* Validate and potentially use the module parameter: */
-			EMGD_DEBUG("Value of module parameter \"dc\" = \"%d\"",
-				drm_emgd_dc);
-
-			if ((drm_emgd_dc == 1) || (drm_emgd_dc == 2) ||
-					(drm_emgd_dc == 8)) {
+			EMGD_DEBUG("Value of module parameter \"dc\" = \"%d\"", drm_emgd_dc);
+			if (IGD_DC_SINGLE(drm_emgd_dc) || IGD_DC_CLONE(drm_emgd_dc) ||
+				IGD_DC_VEXT(drm_emgd_dc) || IGD_DC_EXTENDED(drm_emgd_dc)) {
 				/* Use validated value to override compile-time value: */
 				config_drm.dc = drm_emgd_dc;
-			} else if (drm_emgd_dc == 4) {
+			} else if (IGD_DC_TWIN(drm_emgd_dc)) {
 				/* Use validated value to override compile-time value: */
 				EMGD_DEBUG("Module parameter \"dc\" contains unsupported value "
 						"%d.", drm_emgd_dc);
@@ -728,29 +728,28 @@ void emgd_init_display(int merge_mod_params, drm_emgd_priv_t *priv)
 			} else {
 				/* Use compile-time value: */
 				EMGD_ERROR("Module parameter \"dc\" contains invalid value "
-						"%d (must be 1, 2, or 8).", drm_emgd_dc);
+					"%d (must be 1, 2, 5 or 8).", drm_emgd_dc);
 				if (config_drm.dc == 4) {
 					EMGD_DEBUG("Compile-time setting for module parameter "
-						"\"dc\" contains unsupported value %d.",
-						config_drm.dc);
+						"\"dc\" contains unsupported value %d.", config_drm.dc);
 					EMGD_DEBUG("Overriding and making it 1 (single display).");
 
 					config_drm.dc = 1;
 				} else {
 					EMGD_ERROR("Will use compile-time setting %d instead "
-							"of invalid value %d.\n",
-							config_drm.dc, drm_emgd_dc);
+						"of invalid value %d.\n", config_drm.dc, drm_emgd_dc);
 				}
 				drm_emgd_dc = config_drm.dc;
 			}
 		} else {
 			/* Check and potentially use the compile-time value: */
-			if ((config_drm.dc == 1) || (config_drm.dc == 2) ||
-					(config_drm.dc == 8)) {
+			if (IGD_DC_SINGLE(config_drm.dc) || IGD_DC_CLONE(config_drm.dc) ||
+				IGD_DC_VEXT(config_drm.dc) ||
+				IGD_DC_EXTENDED(config_drm.dc)) {
 				/* Report the compile-time value: */
 				EMGD_DEBUG("Using compile-time setting for the module parameter"
 						" \"dc\" = \"%d\"", config_drm.dc);
-			} else if (config_drm.dc == 4) {
+			} else if (IGD_DC_TWIN(config_drm.dc)) {
 				EMGD_DEBUG("Compile-time setting for module parameter "
 						"\"dc\" contains unsupported value %d.", config_drm.dc);
 				EMGD_DEBUG("Overriding and making it 1 (single display).");
@@ -758,7 +757,8 @@ void emgd_init_display(int merge_mod_params, drm_emgd_priv_t *priv)
 			} else {
 				EMGD_DEBUG("Compile-time setting for module parameter "
 						"\"dc\" contains invalid value %d.", config_drm.dc);
-				EMGD_DEBUG("Must be 1, 2, or 8. Making it 1 (single display).");
+				EMGD_DEBUG("Must be 1, 2, 5 or 8.  Making it 1 (single"
+						" display).");
 				config_drm.dc = 1;
 			}
 			drm_emgd_dc = config_drm.dc;
@@ -851,11 +851,21 @@ void emgd_init_display(int merge_mod_params, drm_emgd_priv_t *priv)
 		priv->secondary_port_number = IGD_DC_SECONDARY(priv->dc);
 	} else {
 
+		/**************************************************************************
+		 * Special case handling: Since HAL doesn't know anything about Vertical
+		 * extended mode, if we are in Vertical Extended (5), send HAL asking for
+		 * (2)
+		 *************************************************************************/
+		temp_dc = drm_emgd_dc;
+		if(IGD_DC_VEXT(drm_emgd_dc)) {
+			temp_dc = IGD_DISPLAY_CONFIG_CLONE;
+		}
+
 		/*************************************
 		 * Query the DC list (use first one):
 		 *************************************/
 		EMGD_DEBUG("Calling query_dc()");
-		err = drm_HAL_dispatch->query_dc(drm_HAL_handle, drm_emgd_dc,
+		err = drm_HAL_dispatch->query_dc(drm_HAL_handle, temp_dc,
 				&desired_dc, IGD_QUERY_DC_INIT);
 		EMGD_DEBUG("query_dc() returned %d", err);
 		if (err) {
@@ -866,6 +876,10 @@ void emgd_init_display(int merge_mod_params, drm_emgd_priv_t *priv)
 		port_number = (*desired_dc & 0xf0) >> 4;
 		EMGD_DEBUG("Using DC 0x%lx with port number %d",
 				*desired_dc, port_number);
+		if(IGD_DC_VEXT(drm_emgd_dc)) {
+			drm_emgd_dc = (*desired_dc & ~IGD_DISPLAY_CONFIG_CLONE) |
+					IGD_DISPLAY_CONFIG_VEXT;
+		}
 
 		/*************************************
 		 * Query the mode list:
@@ -917,7 +931,15 @@ void emgd_init_display(int merge_mod_params, drm_emgd_priv_t *priv)
 		primary_fb_info   = kzalloc(sizeof(igd_framebuffer_info_t), GFP_KERNEL);
 		secondary_fb_info = kzalloc(sizeof(igd_framebuffer_info_t), GFP_KERNEL);
 		primary_fb_info->width = desired_mode->width;
-		primary_fb_info->height = desired_mode->height;
+
+		/*************************************
+		 * Special for Vertical Extended, double the height
+		 *************************************/
+		if(IGD_DC_VEXT(drm_emgd_dc)) {
+			primary_fb_info->height = desired_mode->height * 2;
+		} else {
+			primary_fb_info->height = desired_mode->height;
+		}
 		primary_fb_info->pixel_format = IGD_PF_ARGB32;
 		primary_fb_info->flags = 0;
 		primary_fb_info->allocated = 0;
@@ -945,6 +967,14 @@ void emgd_init_display(int merge_mod_params, drm_emgd_priv_t *priv)
 		priv->secondary             = secondary;
 		priv->primary_port_number   = IGD_DC_PRIMARY(*desired_dc);
 		priv->secondary_port_number = IGD_DC_SECONDARY(*desired_dc);
+
+		/*************************************
+		 * Special for Vertical Extended, pan the second display
+		 *************************************/
+		if(IGD_DC_VEXT(drm_emgd_dc)) {
+			drm_HAL_dispatch->pan_display(secondary, 0,
+					secondary_fb_info->height / 2);
+		}
 
 		/*************************************
 		 * Call get_display():
@@ -1448,6 +1478,7 @@ int emgd_driver_unload(struct drm_device *dev)
 int emgd_driver_open(struct drm_device *dev, struct drm_file *priv)
 {
 	int ret = 0;
+	drm_emgd_priv_t *emgd_priv = dev->dev_private;
 
 	EMGD_TRACE_ENTER;
 
@@ -1463,6 +1494,12 @@ int emgd_driver_open(struct drm_device *dev, struct drm_file *priv)
 	 * FIXME: Should we do the same for other operations like suspend/resume/etc?
 	 */
 	mutex_lock(&dev->struct_mutex);
+
+	/* The is_master flag is set after the call to this function, so there needs
+	 * to be manual check to determine the DRM master */
+	if(priv->is_master || (!priv->minor->master && !emgd_priv->drm_master_fd)) {
+		emgd_priv->drm_master_fd = priv;
+	}
 
 	ret = PVRSRVOpen(dev, priv);
 
@@ -1590,6 +1627,7 @@ void emgd_driver_lastclose(struct drm_device *dev)
 				EMGD_DEBUG("State of saved registers is X_SERVER_STATE_SAVED");
 				priv->saved_registers = CONSOLE_STATE_SAVED;
 			}
+			msvdx_shutdown_plb(drm_HAL_handle);
 			igd_driver_shutdown_hal(drm_HAL_handle);
 			igd_driver_shutdown(drm_HAL_handle);
 
@@ -1719,6 +1757,9 @@ void emgd_driver_preclose(struct drm_device *dev, struct drm_file *priv)
 
 		/* TODO - WRITE CODE THAT PUTS THE DISPLAY HW IN A KNOWN STATE/MODE */
 	}
+
+	if (emgd_priv->drm_master_fd == priv)
+		emgd_priv->drm_master_fd = NULL;
 
 	mutex_unlock(&dev->struct_mutex);
 	EMGD_TRACE_EXIT;

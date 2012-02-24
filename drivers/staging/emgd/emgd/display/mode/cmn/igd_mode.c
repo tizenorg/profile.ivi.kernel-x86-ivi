@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: igd_mode.c
- * $Revision: 1.34 $
+ * $Revision: 1.35 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -210,6 +210,7 @@ int mode_pwr(igd_context_t *context,
 	switch(powerstate) {
 	case IGD_POWERSTATE_D0:
 		mode_context->dispatch->program_cdvo();
+		toggle_vblank_interrupts(TRUE);
 		break;
 
 #if 0
@@ -255,6 +256,7 @@ int mode_pwr(igd_context_t *context,
 	case IGD_POWERSTATE_D1:
 	case IGD_POWERSTATE_D2:
 	case IGD_POWERSTATE_D3:
+		toggle_vblank_interrupts(FALSE);
 		mode_context->dispatch->reset_plane_pipe_ports(mode_context->context);
 		break;
 	default:
@@ -1784,6 +1786,8 @@ static void mode_shutdown(igd_context_t *context)
 
 	dsp_wait_rb(mode_context->context);
 
+	toggle_vblank_interrupts(FALSE);
+
 	/* Disable all VBlank interrupts: */
 	context->dispatch.disable_vblank_callback(ALL_PORT_CALLBACKS);
 
@@ -2227,4 +2231,110 @@ int igd_kms_match_mode(void *emgd_encoder,
 
 	EMGD_TRACE_EXIT;
 	return ret;
+}
+
+/*
+ * Name: toggle_vblank_interrupts
+ *
+ * Description:
+ * Requests/stops requesting for  vblank notification interrupts for ports
+ * where blit-batching has been enabled. Called from mode_init, mode_pwr and
+ * emgd_driver_pre_init to enable interrupts if needed, and from mode_pwr and
+ * mode_shutdown to disable the interrupts when shutting down the driver.
+ *
+ * @param status 0 to disable and 1 to enable interrupts
+ *
+ * @return None
+ */
+void toggle_vblank_interrupts(bool status) {
+
+	unsigned long toggle_for;
+	unsigned char * mmio;
+	int i;
+
+	mmio = EMGD_MMIO(mode_context->context->device_context.virt_mmadr);
+	for (i=0; i < IGD_MAX_PORTS; i++) {
+		if(mode_context->batch_blits[i]) {
+			toggle_for = 0;
+			if (i == IGD_PORT_TYPE_SDVOB - 1) {
+				toggle_for = VBINT_REQUEST(VBINT_FLIP, VBINT_PORT2);
+			} else if (i == IGD_PORT_TYPE_LVDS - 1) {
+				toggle_for = VBINT_REQUEST(VBINT_FLIP, VBINT_PORT4);
+			}
+
+			if (toggle_for) {
+
+				if (status) {
+					mode_context->dispatch->full->request_vblanks(toggle_for, mmio);
+				} else {
+					mode_context->dispatch->full->end_request(toggle_for, mmio);
+				}
+			}
+		}
+	}
+
+}
+
+/*
+ * Notifies the user-space of a VBlank event by adding an event to the event
+ * queue of the DRM master file-descriptor
+ */
+void notify_userspace_vblank(struct drm_device *dev, int port)
+{
+
+	drm_emgd_priv_t *devpriv = dev->dev_private;
+	struct drm_pending_vblank_event *e = NULL;
+	struct timeval now;
+	unsigned long flags = 0;
+
+
+	EMGD_TRACE_ENTER;
+
+	if (!(devpriv->drm_master_fd)) {
+		EMGD_DEBUG("DRM master file-descriptor not set - exiting");
+		EMGD_TRACE_EXIT;
+		return;
+	}
+
+	spin_lock_irqsave(&dev->event_lock,flags);
+
+	/* Check if there is space for new event object */
+	if (devpriv->drm_master_fd->event_space < sizeof(e->event)) {
+		spin_unlock_irqrestore(&dev->event_lock, flags);
+		EMGD_DEBUG("No space on file-descriptor event queue");
+		EMGD_TRACE_EXIT;
+		return;
+	}
+	devpriv->drm_master_fd->event_space -= sizeof(e->event);
+
+	spin_unlock_irqrestore(&dev->event_lock, flags);
+
+	e = OS_ALLOC(sizeof(struct drm_pending_vblank_event));
+	if (e == NULL) {
+		spin_lock_irqsave(&dev->event_lock, flags);
+		devpriv->drm_master_fd->event_space += sizeof(e->event);
+		spin_unlock_irqrestore(&dev->event_lock, flags);
+		EMGD_TRACE_EXIT;
+		return;
+	}
+
+	/* Setup event struct */
+	OS_MEMSET(e, 0, sizeof(struct drm_pending_vblank_event));
+	e->event.base.type = DRM_EVENT_VBLANK;
+	e->event.base.length = sizeof(e->event);
+	e->event.user_data = port;
+	e->base.event = &e->event.base;
+	e->base.file_priv = devpriv->drm_master_fd;
+	e->base.destroy = (void (*)(struct drm_pending_event *))kfree;
+
+	do_gettimeofday(&now);
+	e->event.tv_sec = now.tv_sec;
+	e->event.tv_usec = now.tv_usec;
+
+	/* Add event to the event list */
+	list_add_tail(&e->base.link, &e->base.file_priv->event_list);
+	wake_up_interruptible(&e->base.file_priv->event_wait);
+
+	EMGD_TRACE_EXIT;
+
 }

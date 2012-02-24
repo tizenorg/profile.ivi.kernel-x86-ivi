@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: emgd_drv.h
- * $Revision: 1.75 $
+ * $Revision: 1.76 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -187,6 +187,8 @@ int emgd_init_video(struct drm_device *dev, void *arg,
 int emgd_video_get_info(struct drm_device *dev, void *arg,
 	struct drm_file *file_priv);
 int emgd_video_flush_tlb(struct drm_device *dev, void *arg,
+	struct drm_file *file_priv);
+int emgd_preinit_mmu(struct drm_device *dev, void *arg,
 	struct drm_file *file_priv);
 int emgd_get_golden_htotal(struct drm_device *dev, void *arg,
 	struct drm_file *file_priv);

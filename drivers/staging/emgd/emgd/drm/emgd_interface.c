@@ -1,6 +1,6 @@
 /*-----------------------------------------------------------------------------
  * Filename: emgd_interface.c
- * $Revision: 1.183 $
+ * $Revision: 1.186 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -241,9 +241,31 @@ int emgd_alter_displays(struct drm_device *dev, void *arg,
 {
 	emgd_drm_alter_displays_t *drm_data = arg;
 	drm_emgd_priv_t *priv = dev->dev_private;
+	int temp_dc = drm_data->dc;
 
 	EMGD_TRACE_ENTER;
 
+	/*
+	 * If we are in Vertical Extended mode and the caller's dc is also
+	 * Vertical Extended, then set it to Clone instead as our HAL doesn't
+	 * know anything about Vertical Extended mode.
+	 */
+	if(IGD_DC_VEXT(drm_data->dc)) {
+		temp_dc = (drm_data->dc & ~IGD_DISPLAY_CONFIG_MASK) |
+				IGD_DISPLAY_CONFIG_CLONE;
+		if (drm_data->primary_fb_info.height ==
+			drm_data->secondary_fb_info.height) {
+			if(drm_data->primary_pt_info.height ==
+					drm_data->primary_fb_info.height) {
+				drm_data->primary_fb_info.height *= 2;
+			}
+
+			if(drm_data->secondary_pt_info.height ==
+					drm_data->secondary_fb_info.height) {
+				drm_data->secondary_fb_info.height *= 2;
+			}
+		}
+	}
 
 	/* Call the HAL: */
 	drm_data->rtn = dispatch->alter_displays(handle,
@@ -257,10 +279,17 @@ int emgd_alter_displays(struct drm_device *dev, void *arg,
 		&(drm_data->secondary),
 		&(drm_data->secondary_pt_info),
 		&(drm_data->secondary_fb_info),
-		drm_data->dc,
+		temp_dc,
 		drm_data->flags);
 
 	if (!drm_data->rtn) {
+		/*
+		 * Special for Vertical Extended, pan the second display
+		 */
+		if(IGD_DC_VEXT(drm_emgd_dc) && IGD_DC_VEXT(drm_data->dc)) {
+			dispatch->pan_display(drm_data->secondary, 0,
+					drm_data->secondary_fb_info.height / 2);
+		}
 		/* Communicate the new info to the IMG 3rd-party display driver: */
 		priv->dc = drm_data->dc;
 		priv->primary = drm_data->primary;
@@ -708,7 +737,12 @@ int emgd_get_display(struct drm_device *dev, void *arg,
 	 */
 	if(mode_context->seamless && !(IGD_DC_CLONE(dc) && port_num == priv->secondary_port_number)) {
 		if (priv->reinit_3dd) {
-			priv->dc = *(context->mod_dispatch.dsp_current_dc);
+			if(IGD_DC_VEXT(drm_emgd_dc)) {
+				priv->dc = drm_emgd_dc;
+			} else {
+				priv->dc = *(context->mod_dispatch.dsp_current_dc);
+			}
+			EMGD_DEBUG("priv->dc = 0x%lX", priv->dc);
 			priv->primary = drm_data->display_handle;
 			priv->secondary = NULL;
 			priv->primary_port_number = (priv->dc & 0xf0) >> 4;
@@ -1507,6 +1541,7 @@ int emgd_dihclone_set_surface(struct drm_device *dev, void *arg,
 	igd_display_context_t *display;
 	igd_surface_t surf;
 	unsigned long dc ;
+	unsigned long x_offset, y_offset;
 
 	EMGD_TRACE_ENTER;
 
@@ -1541,38 +1576,53 @@ int emgd_dihclone_set_surface(struct drm_device *dev, void *arg,
 
 	/*reverting back to DIH from fake clone */
 	if( drm_data->mode == DIH){
-		if(context->mod_dispatch.dih_clone_display == CLONE_PRIMARY) {
+		if (IGD_DC_VEXT(drm_emgd_dc)) {
+			/* Clone to VEXT */
+			x_offset = 0;
 
-			EMGD_DEBUG(" emgd_dihclone_set_surface: setting DIH1");
-			surf.offset = pipe1->plane->fb_info->fb_base_offset;
-			/* Call the HAL: */
-			drm_data->rtn = dispatch->set_surface(display,
-				IGD_PRIORITY_NORMAL,
-				IGD_BUFFER_DISPLAY,
-				&surf,
-				NULL,
-				0);
+			y_offset = 0;
+			display = context->mod_dispatch.dsp_display_list[IGD_DC_PRIMARY(dc)];
+			/* Call pan display to revert Primary to VEXT */
+			drm_data->rtn = dispatch->pan_display(display, x_offset, y_offset);
 
-			if(drm_data->rtn) {
-				EMGD_ERROR(" emgd_dihclone_set_surface1: failed");
-				return -IGD_ERROR_INVAL;
-			}
+			y_offset = (pipe1->plane->fb_info->height / 2);
 			display = context->mod_dispatch.dsp_display_list[IGD_DC_SECONDARY(dc)];
-			surf.offset = pipe2->plane->fb_info->saved_offset;
-			/* Call the HAL: */
-			drm_data->rtn = dispatch->set_surface(display,
-					IGD_PRIORITY_NORMAL,
-					IGD_BUFFER_DISPLAY,
-					&surf,
-					NULL,
-					0);
-			if(drm_data->rtn) {
-				EMGD_ERROR(" emgd_dihclone_set_surface2: failed");
-				return -IGD_ERROR_INVAL;
-			}
+			/* Call pan_display to revert Secondary to VEXT */
+			drm_data->rtn = dispatch->pan_display(display, x_offset, y_offset);
+		}else {/* in DIH mode */
+
+			if(context->mod_dispatch.dih_clone_display == CLONE_PRIMARY) {
+
+				EMGD_DEBUG(" emgd_dihclone_set_surface: setting DIH1");
+				surf.offset = pipe1->plane->fb_info->fb_base_offset;
+				/* Call the HAL: */
+				drm_data->rtn = dispatch->set_surface(display,
+						IGD_PRIORITY_NORMAL,
+						IGD_BUFFER_DISPLAY,
+						&surf,
+						NULL,
+						0);
+
+				if(drm_data->rtn) {
+					EMGD_ERROR(" emgd_dihclone_set_surface1: failed");
+					return -IGD_ERROR_INVAL;
+				}
+				display = context->mod_dispatch.dsp_display_list[IGD_DC_SECONDARY(dc)];
+				surf.offset = pipe2->plane->fb_info->saved_offset;
+				/* Call the HAL: */
+				drm_data->rtn = dispatch->set_surface(display,
+						IGD_PRIORITY_NORMAL,
+						IGD_BUFFER_DISPLAY,
+						&surf,
+						NULL,
+						0);
+				if(drm_data->rtn) {
+					EMGD_ERROR(" emgd_dihclone_set_surface2: failed");
+					return -IGD_ERROR_INVAL;
+				}
 
 
-		} else { // if secondary clone
+			} else { // if secondary clone
 
 				EMGD_DEBUG(" emgd_dihclone_set_surface: setting DIH2");
 				surf.offset = pipe1->plane->fb_info->saved_offset;
@@ -1589,15 +1639,84 @@ int emgd_dihclone_set_surface(struct drm_device *dev, void *arg,
 				drm_data->rtn = dispatch->set_surface(display,
 						IGD_PRIORITY_NORMAL,
 						IGD_BUFFER_DISPLAY,
-				&surf,
-				NULL,
-				0);
+						&surf,
+						NULL,
+						0);
+
+			}
+		}
+		if (drm_data->rtn == 0) {
+			context->mod_dispatch.in_dih_clone_mode = false;
+		}
+	}
+	/* setting fake clone (dih clone) mode */
+	if (drm_data->mode == CLONE) {
+		if (IGD_DC_VEXT(drm_emgd_dc)) {
+			x_offset = 0;
+
+			if( drm_data->dih_clone_display == CLONE_PRIMARY){
+				y_offset = 0;
+				display = context->mod_dispatch.dsp_display_list[IGD_DC_SECONDARY(dc)];
+			} else {
+				y_offset = (pipe1->plane->fb_info->height / 2);
+				display = context->mod_dispatch.dsp_display_list[IGD_DC_PRIMARY(dc)];
+			}
+
+			/* Call Pan display to affect pt_info offsets */
+			drm_data->rtn = dispatch->pan_display(display, x_offset, y_offset);
+		} else { /* in DIH mode */
+
+			/*first save the display's original offset  */
+			surf.offset = pipe1->plane->fb_info->fb_base_offset;
+			drm_data->rtn = dispatch->set_surface(display,
+					IGD_PRIORITY_NORMAL,
+					IGD_BUFFER_SAVE,
+					&surf,
+					NULL,
+					0);
+
+			display = context->mod_dispatch.dsp_display_list[IGD_DC_SECONDARY(dc)];
+			surf.offset = pipe2->plane->fb_info->fb_base_offset;
+			drm_data->rtn = dispatch->set_surface(display,
+					IGD_PRIORITY_NORMAL,
+					IGD_BUFFER_SAVE,
+					&surf,
+					NULL,
+					0);
+
+
+			/* primary display */
+			if( drm_data->dih_clone_display == CLONE_PRIMARY){
+				surf.offset = pipe1->plane->fb_info->fb_base_offset;
+			} else {
+				surf.offset = pipe2->plane->fb_info->fb_base_offset;
+			}
+
+			display = context->mod_dispatch.dsp_display_list[IGD_DC_PRIMARY(dc)];
+
+			/* Call the HAL: */
+			drm_data->rtn = dispatch->set_surface(display,
+					IGD_PRIORITY_NORMAL,
+					IGD_BUFFER_DISPLAY,
+					&surf,
+					NULL,
+					0);
+
+			/* secondary display */
+			display = context->mod_dispatch.dsp_display_list[IGD_DC_SECONDARY(dc)];
+
+			drm_data->rtn = dispatch->set_surface(display,
+					IGD_PRIORITY_NORMAL,
+					IGD_BUFFER_DISPLAY,
+					&surf,
+					NULL,
+					0);
 
 		}
-
-		context->mod_dispatch.in_dih_clone_mode = false;
-		return 0;
-
+		if(drm_data->rtn == 0){
+			context->mod_dispatch.in_dih_clone_mode = true;
+			context->mod_dispatch.dih_clone_display = drm_data->dih_clone_display;
+		}
 	}
 
 
@@ -1859,6 +1978,14 @@ int emgd_driver_pre_init(struct drm_device *dev, void *arg,
 		mode_context->video_input = x_params->qb_video_input;
 		mode_context->splash = x_params->qb_splash;
 		mode_context->first_alter = TRUE;
+
+		if (config_drm.init) {
+			for (i=0; i < IGD_MAX_PORTS; i++) {
+				mode_context->batch_blits[x_params->display_params[i].port_number - 1]
+					= x_params->display_params[i].flags & IGD_DISPLAY_BATCH_BLITS;
+			}
+			toggle_vblank_interrupts(TRUE);
+		}
 
 		/* In case the X server ran, exited, and is starting again, we may need
 		 * to put the X server's state back:
@@ -2295,6 +2422,9 @@ int emgd_init_video(struct drm_device *dev, void *arg,
 	case CMD_VIDEO_INITIALIZE :
 		/* Call the HAL: */
 		switch (drm_data->engine) {
+		case PSB_ENGINE_COMPOSITOR_MMU:
+			drm_data->rtn = msvdx_init_compositor_mmu(drm_data->base0);
+			break;
 		case PSB_ENGINE_VIDEO:
 			drm_data->rtn = msvdx_init_plb(drm_data->base0, drm_data->base1,
 						       drm_data->fw_priv, drm_data->fw_size, 0);
@@ -2417,6 +2547,20 @@ int emgd_video_flush_tlb(struct drm_device *dev, void *arg,
 		default:
 			break;
 	}
+
+	EMGD_DEBUG("drm_data->rtn = %d", drm_data->rtn);
+	EMGD_TRACE_EXIT;
+	return 0;
+}
+
+int emgd_preinit_mmu(struct drm_device *dev, void *arg,
+			struct drm_file *file_priv)
+{
+	emgd_drm_preinit_mmu_t *drm_data = arg;
+
+	EMGD_TRACE_ENTER;
+
+	drm_data->rtn = msvdx_preinit_mmu(drm_data->memcontext);
 
 	EMGD_DEBUG("drm_data->rtn = %d", drm_data->rtn);
 	EMGD_TRACE_EXIT;

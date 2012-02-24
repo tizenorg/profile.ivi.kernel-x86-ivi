@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: context.h
- * $Revision: 1.16 $
+ * $Revision: 1.17 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -37,6 +37,7 @@
 #include <pci.h>
 #include <igd_render.h>
 #include <plb/sgx.h>
+#include <servicesint.h>
 /*
  * FIXME: Promote io_mapped/io_base to DI layer
  *
@@ -157,6 +158,8 @@ typedef struct _tnc_topaz_priv {
 	unsigned long wb_offset;
 } tnc_topaz_priv_t;
 
+struct msvdx_pvr_info;
+
 typedef struct _platform_context_plb {
 	int irq;
 	unsigned short did;
@@ -169,10 +172,19 @@ typedef struct _platform_context_plb {
 	os_pci_dev_t stgpiodev;
 	unsigned long rendec_base0;
 	unsigned long rendec_base1;
+	/*
+	 * Cached value of the SGX's PSB_CR_BIF_DIR_LIST_BASE1, which is
+	 * used to configure MSVDX MMU base 0.
+	 */
+	unsigned long psb_cr_bif_dir_list_base1;
 	int msvdx_needs_reset;
     spinlock_t msvdx_lock;
+    spinlock_t msvdx_init_plb;
+    unsigned long msvdx_status;
     int msvdx_busy;
     struct list_head msvdx_queue;
+	unsigned long msvdx_dash_access_ctrl;
+	struct msvdx_pvr_info *msvdx_pvr;
 	psb_sgx_priv_t sgx_priv_data;
 	tnc_topaz_priv_t tpz_private_data;
     unsigned long msvdx_fence;

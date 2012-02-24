@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: igd_mode.h
- * $Revision: 1.14 $
+ * $Revision: 1.15 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -376,6 +376,11 @@ typedef void* igd_driver_h;
  * - IGD_DISPLAY_CONFIG_TWIN: Two (or more) displays using a single display
  *    pipe. In this configuration a single set of display timings are
  *    used for multiple displays.
+ * - IGD_DISPLAY_CONFIG_VEXT: Two (or more) displays making use of two
+ *    display pipes and two display planes, however only one contiguous
+ *    Frame buffer has been allocated that spans bothe displays vertically.
+ *    In this configuration two sets of display timings are used and two
+ *    source data planes.
  * - IGD_DISPLAY_CONFIG_EXTENDED: Two (or more) displays making use of two
  *    display pipes and two display planes. In this configuration two sets
  *    of display timings are used and two source data planes.
@@ -385,6 +390,7 @@ typedef void* igd_driver_h;
 #define IGD_DISPLAY_CONFIG_SINGLE   0x1
 #define IGD_DISPLAY_CONFIG_CLONE    0x2
 #define IGD_DISPLAY_CONFIG_TWIN     0x4
+#define IGD_DISPLAY_CONFIG_VEXT	    0x5
 #define IGD_DISPLAY_CONFIG_EXTENDED 0x8
 #define IGD_DISPLAY_CONFIG_MASK     0xf
 /*! @} */
@@ -415,6 +421,11 @@ typedef void* igd_driver_h;
  * For a given dc, return true if it is in clone display mode
  */
 #define IGD_DC_CLONE(dc)    ((dc & 0xf) == IGD_DISPLAY_CONFIG_CLONE)
+/*!
+ * @name IGD_DC_VEXT
+ * For a given dc, return true if it is in vertically extended display mode
+ */
+#define IGD_DC_VEXT(dc) ((dc & 0xf) == IGD_DISPLAY_CONFIG_VEXT)
 /*!
  * @name IGD_DC_EXTENDED
  * For a given dc, return true if it is in extended display mode

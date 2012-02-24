@@ -596,49 +596,49 @@ ch_bool DeviceRunning(DEV_CONTEXT* pDevContext)
        I2CWrite(pDevContext,0x03, 0x01);
 	   reg = I2CRead(pDevContext,0x0D);
 	   if((pPrefer_Info->eye_dri_pll_rlf >= 0) && (pPrefer_Info->eye_dri_pll_rlf <= 3))
- 	      reg = (reg & 0x9F) | (pPrefer_Info->eye_dri_pll_rlf << 5);
+	      reg = (reg & 0x9F) | (pPrefer_Info->eye_dri_pll_rlf << 5);
 	   I2CWrite(pDevContext,0x0D, reg);
 
 	   I2CWrite(pDevContext,0x03, 0x01);
 	   reg = I2CRead(pDevContext,0x0C);
 	   if((pPrefer_Info->eye_dri_pll_cp >= 0) && (pPrefer_Info->eye_dri_pll_cp <= 3))
- 	      reg = (reg & 0x3F) | (pPrefer_Info->eye_dri_pll_cp << 6);
+	      reg = (reg & 0x3F) | (pPrefer_Info->eye_dri_pll_cp << 6);
 	   I2CWrite(pDevContext,0x0C, reg);
 
 	   I2CWrite(pDevContext,0x03, 0x01);
 	   reg = I2CRead(pDevContext,0x0B);
 	   if((pPrefer_Info->eye_dri_damp >= 0) && (pPrefer_Info->eye_dri_damp <= 7))
- 	      reg = (reg & 0x1F) | (pPrefer_Info->eye_dri_damp << 5);
+	      reg = (reg & 0x1F) | (pPrefer_Info->eye_dri_damp << 5);
 	   I2CWrite(pDevContext,0x0B, reg);
 
        I2CWrite(pDevContext,0x03, 0x01);
 	   reg = I2CRead(pDevContext,0x0A);
 	   if((reg & 0x01)==0x00)
- 	      reg = (reg | 0x01);
+	      reg = (reg | 0x01);
 	   I2CWrite(pDevContext,0x0A, reg);
 
        I2CWrite(pDevContext,0x03, 0x01);
 	   reg = I2CRead(pDevContext,0x0A);
 	   if((pPrefer_Info->eye_dri_demp >= 0) && (pPrefer_Info->eye_dri_demp <= 15))
- 	      reg = (reg & 0xE1) | (pPrefer_Info->eye_dri_demp << 1);
+	      reg = (reg & 0xE1) | (pPrefer_Info->eye_dri_demp << 1);
 	   I2CWrite(pDevContext,0x0A, reg);
 
 	   I2CWrite(pDevContext,0x03, 0x01);
 	   reg = I2CRead(pDevContext,0x08);
 	   if((pPrefer_Info->eye_dacg >= 0) && (pPrefer_Info->eye_dacg <= 3))
- 	      reg = (reg & 0x3F) | (pPrefer_Info->eye_dacg << 6);
+	      reg = (reg & 0x3F) | (pPrefer_Info->eye_dacg << 6);
 	   I2CWrite(pDevContext,0x08, reg);
 
 	   I2CWrite(pDevContext,0x03, 0x01);
 	   reg = I2CRead(pDevContext,0x0F);
 	   if((pPrefer_Info->eye_rdac >= 0) && (pPrefer_Info->eye_rdac <= 7))
- 	      reg = (reg & 0xC7) | (pPrefer_Info->eye_rdac << 3);
+	      reg = (reg & 0xC7) | (pPrefer_Info->eye_rdac << 3);
 	   I2CWrite(pDevContext,0x0F, reg);
 
 	   I2CWrite(pDevContext,0x03, 0x04);
 	   reg = I2CRead(pDevContext,0x54);
 	   if((pPrefer_Info->eye_bgtrim >= 0) && (pPrefer_Info->eye_bgtrim <= 3))
- 	      reg = (reg & 0xF3) | (pPrefer_Info->eye_bgtrim << 2);
+	      reg = (reg & 0xF3) | (pPrefer_Info->eye_bgtrim << 2);
 	   I2CWrite(pDevContext,0x54, reg);
 
 
@@ -1145,7 +1145,7 @@ ch_bool cal_and_set_clk_pll(DEV_CONTEXT* pDevContext)
 	else if((gcksel == 0x40)&&(tsten1 == 0x40)){
 	  for(pll1n1_div=1; pll1n1_div<=64; pll1n1_div<<=1)
 	  {
-	 	val_t = pInput_Info->rx_clk_khz / pll1n1_div;
+		val_t = pInput_Info->rx_clk_khz / pll1n1_div;
 	    if(val_t >= 2300 && val_t <= 4600)
 			break;
 	  }
@@ -1268,15 +1268,15 @@ ch_bool cal_and_set_clk_pll(DEV_CONTEXT* pDevContext)
 		{
 			if((gcksel == 0x40)&&(tsten1 == 0x40)){
 				temp1 = (((uint64)pOutput_Info->uclk_khz) * pll1n1_div * pll2n5_div * (1 << 20));
-	        	do_div(temp1 , pInput_Info->rx_clk_khz);
+			do_div(temp1 , pInput_Info->rx_clk_khz);
 				a1_reg = (uint32)temp1;
 			} else if((gcksel == 0x40)&&(tsten1 == 0x00)){
 				temp1 = (((uint64)pOutput_Info->uclk_khz) * pll1n1_div * pll2n5_div * (1 << 20));
-	        	do_div(temp1 , (uint32)27000);
+			do_div(temp1 , (uint32)27000);
 				a1_reg = (uint32)temp1;
-	       	}else if((gcksel == 0x00)&&(tsten1 == 0x00)){
+		}else if((gcksel == 0x00)&&(tsten1 == 0x00)){
 				temp1 = (((uint64)pOutput_Info->uclk_khz) * pll1n1_div * pll2n5_div * (1 << 20));
-	        	do_div(temp1 , (uint32)27000);
+			do_div(temp1 , (uint32)27000);
 				a1_reg = (uint32)temp1;
 			}
 		   iic_write_ex(A1, a1_reg);

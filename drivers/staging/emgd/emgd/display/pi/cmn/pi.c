@@ -1,7 +1,7 @@
 ﻿/*
  *-----------------------------------------------------------------------------
  * Filename: pi.c
- * $Revision: 1.24 $
+ * $Revision: 1.25 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -194,12 +194,48 @@ int pi_full_init(igd_context_t *context)
 static int pi_get_config_info(igd_context_t *context,
 	igd_config_info_t *config_info)
 {
+
+	igd_display_port_t   *port = NULL;
+	igd_param_t          *init_params = NULL;
+	igd_display_params_t *display_params = NULL;
+	int                   i;
+
 	EMGD_TRACE_ENTER;
 
 	EMGD_ASSERT(context, "Null context", -IGD_ERROR_INVAL);
 	EMGD_ASSERT(config_info, "Null config_info", -IGD_ERROR_INVAL);
 
 	config_info->num_act_dsp_ports = pi_context->num_pi_drivers;
+
+	init_params = pi_context->igd_context->mod_dispatch.init_params;
+
+	while ((port = pi_context->igd_context->mod_dispatch.
+		dsp_get_next_port(pi_context->igd_context, port, 0)) != NULL) {
+
+		/* Get the display params to check if the user enabled EDID */
+		for (i = 0; i < IGD_MAX_PORTS; i++) {
+			if (init_params->display_params[i].port_number == port->port_number) {
+				display_params = &init_params->display_params[i];
+				break;
+			}
+		}
+
+		/* If DID rotation info is available, pass it to user-space through the
+		 * config_info struct */
+		if ((!display_params || (display_params->flags & IGD_DISPLAY_READ_EDID))
+			&& (port->firmware_type == PI_FIRMWARE_DISPLAYID
+			&&	port->displayid != NULL)) {
+
+			config_info->displayid_rotation[port->port_number - 1].rotation =
+				port->displayid->rotation_info.rotation;
+			config_info->displayid_rotation[port->port_number - 1].flip =
+				port->displayid->rotation_info.flip;
+
+		} else {
+			config_info->displayid_rotation[port->port_number - 1].rotation = 0;
+			config_info->displayid_rotation[port->port_number - 1].flip = 0;
+		}
+	}
 
 	EMGD_TRACE_EXIT;
 	return 0;

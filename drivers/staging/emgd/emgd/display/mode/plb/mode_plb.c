@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: mode_plb.c
- * $Revision: 1.33 $
+ * $Revision: 1.34 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -93,7 +93,7 @@ int check_flip_pending_plb(unsigned char *mmio, unsigned long pipe_status_reg);
  */
 int wait_for_vblank_plb(unsigned char *mmio, unsigned long pipe_reg);
 
-
+void notify_userspace_vblank(struct drm_device *dev, int port);
 
 /*!
  *
@@ -1451,6 +1451,20 @@ static irqreturn_t interrupt_handler_plb(int irq, void* mmio)
 		}
 	}
 	spin_unlock_irqrestore(&vblank_lock_plb, lock_flags);
+
+
+	if (port4_interrupt) {
+		if (mode_context->batch_blits[IGD_PORT_TYPE_LVDS - 1]) {
+			notify_userspace_vblank(mode_context->context->drm_dev,
+				IGD_PORT_TYPE_LVDS);
+		}
+	}
+	else if (port2_interrupt) {
+		if (mode_context->batch_blits[IGD_PORT_TYPE_SDVOB - 1]) {
+			notify_userspace_vblank(mode_context->context->drm_dev,
+				IGD_PORT_TYPE_SDVOB);
+		}
+	}
 
 	/* Call any registered/enabled callbacks for this interrupt: */
 	cb = &interrupt_callbacks_plb[2];

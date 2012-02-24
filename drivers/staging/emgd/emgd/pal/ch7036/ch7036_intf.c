@@ -913,12 +913,3 @@ void ch7036_set_prefer_timing_info(ch7036_device_context_t *p_ctx, PREFER_INFO* 
 
 
 }
-
-
-
-
-
-
-
-
-

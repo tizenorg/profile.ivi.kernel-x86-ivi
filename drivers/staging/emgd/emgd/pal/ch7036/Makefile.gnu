@@ -41,4 +41,3 @@ include ../Makefile.include
 # $Id: Makefile.gnu,v 1.1.2.1 2011/09/13 08:50:22 nanuar Exp $
 # $Source: /nfs/fm/proj/eia/cvsroot/koheo/linux.nonredistributable/ch7036/ch7036pd_src/Attic/Makefile.gnu,v $
 #----------------------------------------------------------------------------
-
