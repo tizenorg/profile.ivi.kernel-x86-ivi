@@ -49,11 +49,35 @@
  * for analog/VGA ports.
  */
 
-#define TUNNELCREEK 1
-#define POULSBO 0
-
 #if TUNNELCREEK
+/* RV 7'*/
 static igd_display_info_t dtd_config1_port4_dtdlist[] = {
+	{
+		800,	/* Width */
+		480,	/* Height */
+		0,	/* Refresh Rate */
+		31746,	/* Dot Clock */
+		999,	/* Horizontal Total (horizontal synch end) */
+		799,	/* Horizontal Blank Start (h_active-1) */
+		999,	/* Horizontal Blank End (start + h_blank) */
+		859,	/* Horizontal Sync Start (h_active+h_synch-1) */
+		999,	/* Horizontal Sync End (start + h_syncp) */
+		524,	/* Vertical Total (Vertical synch end) */
+		479,	/* Vertical Blank Start (v_active-1) */
+		524,	/* Vertical Blank End (start + v_blank) */
+		507,	/* Vertical Sync Start (v_active+v_synch-1) */
+		538,	/* Vertical Sync End (start + v_synchp) */
+		0,	/* Mode Number */
+		0x8020000,	/* Flags */
+		0,	/* X Offset */
+		0,	/* Y Offset */
+		NULL,	/* pd extension pointer */
+		0, 0   /* mode extension pointer */
+	},
+};
+
+/* CB 13' */
+static igd_display_info_t dtd_config1_port4_dtdlist2[] = {
 	{
 		1366,   /* Width */
 		768,    /* Height */
@@ -77,6 +101,7 @@ static igd_display_info_t dtd_config1_port4_dtdlist[] = {
 		0, 0   /* mode extension pointer */
 	},
 };
+
 #endif
 
 #if POULSBO
@@ -113,6 +138,7 @@ static igd_param_attr_t attrs_config1_port4[] = {
 #endif
 #if TUNNELCREEK
 	{0x47, 20300},
+	{0x1a, 24},
 #endif
 };
 
@@ -136,19 +162,21 @@ static emgd_drm_splash_video_t splash_video_data = {
 	0,			/* dst_height */
 };
 
+/* RV 7'*/
+
 static igd_param_t config_params_config1 = {
 	1*256*1024,		/* Page request */
 	0,		/* Max frame buffer size */
 	1,		/* Preserve registers */
 	0x6,		/* Display flags */
-	{ 4, 2, 0, 0, 0 },		/* Display port order */
+	{ 4, 0, 0, 0, 0 },		/* Display port order */
 	{		/* Display Params */
 		{		/* Port */
 			4,		/* Display port number */
 			0x180,		/* Parameters present */
 			0x0,		/* EDID flag */
-			0x5,		/* Flags when EDID is available */
-			0x5,		/* Flags when EDID is not available */
+			0x0,		/* Flags when EDID is available */
+			0x4,		/* Flags when EDID is not available */
 			0,		/* DDC GPIO pins */
 			0,		/* DDC speed */
 			0,		/* DDC DAB */
@@ -211,7 +239,83 @@ static igd_param_t config_params_config1 = {
 	0			/* Polling (1 = override interrupt support and use polling) */
 };
 
-igd_param_t *config_params = {&config_params_config1};
+#if TUNNELCREEK
+static igd_param_t config_params_config2 = {
+	1*256*1024,		/* Page request */
+	0,		/* Max frame buffer size */
+	1,		/* Preserve registers */
+	0x6,		/* Display flags */
+	{ 4, 2, 0, 0, 0 },		/* Display port order */
+	{		/* Display Params */
+		{		/* Port */
+			4,		/* Display port number */
+			0x80,		/* Parameters present */
+			0x0,		/* EDID flag */
+			0x5,		/* Flags when EDID is available */
+			0x5,		/* Flags when EDID is not available */
+			0,		/* DDC GPIO pins */
+			0,		/* DDC speed */
+			0,		/* DDC DAB */
+			0,		/* I2C GPIO pins */
+			0,		/* I2C speed */
+			0,		/* I2C DAB */
+			{		/* Flat Panel Info */
+				0,		/* Flat Panel width */
+				0,		/* Flat Panel height */
+				0,		/* Flat Panel power method */
+				0,		/* VDD active & DVO clock/data active */
+				0,		/* DVO clock/data active & backlight enable */
+				0,		/* backlight disable & DVO clock/data inactive */
+				0,		/* DVO clock/data inactive & VDD inactive */
+				0			/* VDD inactive & VDD active */
+			},
+			{		/* DTD Info */
+				sizeof(dtd_config1_port4_dtdlist2)/sizeof(igd_display_info_t),		/* Number of DTDs */
+				dtd_config1_port4_dtdlist2		/* DTD name */
+			},
+			{		/* Attribute Info */
+				sizeof(attrs_config1_port4)/sizeof(igd_param_attr_t),		/* Number of attributes */
+				attrs_config1_port4		/* Attr name */
+			}
+		},
+		{		/* Port */
+			2,		/* Display port number */
+			0x0,		/* Parameters present */
+			0x0,		/* EDID flag */
+			0x5,		/* Flags when EDID is available */
+			0x5,		/* Flags when EDID is not available */
+			0,		/* DDC GPIO pins */
+			0,		/* DDC speed */
+			0,		/* DDC DAB */
+			0,		/* I2C GPIO pins */
+			0,		/* I2C speed */
+			0,		/* I2C DAB */
+			{		/* Flat Panel Info */
+				0,		/* Flat Panel width */
+				0,		/* Flat Panel height */
+				0,		/* Flat Panel power method */
+				0,		/* VDD active & DVO clock/data active */
+				0,		/* DVO clock/data active & backlight enable */
+				0,		/* backlight disable & DVO clock/data inactive */
+				0,		/* DVO clock/data inactive & VDD inactive */
+				0			/* VDD inactive & VDD active */
+			},
+			{		/* DTD Info */
+			0, NULL
+			},
+			{		/* Attribute Info */
+			0, NULL
+			}
+		},
+	},
+	0,			/* 24-bit RGB color that framebuffer is cleared to */
+	1,			/* Quickboot (1 = enabled) */
+	0,			/* Quickboot seamless (1 = enabled) */
+	0,			/* Quickboot video input (1 = enabled) */
+	0			/* Polling (1 = override interrupt support and use polling) */
+};
+
+#endif
 
 /*
  * The emgd_drm_config_t structure is the main configuration structure
@@ -229,10 +333,10 @@ emgd_drm_config_t config_drm = {
 		 *       Note: Twin is NOT CURRENTLY SUPPORTED
 		 * - 8 = Extended displays (e.g. LVDS + CRT displaying different images)
 		 */
-	1366,/* Display width to use if initializing the display
+	800,/* Display width to use if initializing the display
 		 * (corresponds to the "width" module parameter)
 		 */
-	768,/* Display height to use if initializing the display
+	480,/* Display height to use if initializing the display
 		 * (corresponds to the "height" module parameter)
 		 */
 	60,	/* Display refresh rate to use if initializing the display
@@ -247,6 +351,26 @@ emgd_drm_config_t config_drm = {
 	0,	/* ovl_gamma_blue */
 	&splash_screen_data,
 	&splash_video_data,
-	&config_params	/* driver parameters from above */
+	{   /* driver parameters from above */
+		&config_params_config1
+#if TUNNELCREEK
+		, &config_params_config2
+#endif
+	}
 };
 
+
+/* type:  2:crownbay else:crossvile  */
+void emgd_drm_override_user_config(int configid)
+{
+   if ( configid == 2 )
+   {   config_drm.width = 1366;
+       config_drm.height = 768;
+   }
+   else /* type != 2 */
+   {
+       config_drm.width = 800;
+       config_drm.height = 480;
+   }
+   return;
+}
