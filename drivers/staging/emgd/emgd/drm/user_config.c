@@ -49,8 +49,7 @@
  * for analog/VGA ports.
  */
 
-#if TUNNELCREEK
-/* RV 7'*/
+/* Crossville 7' */
 static igd_display_info_t dtd_config1_port4_dtdlist[] = {
 	{
 		800,	/* Width */
@@ -75,9 +74,14 @@ static igd_display_info_t dtd_config1_port4_dtdlist[] = {
 		0, 0   /* mode extension pointer */
 	},
 };
+static igd_param_attr_t attrs_config1_port4[] = {
+	{0x46, 100},
+	{0x1a, 24},
+	{0x47, 20300},
+};
 
-/* CB 13' */
-static igd_display_info_t dtd_config1_port4_dtdlist2[] = {
+/* CrownBay 13' */
+static igd_display_info_t dtd_config2_port4_dtdlist[] = {
 	{
 		1366,   /* Width */
 		768,    /* Height */
@@ -101,45 +105,38 @@ static igd_display_info_t dtd_config1_port4_dtdlist2[] = {
 		0, 0   /* mode extension pointer */
 	},
 };
+/* shares attributes with config1 */
 
-#endif
-
-#if POULSBO
-static igd_display_info_t dtd_config1_port4_dtdlist[] = {
+/* NexCom VCT1000 7' */
+static igd_display_info_t dtd_config3_port4_dtdlist[] = {
 	{
-		1024,			/* Width */
-		768,				/* Height */
-		60,				/* Refresh Rate */
-		65000,			/* Dot Clock (in KHz) */
-		1343,			/* Horizontal Total (horizontal synch end) */
-		1023,			/* Horizontal Blank Start (h_active-1) */
-		1343,			/* Horizontal Blank End (start + h_blank) */
-		1047,			/* Horizontal Sync Start (h_active+h_synch-1) */
-		1183,			/* Horizontal Sync End (start + h_syncp) */
-		805,				/* Vertical Total (Vertical synch end) */
-		767,				/* Vertical Blank Start (v_active-1) */
-		805,				/* Vertical Blank End (start + v_blank) */
-		770,				/* Vertical Sync Start (v_active+v_synch-1) */
-		776,				/* Vertical Sync End (start + v_synchp) */
-		0,				/* Mode Number */
-		0x20000,			/* Flags */
-		0,				/* X Offset */
-		0,				/* Y Offset */
-		NULL,			/* pd extension pointer */
-		0, 0				/* mode extension pointer */
+		800,	/* Width */
+		480,	/* Height */
+		0,	/* Refresh Rate */
+		31746,	/* Dot Clock */
+		999,	/* Horizontal Total (horizontal synch end) */
+		799,	/* Horizontal Blank Start (h_active-1) */
+		999,	/* Horizontal Blank End (start + h_blank) */
+		859,	/* Horizontal Sync Start (h_active+h_synch-1) */
+		999,	/* Horizontal Sync End (start + h_syncp) */
+		524,	/* Vertical Total (Vertical synch end) */
+		479,	/* Vertical Blank Start (v_active-1) */
+		524,	/* Vertical Blank End (start + v_blank) */
+		507,	/* Vertical Sync Start (v_active+v_synch-1) */
+		538,	/* Vertical Sync End (start + v_synchp) */
+		0,	/* Mode Number */
+		0x8020000,	/* Flags */
+		0,	/* X Offset */
+		0,	/* Y Offset */
+		NULL,	/* pd extension pointer */
+		0, 0   /* mode extension pointer */
 	},
 };
-#endif
-
-static igd_param_attr_t attrs_config1_port4[] = {
+static igd_param_attr_t attrs_config3_port4[] = {
 	{0x46, 100},
-#if POULSBO
 	{0x1a, 24},
-#endif
-#if TUNNELCREEK
 	{0x47, 20300},
-	{0x1a, 24},
-#endif
+	{0x31, 1},
 };
 
 static emgd_drm_splash_screen_t splash_screen_data = {
@@ -162,8 +159,7 @@ static emgd_drm_splash_video_t splash_video_data = {
 	0,			/* dst_height */
 };
 
-/* RV 7'*/
-
+/* Config #1: Crossville 7' */
 static igd_param_t config_params_config1 = {
 	1*256*1024,		/* Page request */
 	0,		/* Max frame buffer size */
@@ -239,7 +235,7 @@ static igd_param_t config_params_config1 = {
 	0			/* Polling (1 = override interrupt support and use polling) */
 };
 
-#if TUNNELCREEK
+/* Config #2: CrownBay 13' */
 static igd_param_t config_params_config2 = {
 	1*256*1024,		/* Page request */
 	0,		/* Max frame buffer size */
@@ -270,8 +266,8 @@ static igd_param_t config_params_config2 = {
 				0			/* VDD inactive & VDD active */
 			},
 			{		/* DTD Info */
-				sizeof(dtd_config1_port4_dtdlist2)/sizeof(igd_display_info_t),		/* Number of DTDs */
-				dtd_config1_port4_dtdlist2		/* DTD name */
+				sizeof(dtd_config2_port4_dtdlist)/sizeof(igd_display_info_t),		/* Number of DTDs */
+				dtd_config2_port4_dtdlist		/* DTD name */
 			},
 			{		/* Attribute Info */
 				sizeof(attrs_config1_port4)/sizeof(igd_param_attr_t),		/* Number of attributes */
@@ -315,7 +311,81 @@ static igd_param_t config_params_config2 = {
 	0			/* Polling (1 = override interrupt support and use polling) */
 };
 
-#endif
+/* Config #3: NexCom VCT1000 7' */
+static igd_param_t config_params_config3 = {
+	1*256*1024,		/* Page request */
+	0,		/* Max frame buffer size */
+	1,		/* Preserve registers */
+	0x6,		/* Display flags */
+	{ 4, 0, 0, 0, 0 },		/* Display port order */
+	{		/* Display Params */
+		{		/* Port */
+			4,		/* Display port number */
+			0x180,		/* Parameters present */
+			0x0,		/* EDID flag */
+			0x0,		/* Flags when EDID is available */
+			0x4,		/* Flags when EDID is not available */
+			0,		/* DDC GPIO pins */
+			0,		/* DDC speed */
+			0,		/* DDC DAB */
+			0,		/* I2C GPIO pins */
+			0,		/* I2C speed */
+			0,		/* I2C DAB */
+			{		/* Flat Panel Info */
+				0,		/* Flat Panel width */
+				0,		/* Flat Panel height */
+				0,		/* Flat Panel power method */
+				0,		/* VDD active & DVO clock/data active */
+				0,		/* DVO clock/data active & backlight enable */
+				0,		/* backlight disable & DVO clock/data inactive */
+				0,		/* DVO clock/data inactive & VDD inactive */
+				0			/* VDD inactive & VDD active */
+			},
+			{		/* DTD Info */
+				sizeof(dtd_config3_port4_dtdlist)/sizeof(igd_display_info_t),		/* Number of DTDs */
+				dtd_config3_port4_dtdlist		/* DTD name */
+			},
+			{		/* Attribute Info */
+				sizeof(attrs_config3_port4)/sizeof(igd_param_attr_t),		/* Number of attributes */
+				attrs_config3_port4		/* Attr name */
+			}
+		},
+		{		/* Port */
+			2,		/* Display port number */
+			0x0,		/* Parameters present */
+			0x0,		/* EDID flag */
+			0x5,		/* Flags when EDID is available */
+			0x5,		/* Flags when EDID is not available */
+			0,		/* DDC GPIO pins */
+			0,		/* DDC speed */
+			0,		/* DDC DAB */
+			0,		/* I2C GPIO pins */
+			0,		/* I2C speed */
+			0,		/* I2C DAB */
+			{		/* Flat Panel Info */
+				0,		/* Flat Panel width */
+				0,		/* Flat Panel height */
+				0,		/* Flat Panel power method */
+				0,		/* VDD active & DVO clock/data active */
+				0,		/* DVO clock/data active & backlight enable */
+				0,		/* backlight disable & DVO clock/data inactive */
+				0,		/* DVO clock/data inactive & VDD inactive */
+				0			/* VDD inactive & VDD active */
+			},
+			{		/* DTD Info */
+			0, NULL
+			},
+			{		/* Attribute Info */
+			0, NULL
+			}
+		},
+	},
+	0,			/* 24-bit RGB color that framebuffer is cleared to */
+	1,			/* Quickboot (1 = enabled) */
+	0,			/* Quickboot seamless (1 = enabled) */
+	0,			/* Quickboot video input (1 = enabled) */
+	0			/* Polling (1 = override interrupt support and use polling) */
+};
 
 /*
  * The emgd_drm_config_t structure is the main configuration structure
@@ -352,10 +422,9 @@ emgd_drm_config_t config_drm = {
 	&splash_screen_data,
 	&splash_video_data,
 	{   /* driver parameters from above */
-		&config_params_config1
-#if TUNNELCREEK
-		, &config_params_config2
-#endif
+		&config_params_config1,
+		&config_params_config2,
+		&config_params_config3
 	}
 };
 
@@ -363,12 +432,21 @@ emgd_drm_config_t config_drm = {
 /* type:  2:crownbay else:crossvile  */
 void emgd_drm_override_user_config(int configid)
 {
-   if ( configid == 2 )
-   {   config_drm.width = 1366;
+   if ( configid == 3 )
+   {
+       /* NexCom VCT1000 7inch LVDS*/
+       config_drm.width = 800;
+       config_drm.height = 480;
+   }
+   else if ( configid == 2 )
+   {
+       /* CrownBay 13inch LVDS */
+       config_drm.width = 1366;
        config_drm.height = 768;
    }
-   else /* type != 2 */
+   else /* default */
    {
+       /* Crossville 7inch */
        config_drm.width = 800;
        config_drm.height = 480;
    }

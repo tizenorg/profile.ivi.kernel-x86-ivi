@@ -73,16 +73,7 @@ typedef struct _emgd_drm_splash_video {
  * igd_param_t structure.
  */
 
-#define TUNNELCREEK 1
-#define POULSBO 0
-
-#if TUNNELCREEK
-#define USER_CONFIG_NUM 2
-#endif
-
-#if POULSBO
-#define USER_CONFIG_NUM 1
-#endif
+#define USER_CONFIG_NUM 3
 
 typedef struct _emgd_drm_config {
 	/**
