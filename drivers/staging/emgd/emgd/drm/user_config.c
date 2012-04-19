@@ -392,7 +392,7 @@ static igd_param_t config_params_config3 = {
  * for the EMGD kernel module.
  */
 emgd_drm_config_t config_drm = {
-	0,	/* Whether to initialize the display at EMGD module startup time
+	1,	/* Whether to initialize the display at EMGD module startup time
 		 * (corresponds to the "init" module parameter)
 		 */
 	1,	/* The display configuration to use if initializing the display
@@ -412,7 +412,7 @@ emgd_drm_config_t config_drm = {
 	60,	/* Display refresh rate to use if initializing the display
 		 * (corresponds to the "refresh" module parameter)
 		 */
-	0,  /* KMS */
+	1,  /* KMS */
 	0,	/* ovl_brightness */
 	0,	/* ovl_contrast */
 	0,	/* ovl_saturation */
