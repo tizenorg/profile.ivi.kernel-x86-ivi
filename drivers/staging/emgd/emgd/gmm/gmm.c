@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: gmm.c
- * $Revision: 1.50 $
+ * $Revision: 1.52 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -37,9 +37,21 @@
 #include <io.h>
 #include <memory.h>
 
+#include <linux/module.h>
+#include <linux/init.h>
+
 #include <asm/agp.h>
 
 #define AGP_PHYS_MEMORY 2 /* Physical contigous memory */
+struct emgd_ci_surface_t{
+	unsigned int used;
+	unsigned int v4l2_offset;
+	unsigned int virt;
+	unsigned long size;
+	unsigned long gtt_offset;
+	};
+#define MAX_CI_LIST_SIZE 14
+struct emgd_ci_surface_t ci_surfaces[MAX_CI_LIST_SIZE];
 
 
 gmm_context_t gmm_context;
@@ -77,6 +89,15 @@ void emgd_gtt_remove(igd_context_t *context, gmm_mem_buffer_t *mem,
 void emgd_gtt_insert(igd_context_t *context, gmm_mem_buffer_t *mem,
 		unsigned long offset);
 
+
+static int gmm_map_ci(unsigned long *gtt_offset,
+			unsigned long ci_param,
+			unsigned long *virt_addr,
+			unsigned int map_method,
+			unsigned long size);
+
+
+static int gmm_unmap_ci(unsigned long virt_addr);
 
 static void gmm_free(unsigned long offset)
 {
@@ -508,6 +529,8 @@ int gmm_init(igd_context_t *context,
 	context->dispatch.gmm_get_page_list = gmm_get_page_list;
 	context->dispatch.gmm_get_num_surface = gmm_get_num_surface;
 	context->dispatch.gmm_get_surface_list = gmm_get_surface_list;
+	context->dispatch.gmm_map_ci = gmm_map_ci;
+	context->dispatch.gmm_unmap_ci = gmm_unmap_ci;
 
 	context->mod_dispatch.gmm_save = gmm_save;
 	context->mod_dispatch.gmm_restore = gmm_restore;
@@ -663,6 +686,302 @@ static int gmm_alloc_linear_surface(unsigned long *offset,
 	return ret;
 }
 
+
+
+
+/*
+ * gmm_contig_page_list(): Create the page list for a previously-allocated
+ * block of contiguous memory. (This is needed for GTT insertion, and normally
+ * created by the emgd_alloc_pages() function.)
+ */
+static gmm_mem_buffer_t *gmm_contig_page_list(unsigned long num_pages,
+			unsigned long phys_addr)
+{
+	gmm_mem_buffer_t *mem;
+	size_t list_size;
+	int i;
+	void *virt_addr = phys_to_virt(phys_addr);
+
+	mem = (gmm_mem_buffer_t *)kzalloc(sizeof(gmm_mem_buffer_t), GFP_KERNEL);
+	if (mem == NULL) {
+		printk(KERN_ERR "[EMGD] Cannot allocate gmm_mem_buffer_t ");
+		EMGD_ERROR_EXIT("Returning NULL\n");
+		return NULL;
+	}
+
+	/* First allocate page array */
+	list_size = num_pages * sizeof(struct page *);
+	mem->vmalloc_flag = false;
+
+	if (list_size <= (2 * PAGE_SIZE)) {
+		mem->pages = kmalloc(list_size, GFP_KERNEL | __GFP_NORETRY);
+	}
+
+	if (mem->pages == NULL) {
+		mem->pages = vmalloc(list_size);
+		mem->vmalloc_flag = true;
+	}
+
+	if (mem->pages == NULL) {
+		kfree(mem);
+		printk(KERN_ERR "Failed to allocate memory info struct.\n");
+		EMGD_ERROR_EXIT("Returning NULL\n");
+		return NULL;
+	}
+
+	mem->pages[0] = virt_to_page(virt_addr);
+	if (num_pages > 1) {
+		for (i = 1; i < num_pages; i++) {
+			mem->pages[i] = mem->pages[i-1] + 1;
+		}
+	}
+	mem->physical = page_to_phys(mem->pages[0]);
+	mem->page_count = num_pages;
+
+	return mem;
+}
+
+/*
+ * gmm_map_contig_buffer(): Map a previously-allocated contiguous SDRAM memory
+ * block into a graphics-accessible memory.
+ */
+
+static int gmm_map_contig_buffer(gmm_context_t *gmm_context,
+		unsigned long phys_addr,
+		unsigned long size,
+		unsigned long *offset)
+{
+	gmm_chunk_t *chunk;
+
+	EMGD_TRACE_ENTER;
+
+
+	/* Check for a free contiguous chunk of sufficent size */
+	chunk = gmm_context->head_chunk;
+
+	/* Allocate a new chunk list element */
+	chunk = (gmm_chunk_t *)OS_ALLOC(sizeof(gmm_chunk_t));
+	if (!chunk) {
+		printk(KERN_ERR "[EMGD] Cannot allocate gmm_chunk_t element");
+		EMGD_ERROR_EXIT("Returning %d", -IGD_ERROR_NOMEM);
+		return -IGD_ERROR_NOMEM;
+	}
+	OS_MEMSET(chunk, 0, sizeof(gmm_chunk_t));
+
+	/* Contiguous memory is needed, so set the type to AGP_PHYS_MEMORY */
+	chunk->size = size;
+	chunk->pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+	chunk->type = AGP_PHYS_MEMORY;
+
+	/* Create the GTT page list for this contiguous memory block */
+	chunk->gtt_mem = gmm_contig_page_list(chunk->pages, phys_addr);
+	if (chunk->gtt_mem == NULL) {
+		printk(KERN_ERR "[EMGD] Cannot allocate gmm_chunk_t element");
+		EMGD_ERROR_EXIT("Returning %d", -IGD_ERROR_NOMEM);
+		return -IGD_ERROR_NOMEM;
+	}
+
+	/* Assign the specified memory block to this chunk */
+	chunk->used = 1;
+	chunk->ref_cnt = 0;
+	chunk->page_addresses = NULL;
+
+	/* Determine the offset value for this chunk */
+	if (gmm_context->tail_chunk == NULL) {
+
+		chunk->offset = 0;
+
+	} else {
+		chunk->offset = gmm_context->tail_chunk->offset +
+			gmm_context->tail_chunk->size;
+
+
+	}
+
+
+	/* Adjust the offset since display surfaces require 256KB alignment */
+	chunk->offset = (chunk->offset + 0x3ffff) & ~0x3ffff;
+
+	/* Insert this chunk in the list */
+	chunk->next = NULL;
+	if (gmm_context->head_chunk == NULL) {
+
+		gmm_context->head_chunk = chunk;
+	} else {
+		gmm_context->tail_chunk->next = chunk;
+	}
+	gmm_context->tail_chunk = chunk;
+
+	/* Now update the GTT so the display HW can access this memory */
+	emgd_gtt_insert(gmm_context->context, chunk->gtt_mem, chunk->offset);
+
+	/* Bind the gart memory to the offset */
+	chunk->bound = 1;
+
+	/* For contiguous pages, physical is the address of the first allocated page */
+	if (chunk->gtt_mem->physical == 0x0) {
+		chunk->gtt_mem->physical = page_to_phys(chunk->gtt_mem->pages[0]);
+	}
+
+	/* Return the offset associated with this contiguous block */
+	*offset = chunk->offset;
+
+	EMGD_TRACE_EXIT;
+	return 0;
+}
+
+/*
+ * gmm_map_to_graphics(): Facilitates direct display of contiguous video input
+ * buffers by mapping the specified block into the "graphics aperture" via the
+ * GTT.
+ */
+int gmm_map_to_graphics(unsigned long phys_addr,
+	unsigned long size,
+	unsigned long *offset)
+{
+	int ret;
+
+	EMGD_TRACE_ENTER;
+
+	if (phys_addr && size) {
+		ret = gmm_map_contig_buffer(&gmm_context, phys_addr, size,
+			offset);
+
+	} else {
+		printk(KERN_ERR "Invalid address (0x%lx) and/or size (0x%lx) !",
+			phys_addr, size);
+		printk(KERN_ERR "EXIT  Returning %d", -EINVAL);
+		ret = -EINVAL;
+	}
+
+	EMGD_TRACE_EXIT;
+	return ret;
+}
+
+/*
+ * find gtt_offset and virtual address from ci_surface list according to the same v4l2_offset
+ */
+
+static int gmm_map_ci(unsigned long *gtt_offset,
+			unsigned long ci_param,	/* virtaddr or v4l2_offset */
+			unsigned long *virt_addr,
+			unsigned int map_method,
+			unsigned long size)
+
+{
+	unsigned char i;
+	int ret;
+
+	if(map_method){
+		ret = gmm_map_to_graphics(virt_to_phys((unsigned long *)ci_param),size,gtt_offset);
+		if(ret)
+			return ret;
+		else{
+			for(i=0;i<MAX_CI_LIST_SIZE;i++){
+
+				if(!ci_surfaces[i].used){
+
+					ci_surfaces[i].used = 1;
+					ci_surfaces[i].virt = ci_param;
+					ci_surfaces[i].size = size;
+					ci_surfaces[i].gtt_offset = *gtt_offset;
+					*virt_addr = ci_param;
+					break;
+				}
+			}
+		}
+	}
+	else{
+
+		for(i=0;i<MAX_CI_LIST_SIZE;i++){
+			if(ci_surfaces[i].used && (ci_surfaces[i].v4l2_offset ==ci_param)){
+
+				*gtt_offset = ci_surfaces[i].gtt_offset;
+				*virt_addr = ci_surfaces[i].virt;
+				break;
+			}
+		}
+	}
+	return 0;
+}
+
+
+/*
+ * gmm_unmap_contig_buffer(): Un-map a previously-allocated contiguous SDRAM
+ * memory block into graphics memory.
+ */
+
+static int gmm_unmap_contig_buffer(gmm_context_t *gmm_context,
+		unsigned long offset,
+		unsigned long size)
+{
+
+	gmm_chunk_t *chunk;
+#ifdef GMM_CI_CLEANUP
+	gmm_chunk_t *del;
+#endif
+	EMGD_TRACE_ENTER;
+
+	/* Locate the specified chunk and mark it as unused */
+	chunk = gmm_context->head_chunk;
+	while (chunk) {
+		if ((chunk->used == 1) && (chunk->size >= size) &&
+			(chunk->type == AGP_PHYS_MEMORY) &&
+			chunk->offset == offset) {
+
+			emgd_gtt_remove(gmm_context->context, chunk->gtt_mem, chunk->offset);
+
+			chunk->used =0;
+#ifdef GMM_CI_CLEANUP
+			kfree(chunk->gtt_mem);
+
+			/* Free the array of page address, if applicable: */
+			if (chunk->page_addresses != NULL) {
+				EMGD_DEBUG("About to free chunk->page_addresses = 0x%p",
+					chunk->page_addresses);
+				OS_FREE(chunk->page_addresses);
+			}
+
+			/* Free the chunk */
+			del = chunk;
+			chunk = chunk->next;
+			OS_FREE(del);
+#endif
+
+			EMGD_DEBUG("EXIT  Returning %d", 0);
+			return 0;
+		}
+		chunk = chunk->next;
+	}
+	printk(KERN_ERR "Buffer @ 0x%lx (size 0x%lu) not found !", offset, size);
+	printk(KERN_ERR "EXIT  Returning %d", -EINVAL);
+	EMGD_TRACE_EXIT;
+	return -EINVAL;
+}
+
+
+/*
+ * gmm_unmap_from_graphics(): Disables direct display of DMA video input buffers
+ * by unmapping the specified block from the "graphics aperture" via the GTT.
+ */
+int gmm_unmap_from_graphics(unsigned long offset, unsigned long size)
+{
+	int ret;
+
+	EMGD_TRACE_ENTER;
+	if (offset && size) {
+		/* Mark the GTT chunk as currently unused */
+		ret = gmm_unmap_contig_buffer(&gmm_context, offset, size);
+	} else {
+		printk(KERN_ERR "Invalid offset (0x%lx) and/or size (0x%lx) !",
+			offset, size);
+		printk(KERN_ERR "EXIT  Returning %d", -EINVAL);
+		ret = -EINVAL;
+	}
+	EMGD_TRACE_EXIT;
+	return ret;
+}
+EXPORT_SYMBOL(gmm_unmap_from_graphics);
 
 
 /*
@@ -1000,4 +1319,61 @@ static int gmm_get_page_list(unsigned long offset,
 	EMGD_DEBUG("page_count=%lu", *page_cnt);
 	EMGD_TRACE_EXIT;
 	return 0;
+}
+
+struct emgd_ci_meminfo_t {
+	unsigned long v4l2_offset;
+	unsigned long virt;
+	unsigned long  size;
+	};
+
+int emgd_map_ci_buf(struct emgd_ci_meminfo_t * ci_meminfo)
+{
+	int ret;
+	unsigned long gtt_offset;
+	unsigned char i;
+	ret = gmm_map_to_graphics(virt_to_phys((unsigned long *)ci_meminfo->virt), ci_meminfo->size, &gtt_offset);
+	if(ret)
+	{
+		return ret;/*error handling*/
+	}
+	/* save meminfo into our context */
+	for(i=0;i<MAX_CI_LIST_SIZE;i++){
+		if(!ci_surfaces[i].used){
+			ci_surfaces[i].used = 1;
+			ci_surfaces[i].virt = virt_to_phys((unsigned long *)ci_meminfo->virt);
+			ci_surfaces[i].size =  ci_meminfo->size;
+			ci_surfaces[i].gtt_offset =  gtt_offset;
+			return 0;
+		}
+	}
+	return 0;
+}
+EXPORT_SYMBOL(emgd_map_ci_buf);
+int emgd_unmap_ci_buf(unsigned long virt_addr)
+{
+	unsigned char i;
+	int ret;
+	for(i=0;i<MAX_CI_LIST_SIZE;i++)
+	{
+		if(ci_surfaces[i].used && (ci_surfaces[i].virt == virt_addr))
+			{
+				ret = gmm_unmap_from_graphics(ci_surfaces[i].gtt_offset, ci_surfaces[i].size);
+				ci_surfaces[i].used = 0;
+				ci_surfaces[i].gtt_offset = 0;
+				return 0;
+			}
+	}
+	printk(KERN_ERR"[gmm]ci unmap failed\n");
+	return 1;
+}
+
+EXPORT_SYMBOL(emgd_unmap_ci_buf);
+
+
+static int gmm_unmap_ci(unsigned long virt_addr)
+{
+	int ret;
+	ret =emgd_unmap_ci_buf(virt_addr);
+	return ret;
 }

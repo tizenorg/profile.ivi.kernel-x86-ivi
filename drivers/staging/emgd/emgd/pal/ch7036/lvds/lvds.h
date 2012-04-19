@@ -1,7 +1,7 @@
 /* -*- pse-c -*-
  *-----------------------------------------------------------------------------
  * Filename: lvds.h
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -33,7 +33,10 @@
 #define _PD_LVDS_H
 
 #include <pd.h>
+
+#ifdef T_LINUX
 #include <pci.h>
+#endif
 
 /* Values received from DPG hardware engineer. These are for single channel.  */
 

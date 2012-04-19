@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: emgd_drm.h
- * $Revision: 1.60 $
+ * $Revision: 1.63 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -70,7 +70,8 @@ enum {
 #define PVR2D_CREATE_FLIPCHAIN_OEMDISPLAY   (1UL << 4)
 #define PVR2D_CREATE_FLIPCHAIN_OEMGENERAL   (1UL << 5)
 #define PVR2D_CREATE_FLIPCHAIN_OEMFLIPCHAIN (1UL << 6)
-
+#define PVR2D_CREATE_FLIPCHAIN_CI (1UL << 7)
+#define PVR2D_CREATE_FLIPCHAIN_CI_V4L2_MAP (1UL << 8)
 /* Different command */
 #define CMD_VIDEO_STATE           1
 #define CMD_VIDEO_INITIALIZE      2
@@ -229,6 +230,7 @@ typedef struct _kdrm_get_attrs {
 	int extended; /* (DOWN/UP) - true if there are/to get extended attributes */
 } emgd_drm_get_attrs_t;
 
+#define IGD_GET_DISPLAY_NO_3DD_REINIT 	0x1
 
 typedef struct _kdrm_get_display {
 	int rtn; /* (UP) - return value of HAL procedure */
@@ -537,11 +539,16 @@ typedef struct _kdrm_set_surface {
 	unsigned long flags; /* (DOWN) */
 } emgd_drm_set_surface_t;
 
-#define CLONE_PRIMARY 0
-#define CLONE_SECONDARY 1
-#define CLONE 0
-#define DIH   1
+#define PRIMARY_DISPLAY 		0
+#define SECONDARY_DISPLAY 		1
+#define CLONE_PRIMARY 			PRIMARY_DISPLAY
+#define CLONE_SECONDARY 		SECONDARY_DISPLAY
+#define CLONE 				0
+#define DIH   				1
 
+#define DUAL_SCREEN_MAX_DISPLAY 	2
+#define MAX_FFB_SURF_VEXT 		DUAL_SCREEN_MAX_DISPLAY
+#define MAX_FFB_SURF_DIH 		1
 
 typedef struct _kdrm_dihclone_set_surface {
 	int rtn; /* (UP) - return value of HAL procedure */
@@ -698,6 +705,7 @@ typedef struct _kdrm_bc_ts {
 #define DRM_IGD_QUERY_2D_CAPS_HWHINT 0x35
 #define DRM_IGD_DIHCLONE_SET_SURFACE 0x36
 #define DRM_IGD_SET_OVERLAY_DISPLAY  0x37
+#define DRM_IGD_WAIT_VBLANK			 0x40
 
 /*
  * The EMGD DRM includes the PVR DRM, and as such, includes the following PVR
@@ -858,6 +866,9 @@ typedef struct _kdrm_bc_ts {
 
 #define DRM_IOCTL_IGD_DIHCLONE_SET_SURFACE	DRM_IOWR(DRM_IGD_DIHCLONE_SET_SURFACE + BASE,\
 		emgd_drm_dihclone_set_surface_t)
+
+#define DRM_IOCTL_IGD_WAIT_VBLANK			DRM_IOWR(DRM_IGD_WAIT_VBLANK + BASE,\
+		emgd_drm_driver_set_sync_refresh_t)
 
 
 /* From pvr_bridge.h */

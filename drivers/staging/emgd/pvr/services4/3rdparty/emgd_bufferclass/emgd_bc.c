@@ -50,7 +50,15 @@
 
 #include "pvrmodule.h"
 #include "emgd_bc.h"
-
+/*
+** Device Name Space is for device name, steam tag and device state.
+** Format
+** [Name]...[Video ID][Device Status]
+** From Device Name Space tail,
+** Device Status - one Byte
+** Video ID - four Byte
+** Device Name - variation according to device name set.
+*/
 #define TSBUFFERCLASS_DEVICE_NAME "BC Texture Stream Device"
 
 unsigned int bc_video_id[BUFCLASS_DEVICE_MAX_ID];
@@ -270,9 +278,11 @@ emgd_error_t bc_ts_init(IMG_UINT32 id) {
         if (!(*pfnGetPVRJTable)(&psDevInfo->sPVRJTable)){
             return (EMGD_ERROR_INIT_FAILURE);
         }
-
-        strncpy(psDevInfo->sBufferInfo.szDeviceName,
-                    TSBUFFERCLASS_DEVICE_NAME, MAX_BUFFER_DEVICE_NAME_SIZE);
+		if (TSBUFFERCLASS_DEV_NAME_LEN < 0) {
+			EMGD_ERROR("BufferClass Device Name Space is too small!");
+			return EMGD_ERROR_INIT_FAILURE;
+		}
+        strncpy(psDevInfo->sBufferInfo.szDeviceName, TSBUFFERCLASS_DEVICE_NAME, TSBUFFERCLASS_DEV_NAME_LEN);
 		/* Initialize BC JTable */
         psDevInfo->sBCJTable.ui32TableSize = sizeof (PVRSRV_BC_SRV2BUFFER_KMJTABLE);
 

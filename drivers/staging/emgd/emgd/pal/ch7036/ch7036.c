@@ -21,22 +21,16 @@
 *
 *-----------------------------------------------------------------------------
 * @file  ch7036.c
-* @version 1.1.4
+* @version 1.2.2.1
 *-----------------------------------------------------------------------------
 */
 
 
 
-
-#include "ch7036.h"
-#include "ch7036_iic.h"
-#include "asm/div64.h"
-#include <linux/kernel.h>
-
+#include "ch7036_intf.h"
 
 
 static uint32 g_nLastError;
-
 
 
 
@@ -758,14 +752,12 @@ ch_bool set_output_info(OUTPUT_INFO* pOutput_Info)
 {
 	uint8 lvds0_seq, lvds1_seq, lvds2_seq, lvds3_seq, lvdsclk_seq;
 	uint8 lvds0_pol, lvds1_pol, lvds2_pol, lvds3_pol, lvdsclk_pol;
-	/* uint8 hpo_o, vpo_o, depo_o; */
 	uint8 hd_dvib, intlc = 0, copy, hd_lv_pol, hd_lv_seq, hdmi_lvds_sel, hsp, vsp, m1m0, c1c0, vic;
 	uint32 hao_down, vao_down;
+
+
 	LVDS_FMT* pLvdsFmt = &pOutput_Info->lvds_fmt;
 	HDMI_FMT* pHdmiFmt = &pOutput_Info->hdmi_fmt;
-
-	/* VGA_FMT* pVgaFmt = &pOutput_Info->vga_fmt; */
-
 
 
 
@@ -1016,8 +1008,7 @@ ch_bool set_output_info(OUTPUT_INFO* pOutput_Info)
 ch_bool set_prefer_info(PREFER_INFO* pPrefer_Info)
 {
 	uint8 hsync_cnt_th, prbs_set_sel;
-	uint8 dbp; /*, hpo_o, vpo_o, depo_o;*/
-
+	uint8 dbp ;
 
 	iic_write_ex(MCLK, pPrefer_Info->mclk_khz);
 
@@ -1062,7 +1053,7 @@ ch_bool cal_and_set_clk_pll(DEV_CONTEXT* pDevContext)
 	uint32 a1_reg = 0;
 	uint32 a3_reg = 0;
 	uint32 uclk2d_reg = 0;
-	uint8 uclksec_reg;
+	uint8 uclksec_reg = 0;
 	uint8 dri_pll_n1_reg;
 	uint8 dri_pll_n3_reg;
 
@@ -1071,7 +1062,7 @@ ch_bool cal_and_set_clk_pll(DEV_CONTEXT* pDevContext)
 
 	uint8 gcksel = 0;
 	uint8 tsten1 = 0;
-    uint8 REV_ID;
+	uint8 REV_ID;
 	uint64 temp1;
 
 
@@ -1081,6 +1072,7 @@ ch_bool cal_and_set_clk_pll(DEV_CONTEXT* pDevContext)
 
 	I2CWrite(pDevContext,0x03, 0x04);
 	REV_ID = I2CRead(pDevContext,0x51) & 0x0F;
+
 
 
 	if(pPrefer_Info->reset == 1)
@@ -1268,16 +1260,31 @@ ch_bool cal_and_set_clk_pll(DEV_CONTEXT* pDevContext)
 		{
 			if((gcksel == 0x40)&&(tsten1 == 0x40)){
 				temp1 = (((uint64)pOutput_Info->uclk_khz) * pll1n1_div * pll2n5_div * (1 << 20));
+#ifdef T_LINUX
 			do_div(temp1 , pInput_Info->rx_clk_khz);
 				a1_reg = (uint32)temp1;
-			} else if((gcksel == 0x40)&&(tsten1 == 0x00)){
+#else
+				a1_reg = (uint32)((uint64)temp1 / pInput_Info->rx_clk_khz);
+#endif
+				PD_DEBUG ("#1 a1_reg = 0x%.8X\n", a1_reg);
+		} else if((gcksel == 0x40)&&(tsten1 == 0x00)){
 				temp1 = (((uint64)pOutput_Info->uclk_khz) * pll1n1_div * pll2n5_div * (1 << 20));
+#ifdef T_LINUX
 			do_div(temp1 , (uint32)27000);
 				a1_reg = (uint32)temp1;
+#else
+				a1_reg = (uint32)((uint64)temp1 / (uint32)27000);
+#endif
+				PD_DEBUG ("#2 a1_reg = 0x%.8X\n", a1_reg);
 		}else if((gcksel == 0x00)&&(tsten1 == 0x00)){
 				temp1 = (((uint64)pOutput_Info->uclk_khz) * pll1n1_div * pll2n5_div * (1 << 20));
+#ifdef T_LINUX
 			do_div(temp1 , (uint32)27000);
 				a1_reg = (uint32)temp1;
+#else
+				a1_reg = (uint32)((uint64)temp1 / (uint32)27000);
+#endif
+				PD_DEBUG ("#3 a1_reg = 0x%.8X\n", a1_reg);
 			}
 		   iic_write_ex(A1, a1_reg);
 		}
@@ -1676,17 +1683,17 @@ ch_bool cal_and_set_scaler(DEV_CONTEXT* pDevContext)
 	iic_write_ex(WRFAST, wrfast_reg);
 
 
-	chg_hl_reg = (	(pPrefer_Info->dat16_32b == 0)		&&
-					(pPrefer_Info->true24 == 0)			&&
+	chg_hl_reg = (	( 		(pPrefer_Info->dat16_32b == 0)		&&
+					(pPrefer_Info->true24 == 0)		&&
 					(pPrefer_Info->true_com == 0)		&&
-					(	((pOutput_Info->rotate == 0)	&&
-						(pOutput_Info->h_flip == 1))	||
-						((pOutput_Info->rotate == 1)	&&
-						(pOutput_Info->h_flip == 0))	||
-						((pOutput_Info->rotate == 3) &&
-						(pOutput_Info->h_flip == 1)) ||
-						((pOutput_Info->rotate == 2) &&
-						(pOutput_Info->h_flip == 0))  )   ) ? 1 : 0;
+				(	(pOutput_Info->rotate == 0)		&&
+					(pOutput_Info->h_flip == 1)	) )	||
+				(	(pOutput_Info->rotate == 1)		&&
+					(pOutput_Info->h_flip == 0)	)	||
+				(	(pOutput_Info->rotate == 3) 		&&
+					(pOutput_Info->h_flip == 1) 	)	||
+				(	(pOutput_Info->rotate == 2) 		&&
+					(pOutput_Info->h_flip == 0)  )   ) 	? 1 : 0;
 	iic_write_ex(CHG_HL, chg_hl_reg);
 
 
@@ -1704,7 +1711,7 @@ ch_bool post_cal_and_set(DEV_CONTEXT* pDevContext)
 
 	uint32 val_t;
 	uint64 temp1;
-	/* uint32 temp2; */
+
 
 
 	I2CWrite(pDevContext,0x03, 0x04);
@@ -1739,10 +1746,15 @@ ch_bool post_cal_and_set(DEV_CONTEXT* pDevContext)
 			return ch_false;
 		}
 		temp1 = ((uint64)hdinca_reg) * (1 << 20);
+#ifdef T_LINUX
 		do_div(temp1 , hdincb_reg);
 		hdinc_reg = (uint32)temp1;
+#else
+		hdinc_reg = (uint32)((uint64)temp1  / hdincb_reg);
+#endif
 
 
+		PD_DEBUG ("#1 hdinc_reg = 0x%.8X\n", hdinc_reg);
 		I2CWrite(pDevContext,0x3C, (hdinc_reg >> 16) & 0xFF);
 		I2CWrite(pDevContext,0x3D, (hdinc_reg >>  8) & 0xFF);
 		I2CWrite(pDevContext,0x3E, (hdinc_reg >>  0) & 0xFF);
@@ -1760,12 +1772,24 @@ ch_bool post_cal_and_set(DEV_CONTEXT* pDevContext)
 	}
 
 	temp1 = (uint64)hinca_reg * (1 << 20);
+#ifdef T_LINUX
 	do_div(temp1 , hincb_reg);
 	hinc_reg = (uint32)temp1;
+#else
+	hinc_reg = (uint32)((uint64)temp1 / hincb_reg);
+#endif
+
+PD_DEBUG ("#2 hinc_reg = 0x%.8X\n", hinc_reg);
 
 	temp1 = (uint64)vinca_reg * (1 << 20);
+#ifdef T_LINUX
 	do_div( temp1 , vincb_reg);
 	vinc_reg = (uint32)temp1;
+#else
+	vinc_reg = (uint32)((uint64)temp1 / vincb_reg);
+#endif
+
+	PD_DEBUG ("#1 vinc_reg = 0x%.8X\n", vinc_reg);
 
 	I2CWrite(pDevContext,0x36, (hinc_reg >> 16) & 0xFF);
 	I2CWrite(pDevContext,0x37, (hinc_reg >>  8) & 0xFF);
@@ -1864,12 +1888,6 @@ ch_bool cal_and_set_power(DEV_CONTEXT* pDevContext)
 		pdio = 0;
 
 
-
-
-
-
-
-
 	}
 	if(pOutput_Info->channel & CHANNEL_HDMI)
 	{
@@ -1886,7 +1904,6 @@ ch_bool cal_and_set_power(DEV_CONTEXT* pDevContext)
 		dri_pd_pll = 0;
 		pd_ddc = 0;
 
-
 		vga_pd = 0;
 		pdmio = 0;
 		sclpd = 0;
@@ -1900,34 +1917,33 @@ ch_bool cal_and_set_power(DEV_CONTEXT* pDevContext)
 		pdpll0 = 0;
 		pdpll1 = 0;
 		icen0 =0;
-
 		pdio = 0;
+
 		hpd_pd = 0;
 
 	}
 	if(pOutput_Info->channel & CHANNEL_VGA)
 	{
+		vga_pd = 0;
+		pdmio = 0;
+		sclpd = 0;
+		sdpd = 0;
+		gckoff = 0;
+		mempd = 0;
+
 		rx_pd = 0;
 		rxpll_pd = 0;
-		vga_pd = 0;
-		pddac = 0;
 
 		pdpll0 = 0;
 		pdpll1 = 0;
 		icen0 =0;
-
-		pdmio = 0;
 		pdio = 0;
-		sclpd = 0;
-		sdpd = 0;
-		gckoff = 0;
 
-		mempd = 0;
 		dispon = 1;
 		dri_pd_pll = 0;
 
-
 		dacsence=1;
+		pddac = 0;
 	}else{
 
 

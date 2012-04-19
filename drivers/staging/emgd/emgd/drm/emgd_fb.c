@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: emgd_fb.c
- * $Revision: 1.9 $
+ * $Revision: 1.11 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2011, Intel Corporation.
  *
@@ -694,6 +694,7 @@ void emgd_modeset_init(struct drm_device *dev)
 {
 	drm_emgd_priv_t *devpriv = (drm_emgd_priv_t *)dev->dev_private;
 	int ret;
+	struct drm_encoder *encoder;
 
 	EMGD_TRACE_ENTER;
 	drm_mode_config_init(dev);  /* drm helper function */
@@ -725,6 +726,15 @@ void emgd_modeset_init(struct drm_device *dev)
 
 	drm_mode_create_scaling_mode_property(dev);
 	emgd_setup_outputs(dev);
+
+	/* The encoders need to be turned off to prevent the locking of some
+	   of the registers - before doing a modeset */
+    list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
+        struct drm_encoder_helper_funcs *e_funcs = encoder->helper_private;
+        (*e_funcs->dpms)(encoder, DRM_MODE_DPMS_OFF);
+    }
+
+	drm_helper_disable_unused_functions(dev);
 
 	/* Initialize the framebuffer device */
 	emgd_fbdev_init(devpriv);
@@ -1187,7 +1197,7 @@ static int emgd_fb_create(emgd_fbdev_t *emgd_fbdev,
 	}
 
 	priv->initfb_info.allocated = 1;
-	priv->initfb_info.visible_offset = priv->initfb_info.fb_base_offset;
+	priv->initfb_info.visible_offset = 0;
 
 	mode_cmd.handle = EMGD_INITIAL_FRAMEBUFFER;
 	mode_cmd.pitch  = priv->initfb_info.screen_pitch;

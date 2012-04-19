@@ -21,7 +21,7 @@
 *
 *-----------------------------------------------------------------------------
 * @file  ch7036_fw.h
-* @version 1.1.4
+* @version 1.2.2
 *-----------------------------------------------------------------------------
 */
 
@@ -32,11 +32,12 @@
 #include "ch7036_typedef.h"
 
 
-#include <linux/kernel.h>
+//#include <linux/kernel.h>
 
 #define	CFG_CAP_EDID	0x01
 #define CFG_CAP_HDCP	0x02
 
+typedef unsigned char ch7036_attr_table_index_t;
 
 
 typedef struct _FW7036_CFG {
@@ -55,50 +56,18 @@ typedef struct _FW7036_CFG {
 #define LHFM_GET_EDID			0x01
 #define LHFM_GET_MODEINFO		0x03
 #define LHFM_GET_VGA_MODEINFO	0x33
-
 #define LHFM_HDMI_ONOFF		0x04
-
-
 #define LHFM_REQUEST		0x40
 #define LHFM_RET_ERROR		0x80
 
 int LHFM_get_version(DEV_CONTEXT* p_ch7xxx_context,struct _FW7036_CFG* cfg);
 
-
-
-
-
-ch7036_status_t LHFM_get_hdmi_hpd(DEV_CONTEXT* p_ch7xxx_context,uint8 *hpd);
 void LHFM_enable_crt_hpd(DEV_CONTEXT* p_ch7xxx_context);
 ch7036_status_t LHFM_get_crt_hpd(DEV_CONTEXT* p_ch7xxx_context);
-
-
-
 int LHFM_hdmi_onoff(int turnon);
-
-
-
-
-
-
 ch7036_status_t LHFM_get_hdmi_modeinfo(DEV_CONTEXT* p_ch7xxx_context,unsigned char *minfo);
-
-
-
-
-
-
 ch7036_status_t LHFM_get_edid(DEV_CONTEXT* p_ch7xxx_context,unsigned char*edid, unsigned char* ebn, unsigned char flag);
-
-
-
-
-
-
 int LHFM_load_firmware(DEV_CONTEXT* pDevContext);
-
-
-void test_fw(DEV_CONTEXT* p_ch7xxx_context,int oper);
 void ch7036_dump( char *s, int size, unsigned char *regdata);
 
 #define GET_VER					0x01
@@ -112,7 +81,9 @@ void ch7036_dump( char *s, int size, unsigned char *regdata);
 #define CH7036_HDMI_DDC			0
 #define CH7036_VGA_DDC			0x80
 
-#define MAX_EDID_BLOCKS			4
+#define MAX_EDID_BLOCKS			2
+
+#define MAX_I2C_BLOCK_SIZE		32
 
 
 
@@ -138,6 +109,7 @@ void ch7036_dump( char *s, int size, unsigned char *regdata);
 #define EDID_CEA_REVISION                     0x81
 #define EDID_CEA_DETAILED_TIMING_DATA_OFFSET  0x82
 #define EDID_CEA_VIDEO_DATA_BLOCK             0x84
+#define EDID_CEA_DATA_BLOCK					  0x84
 
 #define EDID_CEA_VIDEO_DATA_BLOCK_2           0x96
 #define EDID_CEA_VIDEO_DATA_BLOCK_3           0xA8
@@ -147,9 +119,15 @@ void ch7036_dump( char *s, int size, unsigned char *regdata);
 
 #define EDID_SPACE_INDEX_START                0x18
 
+
+
+
+
 typedef struct {
     unsigned char  is_supported;
-    char* mode_name;
+    char mode_name[13];
+	unsigned long index[3];
+
 }established_timings_t, *p_established_timings;
 
 typedef struct {
@@ -186,32 +164,50 @@ typedef struct {
 	unsigned char flags;
 }dtd_t, *p_dtd;
 
+
+typedef struct monitor_range {
+
+	unsigned char  hrate_min;
+	unsigned char  hrate_max;
+	unsigned char  vrate_min;
+	unsigned char  vrate_max;
+
+	unsigned long  pclk_max;
+
+}monitor_range_t;
+
+
+typedef struct detailed_timing_block {
+	unsigned long data_tag;
+	OUT_FMT		dtiming;
+} dtblks_t;
+
+
 typedef struct edid_blk {
 
 
 	unsigned char						is_edid;
-	unsigned char						ebn;
-	unsigned char						edidblk[512];
+	unsigned char						is_preferred_timing;
 
-	established_timings_t				etiming_I[8];
-	established_timings_t				etiming_II[8];
-	established_timings_t				etiming_man;
+	unsigned char						ebn;
+	unsigned char						edidblk[EDID_SIZE];
+
+	established_timings_t				*etiming_I;
+	established_timings_t				*etiming_II;
+	established_timings_t				*etiming_man;
 
 	standard_timings_t					stiming[8];
 
+	standard_timings_t					stiming_x[6];
+	monitor_range_t						rtiming;
+
+	dtblks_t							dtblk[4];
+
+
 	unsigned char						supported_modes[15];
+	ch7036_attr_table_index_t			modes[MAX_ATTR_LIST_SIZE];
 
 } ch7036_edid_blk_t;
-
-
-extern ch7036_edid_blk_t crt_edid;
-extern ch7036_edid_blk_t hdvi_edid;
-
-
-
-
-
-
 
 
 #endif

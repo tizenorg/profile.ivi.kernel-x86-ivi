@@ -1,6 +1,6 @@
 /*-----------------------------------------------------------------------------
  * Filename: emgd_interface.c
- * $Revision: 1.186 $
+ * $Revision: 1.190 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -166,6 +166,52 @@ int emgd_get_chipset_info(struct drm_device *dev, void *arg,
 	return 0;
 }
 
+
+int do_wait_vblank(void *display, int headline, int footline)
+{
+	int rtn;
+	int scnlne;
+	os_alarm_t timeout;
+	int ext = -99999;
+	unsigned long height = PIPE((igd_display_context_t *)display)->timing->height;
+
+	/*EMGD_TRACE_ENTER;*/
+
+	if (footline + 50 > height)
+		ext = IGD_IN_VBLANK;
+
+	timeout = OS_SET_ALARM(50);
+	do {
+		/* Call the HAL: */
+		rtn = dispatch->get_scanline((igd_display_context_t *)display, &scnlne);
+		if (rtn || (scnlne >= footline && scnlne <= footline + 50) || ext == scnlne) {
+			break;
+		}
+		OS_SCHEDULE();
+	} while (!OS_TEST_ALARM(timeout));
+
+	/*EMGD_DEBUG("rtn = %d", rtn);*/
+	/*EMGD_TRACE_EXIT;*/
+	return 0;
+}
+
+/*!
+ * IOCTL to bridge the IAL to the HAL's wait_vblank() procedure.
+ */
+int emgd_wait_vblank(struct drm_device *dev, void *arg,
+	struct drm_file *file_priv)
+{
+	int rtn;
+	emgd_drm_driver_set_sync_refresh_t *refresh = arg;
+	igd_display_h *display_handle = &(refresh->display_handle);
+
+	/*EMGD_TRACE_ENTER;*/
+	rtn = do_wait_vblank((igd_display_context_t *)(*display_handle), refresh->start_line, refresh->bottom_line);
+
+	/*EMGD_DEBUG("rtn = %d", rtn);*/
+	/*EMGD_TRACE_EXIT;*/
+	return 0;
+} /* emgd_wait_vblank() */
 
 /*!
  * IOCTL to bridge the IAL to the HAL's alter_cursor() procedure.
@@ -655,6 +701,10 @@ int emgd_get_attrs(struct drm_device *dev, void *arg,
 		i++;
 	}
 
+	if(drm_data->port_number == IGD_PORT_TYPE_LVDS) {
+		/* LVDS port driver returns +1 is to include the end attribute */
+		ext_cnt++;
+	}
 	if (drm_data->extended) {
 		drm_data->list_size = ext_cnt; /* size of extension list */
 
@@ -696,6 +746,7 @@ int emgd_get_display(struct drm_device *dev, void *arg,
 		(igd_display_context_t *) drm_data->display_handle;
 	drm_emgd_priv_t *priv = dev->dev_private;
 	int dc, port_num;
+	int do_reinit_3dd = 1;
 
 	EMGD_TRACE_ENTER;
 
@@ -716,6 +767,11 @@ int emgd_get_display(struct drm_device *dev, void *arg,
 	dc = *(context->mod_dispatch.dsp_current_dc);
 	port_num = drm_data->port_number;
 
+	if (drm_data->flags & IGD_GET_DISPLAY_NO_3DD_REINIT){
+		do_reinit_3dd = 0;
+		drm_data->flags &= (~IGD_GET_DISPLAY_NO_3DD_REINIT);
+	}
+
 	/* Call the HAL: */
 	drm_data->rtn = dispatch->get_display(drm_data->display_handle,
 		drm_data->port_number,
@@ -735,19 +791,21 @@ int emgd_get_display(struct drm_device *dev, void *arg,
 	 * combination. Also, we may not have to call reinit_3dd() as this is already done
 	 * as a part of configuring the primary.
 	 */
-	if(mode_context->seamless && !(IGD_DC_CLONE(dc) && port_num == priv->secondary_port_number)) {
-		if (priv->reinit_3dd) {
-			if(IGD_DC_VEXT(drm_emgd_dc)) {
-				priv->dc = drm_emgd_dc;
-			} else {
-				priv->dc = *(context->mod_dispatch.dsp_current_dc);
+	if (do_reinit_3dd) {
+		if(mode_context->seamless && !(IGD_DC_CLONE(dc) && port_num == priv->secondary_port_number)) {
+			if (priv->reinit_3dd) {
+				if(IGD_DC_VEXT(drm_emgd_dc)) {
+					priv->dc = drm_emgd_dc;
+				} else {
+					priv->dc = *(context->mod_dispatch.dsp_current_dc);
+				}
+				EMGD_DEBUG("priv->dc = 0x%lX", priv->dc);
+				priv->primary = drm_data->display_handle;
+				priv->secondary = NULL;
+				priv->primary_port_number = (priv->dc & 0xf0) >> 4;
+				priv->secondary_port_number = (priv->dc & 0xf00000) >> 20;
+				priv->reinit_3dd(dev);
 			}
-			EMGD_DEBUG("priv->dc = 0x%lX", priv->dc);
-			priv->primary = drm_data->display_handle;
-			priv->secondary = NULL;
-			priv->primary_port_number = (priv->dc & 0xf0) >> 4;
-			priv->secondary_port_number = (priv->dc & 0xf00000) >> 20;
-			priv->reinit_3dd(dev);
 		}
 	}
 
@@ -1719,61 +1777,6 @@ int emgd_dihclone_set_surface(struct drm_device *dev, void *arg,
 		}
 	}
 
-
-/* setting fake clone (dih clone) mode */
-
-
-	/*first save the display's original offset  */
-	surf.offset = pipe1->plane->fb_info->fb_base_offset;
-	drm_data->rtn = dispatch->set_surface(display,
-			IGD_PRIORITY_NORMAL,
-			IGD_BUFFER_SAVE,
-			&surf,
-			NULL,
-			0);
-
-	display = context->mod_dispatch.dsp_display_list[IGD_DC_SECONDARY(dc)];
-	surf.offset = pipe2->plane->fb_info->fb_base_offset;
-	drm_data->rtn = dispatch->set_surface(display,
-		IGD_PRIORITY_NORMAL,
-		IGD_BUFFER_SAVE,
-		&surf,
-		NULL,
-		0);
-
-	/* primary display */
-
-	if( drm_data->dih_clone_display == CLONE_PRIMARY){
-		surf.offset = pipe1->plane->fb_info->fb_base_offset;
-	} else {
-
-		surf.offset = pipe2->plane->fb_info->fb_base_offset;
-	}
-
-	display = context->mod_dispatch.dsp_display_list[IGD_DC_PRIMARY(dc)];
-	/* Call the HAL: */
-	drm_data->rtn = dispatch->set_surface(display,
-		IGD_PRIORITY_NORMAL,
-		IGD_BUFFER_DISPLAY,
-		&surf,
-		NULL,
-		0);
-
-	/* secondary display */
-
-	display = context->mod_dispatch.dsp_display_list[IGD_DC_SECONDARY(dc)];
-
-	drm_data->rtn = dispatch->set_surface(display,
-		IGD_PRIORITY_NORMAL,
-		IGD_BUFFER_DISPLAY,
-		&surf,
-		NULL,
-		0);
-
-	if(drm_data->rtn == 0){
-		context->mod_dispatch.in_dih_clone_mode = true;
-		context->mod_dispatch.dih_clone_display = drm_data->dih_clone_display;
-	}
 	EMGD_DEBUG("drm_data->rtn = %d", drm_data->rtn);
 
 	EMGD_DEBUG("Returning 0");

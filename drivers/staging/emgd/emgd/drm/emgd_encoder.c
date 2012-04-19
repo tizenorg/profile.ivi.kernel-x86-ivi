@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: emgd_encoder.c
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2011, Intel Corporation.
  *
@@ -349,9 +349,12 @@ static void emgd_encoder_commit(struct drm_encoder *encoder)
 		emgd_crtc = container_of(encoder->crtc, emgd_crtc_t, base);
 		pipe      = emgd_crtc->igd_pipe;
 
+		mode_context->kms_dispatch->kms_program_port(emgd_encoder,
+			IGD_DISPLAY_ENABLE);
+/*
 		port->pd_driver->set_mode(port->pd_context, pipe->timing,
 								1<<pipe->pipe_num);
-
+*/
 		encoder_funcs = encoder->helper_private;
 		encoder_funcs->dpms(encoder, DRM_MODE_DPMS_ON);
 

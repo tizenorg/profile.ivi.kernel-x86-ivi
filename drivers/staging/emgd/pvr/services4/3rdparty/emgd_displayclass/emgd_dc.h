@@ -106,6 +106,8 @@ typedef struct _emgddc_buffer
 	/** The PVR sync data for this buffer */
 	PVRSRV_SYNC_DATA *sync_data;
 
+	unsigned long is_contiguous;
+
 	/**
 	 * The PVR next buffer in the swap chain (the last buffer points to the
 	 * first buffer

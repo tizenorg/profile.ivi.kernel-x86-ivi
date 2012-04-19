@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: emgd_fbcon.c
- * $Revision: 1.2 $
+ * $Revision: 1.4 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2011, Intel Corporation.
  *
@@ -258,6 +258,10 @@ static int alloc_initial_fb(emgd_fbdev_t *emgd_fbdev)
 	priv->initfb_info.height       = config_drm.height;
 	priv->initfb_info.pixel_format = IGD_PF_ARGB32;
 
+	/* The initial framebuffer is a displayable surface. */
+	priv->initfb_info.flags = (priv->initfb_info.flags & IGD_FB_FLAGS_MASK) |
+									IGD_SURFACE_DISPLAY;
+
 	ret = context->dispatch.gmm_alloc_surface(
 								&priv->initfb_info.fb_base_offset,
 								 priv->initfb_info.pixel_format,
@@ -273,7 +277,7 @@ static int alloc_initial_fb(emgd_fbdev_t *emgd_fbdev)
 	}
 
 	priv->initfb_info.allocated      = 1;
-	priv->initfb_info.visible_offset = priv->initfb_info.fb_base_offset;
+	priv->initfb_info.visible_offset = 0;
 
 
 	/* Allocate emgd_framebuffer_t */
@@ -778,7 +782,7 @@ int emgd_fbcon_initial_config(emgd_fbdev_t *emgd_fbdev)
 				secondary_mode.vrefresh      = config_drm.refresh;
 
 				mode_set_ret = drm_crtc_helper_set_mode(crtc,
-								&primary_mode,
+								&secondary_mode,
 								0, 0,
 								NULL);
 								break;

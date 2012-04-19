@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: igd_render.h
- * $Revision: 1.17 $
+ * $Revision: 1.18 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -341,6 +341,8 @@ typedef int (*_igd_get_surface_fn_t)(
 #define IGD_BUFFER_ASYNC     0x4
 /* Issue a Wait for last flip only, do not flip again */
 #define IGD_BUFFER_WAIT      0x8
+/* Do not pan */
+#define IGD_BUFFER_NO_PAN		 0x10
 
 /* ------ WARNING!!!! Read Before Changing ------ */
 /*    Command should always be 32 Bit on all platforms including 64 bit */

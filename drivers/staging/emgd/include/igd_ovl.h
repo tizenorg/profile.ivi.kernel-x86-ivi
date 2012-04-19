@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: igd_ovl.h
- * $Revision: 1.14 $
+ * $Revision: 1.17 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -321,3 +321,6 @@ typedef struct _ovl_um_context {
 
 
 #endif /*_IGD_OVL_H*/
+
+#define WAIT_FOR_FLIP 1
+#define FLIP_DONE 0

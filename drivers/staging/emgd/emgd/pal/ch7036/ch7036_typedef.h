@@ -21,7 +21,7 @@
 *
 *-----------------------------------------------------------------------------
 * @file  ch7036_typedef.h
-* @version 1.1.4
+* @version 1.2
 *-----------------------------------------------------------------------------
 */
 
@@ -31,17 +31,25 @@
 
 
 
-typedef unsigned char			uint8;
-typedef unsigned short			uint16;
-typedef unsigned int			uint32;
+typedef unsigned char				uint8;
+typedef unsigned short				uint16;
+typedef unsigned int				uint32;
+
 
 
 typedef unsigned long long int 		uint64;
 
-typedef signed char				int8;
-typedef signed short			int16;
-typedef signed int				int32;
-typedef signed long long int			int64;
+typedef signed char					int8;
+typedef signed short				int16;
+typedef signed int					int32;
+
+typedef signed long long int		int64;
+
+
+
+
+
+
 
 typedef uint32					ch_bool;
 #define ch_true					1
@@ -148,6 +156,7 @@ typedef struct{
 #define CHANNEL_LVDS_HDMI 	(CHANNEL_LVDS | CHANNEL_HDMI)
 #define CHANNEL_LVDS_VGA 	(CHANNEL_LVDS | CHANNEL_VGA)
 #define CHANNEL_LVDS_DVI 	(CHANNEL_LVDS | CHANNEL_DVI)
+#define CHANNEL_AUTO_DETECT	0x10
 
 
 #define CHANNEL_LVDS_HDMI_VGA_OFF	0x0000
@@ -252,22 +261,18 @@ typedef enum hdmi{
 	OUT_HDMI_720x480P_59,
 	OUT_HDMI_720x480P_60,
 
+	OUT_HDMI_720x576P_50,
+
 	OUT_HDMI_1280x720P_59,
 	OUT_HDMI_1280x720P_60,
 
 	OUT_HDMI_1920x1080I_59,
 	OUT_HDMI_1920x1080I_60,
 
-
-
-
-
-
-
 	OUT_HDMI_1920x1080P_59,
 	OUT_HDMI_1920x1080P_60,
 
-	OUT_HDMI_720x576P_50,
+//	OUT_HDMI_720x576P_50, //2/2/12 grouped to downscaling modes < 13x7
 	OUT_HDMI_1280x720P_50,
 	OUT_HDMI_1920x1080I_50,
 
@@ -337,6 +342,7 @@ typedef enum dvi {
 	OUT_DVI_1920x1080_60,
 
 	OUT_DVI_1920x1200_60,
+
 	OUT_DVI_END,
 } DVI_OUT_MODE;
 
@@ -400,6 +406,8 @@ typedef enum crt{
 	OUT_CRT_END,
 }CRT_OUT_MODE;
 
+#define MAX_ATTR_LIST_SIZE 32
+
 
 
 
@@ -456,9 +464,9 @@ typedef enum {
 
 	SS_CRT_HPD_NOTCONNECTED,
 	SS_CRT_HPD_CONNECTED_TO_GRD,
+	SS_DISPLAY_CHOICE_NOT_ALLOWED,
 
 
 } ch7036_status_t;
-
 
 #endif

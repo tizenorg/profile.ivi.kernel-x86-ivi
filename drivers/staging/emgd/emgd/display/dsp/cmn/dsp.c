@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: dsp.c
- * $Revision: 1.26 $
+ * $Revision: 1.27 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -2298,6 +2298,7 @@ void dsp_shutdown(igd_context_t *context)
 		 * to their defaults when the HAL is shutting down or else they
 		 * would retain their previous values.
 		 */
+		hal_attr_index = 0;
 		while (PD_ATTR_LIST_END != port->attributes[hal_attr_index].id) {
 			port->attributes[hal_attr_index].current_value =
 				port->attributes[hal_attr_index].default_value;

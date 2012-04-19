@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: memlist.h
- * $Revision: 1.16 $
+ * $Revision: 1.17 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -126,6 +126,7 @@ typedef struct _gmm_chunk {
 	} usage;
 	/* The offset of the allocated memory, after alignment */
 	unsigned long offset;
+	unsigned long used;
 	/* The number of bytes of memory requested/allocated for this chunk */
 	unsigned long size;
 	/* The number of pages of memory required for "size" bytes */

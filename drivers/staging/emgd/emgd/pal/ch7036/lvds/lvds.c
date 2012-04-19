@@ -1,7 +1,7 @@
 /* -*- pse-c -*-
  *-----------------------------------------------------------------------------
  * Filename: lvds.c
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -30,7 +30,8 @@
  *  This is written according to the port interface defined in pd.h.
  *-----------------------------------------------------------------------------
  */
-#include <linux/kernel.h>
+
+#pragma optimize ("",off)
 
 #include <config.h>
 #include <igd_pd.h>
@@ -38,6 +39,17 @@
 #include <pd_print.h>
 
 #include "lvds.h"
+
+
+#ifdef T_LINUX
+	#include <linux/kernel.h>
+
+	#define PD_DEBUG printk
+	#define PD_ERROR printk
+#else
+	#define CONFIG_PLB
+//	#define CONFIG_TNC
+#endif
 
 /* One space between the #define and the backslash,else compilers complain */
 #define PTR_OFFSET_UCHAR(ptr,offset)   (*((unsigned char *)ptr + offset))
@@ -198,12 +210,15 @@ static void internal_lvds_get_dclk(internal_lvds_context_t *pd_context, pd_dvo_i
  *
  *----------------------------------------------------------------------------
  */
+#ifdef T_LINUX //thua- 9/16/11
 
 int PD_MODULE_INIT(internal_lvds_init, (void *handle))
 {
 	/* register the LVDS driver */
 	return pd_register(handle, &internal_lvds_driver);
 }
+
+#endif
 
 /*----------------------------------------------------------------------------
  *
@@ -220,11 +235,12 @@ int PD_MODULE_INIT(internal_lvds_init, (void *handle))
  *
  *----------------------------------------------------------------------------
  */
-
+#ifdef T_LINUX //thua- 9/16/11
 int PD_MODULE_EXIT(internal_lvds_exit, (void))
 {
 	return PD_SUCCESS;
 }
+#endif
 
 /*----------------------------------------------------------------------------
  *
@@ -359,7 +375,8 @@ int internal_lvds_open(pd_callback_t *callback, void **context)
 
 	/* Initialize number of attributes */
 	/* +1 is to include the end attribute */
-	internal_lvds_context.num_attrs = (unsigned char)chipset_attr_index + 1;
+	internal_lvds_context.num_attrs = (unsigned char)chipset_attr_index;
+//	internal_lvds_context.num_attrs = (unsigned char)chipset_attr_index + 1;
 
 #if 0
 	/* Add chipset specific attrbutes.
@@ -749,11 +766,13 @@ int internal_lvds_set_attrs (void *context, unsigned long num, pd_attr_t *list)
 
 	PD_DEBUG("internal_lvds_set_attrs()\n");
 	for (i = 0; i < num; i++, list++) {
-
 		/* do nothing if the attribute has not been changed */
 		if (!(list->flags & PD_ATTR_FLAG_VALUE_CHANGED)) {
 			continue;
 		}
+
+		//thua- need to reset flag to 'not changed' - 9/19/11
+//		list->flags &= ~PD_ATTR_FLAG_VALUE_CHANGED;
 
 		/* attributes can't be changed after init has been completed */
 		if (list->flags & PD_ATTR_FLAG_USER_INVISIBLE &&
@@ -993,6 +1012,8 @@ int internal_lvds_get_timing_list (void *context, pd_timing_t *in_list,
 	int ret;
 
 	PD_DEBUG("internal_lvds_get_timing_list()\n");
+
+	PD_DEBUG ("NUHAIRI : context = %lu,  pd_context = %lu, &internal_lvds_info = %lu\n",context,  pd_context, &internal_lvds_info);
 
 	internal_lvds_get_dclk( pd_context, &internal_lvds_info );
 
@@ -1497,7 +1518,8 @@ static void internal_lvds_get_dclk(internal_lvds_context_t *pd_context, pd_dvo_i
 		internal_lvds_info->min_dclk = LVDS_MIN_DCLK;
 		internal_lvds_info->max_dclk = LVDS_MAX_DCLK;
 	}
-	/* This #define is the result of code size reduction effort. */
+	PD_DEBUG("internal_lvds_dclk: #1\n");
+/* This #define is the result of code size reduction effort. */
 #ifdef CONFIG_CTG
 	/* Set dclk for GM965 */
 	if(pd_context->chipset==PCI_DEVICE_ID_VGA_CTG){
@@ -1556,8 +1578,10 @@ static void internal_lvds_get_dclk(internal_lvds_context_t *pd_context, pd_dvo_i
 		} else {
 			internal_lvds_info->max_dclk = LVDS_TNC_SINGLE_MAX_DCLK;
 		}
-
+		PD_DEBUG("internal_lvds_dclk: #2\n");
 	}
 #endif
-
+	PD_DEBUG("internal_lvds_dclk: at the end\n");
 }
+
+#pragma optimize ("",on)

@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: ovl2_tnc.c
- * $Revision: 1.20 $
+ * $Revision: 1.21 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -266,7 +266,8 @@ unsigned int ovl2_send_instr_tnc(
 {
 	unsigned char *mmio = MMIO(display);
 	unsigned long tmp;
-
+	inter_module_dispatch_t *md;
+	platform_context_tnc_t * platform;
 
 
 	EMGD_TRACE_ENTER;
@@ -320,12 +321,16 @@ unsigned int ovl2_send_instr_tnc(
 	 * the ISR bit never changed
 	 */
 
-	ovl_context->sync2 = 0;
+	md = &display->context->mod_dispatch;
+	platform = (platform_context_tnc_t *)display->context->
+					platform_context;
+	if(md && md->set_flip_pending){
+		OS_PTHREAD_MUTEX_LOCK(&platform->flip_mutex);
+		md->set_flip_pending(MMIO(display), 0x71024);
+		OS_PTHREAD_MUTEX_UNLOCK(&platform->flip_mutex);
+	}
 
-	display->context->dispatch.sync(display,
-		IGD_PRIORITY_NORMAL,
-		&ovl_context->sync2,
-		IGD_SYNC_NONBLOCK);
+	ovl_context->sync2 = WAIT_FOR_FLIP;
 
 	EMGD_TRACE_EXIT;
 	return IGD_SUCCESS;
@@ -384,17 +389,6 @@ int query_ovl2_tnc(igd_display_h display_h,
 			return TRUE;
 		}
 
-		/* Wait for vblank */
-		/* Check to see if the plane C flip is pending.  If is is pending
-		 * return FALSE (Flip not done). */
-		if(display->context->dispatch.sync(
-			display,
-			IGD_PRIORITY_NORMAL,
-			&ovl_context->sync2,
-			IGD_SYNC_NONBLOCK)) {
-			EMGD_DEBUG("Overlay Sync Check - Flip not done");
-			return FALSE;
-		}
 		/* According to the PBL B-spec, there doesnt seem to exist any bit
 		 * for Sprite C Flip-Pending status. Testing 0x20AC in code during
 		 * virt queue's REG write shows nothing changed for Bit8. Thus, we
@@ -418,7 +412,7 @@ int query_ovl2_tnc(igd_display_h display_h,
 
 		/* Now that we know the last flip is done and the register update is
 		 * complete, set the sync to 0 and return TRUE (Flip done). */
-		ovl_context->sync2 = 0;
+		ovl_context->sync2 = FLIP_DONE;
 		break;
 	case IGD_OVL_QUERY_WAIT_LAST_FLIP_DONE:
 		/* Wait for 200 milliseconds for the last flip to complete.  If not

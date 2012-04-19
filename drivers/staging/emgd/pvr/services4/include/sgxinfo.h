@@ -240,6 +240,10 @@ typedef struct _PVRSRV_TRANSFER_SGX_KICK_
 #if defined(PDUMP)
 	IMG_UINT32		ui32CCBDumpWOff;
 #endif
+
+	IMG_HANDLE		display;
+	IMG_UINT32		headline;
+	IMG_UINT32		footline;
 } PVRSRV_TRANSFER_SGX_KICK, *PPVRSRV_TRANSFER_SGX_KICK;
 
 #if defined(SGX_FEATURE_2D_HARDWARE)

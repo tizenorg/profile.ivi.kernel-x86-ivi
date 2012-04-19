@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: igd_gmm.h
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -104,8 +104,8 @@
 #define IGD_SURFACE_FENCED    0x00004000
 #define IGD_SURFACE_SYS_MEM   0x00008000
 #define IGD_SURFACE_PHYS_PTR  0x00010000
-
-
+#define IGD_SURFACE_CI		0x00020000
+#define IGD_SURFACE_CI_V4L2_MAP	0x00040000		/*will be set when map_method=0 without WA*/
 /*
  * Mipmap flags are only valid on mipmap surfaces.
  * Planes flags are only valid on volume surfaces.

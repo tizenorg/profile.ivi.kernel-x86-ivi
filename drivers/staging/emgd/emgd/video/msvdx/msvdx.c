@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: msvdx.c
- * $Revision: 1.26 $
+ * $Revision: 1.27 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -405,12 +405,12 @@ int send_to_mtx(igd_context_t *context, unsigned long *msg)
 	/* Send an interrupt to the MTX to let it know about the message */
 	EMGD_WRITE32(1, mmio + PSB_MSVDX_MTX_KICK);
 
-	/* Read MSVDX Register several times in case idle signal assert */		
+	/* Read MSVDX Register several times in case idle signal assert */
 	EMGD_READ32(mmio + PSB_MSVDX_INTERRUPT_STATUS);
 	EMGD_READ32(mmio + PSB_MSVDX_INTERRUPT_STATUS);
 	EMGD_READ32(mmio + PSB_MSVDX_INTERRUPT_STATUS);
 	EMGD_READ32(mmio + PSB_MSVDX_INTERRUPT_STATUS);
-	
+
 
 #if 0
 	DEBUG_DUMP(context); /* For lots of additional debugging info */
@@ -564,7 +564,7 @@ int msvdx_poll_mtx_irq(igd_context_t *context)
 			return 0;
 		} else if (status & MSVDX_MTX_IRQ_MASK) {
 			/* Clear all interrupt bits */
-			EMGD_WRITE32(0xffff, mmio + PSB_MSVDX_INTERRUPT_CLEAR);
+			EMGD_WRITE32(0xffffffff, mmio + PSB_MSVDX_INTERRUPT_CLEAR);
 			EMGD_READ32(mmio + PSB_MSVDX_INTERRUPT_CLEAR);
 
 			msvdx_mtx_interrupt_plb(context);
@@ -685,7 +685,7 @@ IMG_BOOL msvdx_mtx_isr(IMG_VOID *pvData)
 	} else if (msvdx_stat & MSVDX_MTX_IRQ_MASK) {
 		/* Read the firmware to host messages */
 
-        EMGD_WRITE32(0xffff, mmio + PSB_MSVDX_INTERRUPT_CLEAR);
+        EMGD_WRITE32(0xffffffff, mmio + PSB_MSVDX_INTERRUPT_CLEAR);
 		EMGD_READ32(mmio + PSB_MSVDX_INTERRUPT_CLEAR);
 		msvdx_mtx_interrupt_plb(context);
 		//return 0;

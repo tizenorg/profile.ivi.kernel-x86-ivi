@@ -63,6 +63,18 @@ extern "C"
 
 #define BUFCLASS_DEVICE_MAX_ID	6
 #define BUFCLASS_BUFFER_MAX		64
+/*
+** Device Name Space is for device name, steam tag and device state.
+** Format
+** [Name]...[Video ID][Device Status]
+** From Device Name Space tail,
+** Device Status - one Byte
+** Video ID - four Byte
+** Device Name - variation according to device name set.
+*/
+#define TSBUFFERCLASS_DEV_NAME_LEN (MAX_BUFFER_DEVICE_NAME_SIZE - sizeof(IMG_UINT32) - sizeof(IMG_CHAR) - 1)
+#define TSBUFFERCLASS_VIDEOID_OFFSET (MAX_BUFFER_DEVICE_NAME_SIZE - sizeof(IMG_UINT32) - sizeof(IMG_CHAR))
+#define TSBUFFERCLASS_DEVSTATUS_OFFSET (MAX_BUFFER_DEVICE_NAME_SIZE - sizeof(IMG_CHAR))
 
     typedef void *BCE_HANDLE;
 

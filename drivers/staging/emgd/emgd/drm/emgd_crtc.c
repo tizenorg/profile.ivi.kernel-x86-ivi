@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: emgd_crtc.c
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2011, Intel Corporation.
  *
@@ -166,11 +166,11 @@ static void emgd_crtc_dpms(struct drm_crtc *crtc, int mode)
 			EMGD_ERROR("No pipe timing, can't enable pipe");
 		} else {
 			EMGD_DEBUG("Calling program pipe");
-			mode_context->kms_dispatch->kms_set_pipe_pwr(emgd_crtc, TRUE);
+			mode_context->kms_dispatch->kms_program_pipe(emgd_crtc);
 
 			EMGD_DEBUG("Calling program plane");
-			//mode_context->kms_dispatch->kms_set_plane_pwr(emgd_crtc, TRUE);
-			mode_context->kms_dispatch->kms_program_plane(emgd_crtc, TRUE);
+			mode_context->kms_dispatch->kms_set_plane_pwr(emgd_crtc, TRUE);
+
 			crtc->enabled = true;
 		}
 		break;
@@ -180,9 +180,7 @@ static void emgd_crtc_dpms(struct drm_crtc *crtc, int mode)
 	case DRM_MODE_DPMS_OFF:
 		if (emgd_crtc->igd_pipe->inuse && crtc->enabled) {
 			EMGD_DEBUG("Calling program plane");
-			//mode_context->kms_dispatch->kms_set_plane_pwr(emgd_crtc, FALSE);
-			mode_context->kms_dispatch->kms_program_plane(emgd_crtc, FALSE);
-
+			mode_context->kms_dispatch->kms_set_plane_pwr(emgd_crtc, FALSE);
 
 			EMGD_DEBUG("Calling program pipe");
 			mode_context->kms_dispatch->kms_set_pipe_pwr(emgd_crtc, FALSE);
@@ -374,12 +372,7 @@ static void emgd_crtc_prepare(struct drm_crtc *crtc)
 
 static void emgd_crtc_commit(struct drm_crtc *crtc)
 {
-	emgd_crtc_t *emgd_crtc = NULL;
-
 	EMGD_TRACE_ENTER;
-
-	emgd_crtc = container_of(crtc, emgd_crtc_t, base);
-	mode_context->kms_dispatch->kms_program_pipe(emgd_crtc);
 	emgd_crtc_dpms(crtc, DRM_MODE_DPMS_ON);
 
 	EMGD_TRACE_EXIT;

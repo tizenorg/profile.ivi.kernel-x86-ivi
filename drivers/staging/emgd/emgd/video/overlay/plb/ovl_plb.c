@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: ovl_plb.c
- * $Revision: 1.27 $
+ * $Revision: 1.30 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -1908,7 +1908,7 @@ static unsigned int ovl_send_instr_plb(
 
 	} else {
 
-		if(ovl_context->fb_blend_ovl) {
+		if (ovl_context->fb_blend_ovl) {
 			tmp = EMGD_READ32(mmio +  PLANE(display)->plane_reg);
 			if((tmp & 0x3c000000) == 0x1c000000) {
 				tmp = tmp & 0xc3FFFFFF;

@@ -539,7 +539,14 @@ static PVRSRV_ERROR GetDCBufferAddr(IMG_HANDLE device_h,
 	 * Other than cursor, memory allocations are not contiguous pages
 	 */
 	if (is_contiguous) {
-		*is_contiguous = IMG_FALSE;
+		if(system_buffer->is_contiguous == IMG_TRUE)
+		{	*is_contiguous = IMG_TRUE;
+
+		}
+		else{
+			*is_contiguous = IMG_FALSE;
+
+		}
 	}
 
 	EMGD_TRACE_EXIT;
@@ -647,7 +654,7 @@ static void free_swap_chain(emgddc_swapchain_t *swap_chain,
 	igd_context_t *context)
 {
 	emgddc_buffer_t *buffers;
-	int i;
+	int i=0;
 
 	/*
 	 * Free and unmap the buffers.  Must ensure that the HAL is running before
@@ -656,15 +663,21 @@ static void free_swap_chain(emgddc_swapchain_t *swap_chain,
 	 */
 	if (swap_chain->devinfo->priv->hal_running) {
 		buffers = swap_chain->buffers;
-		for (i = 0 ; i < swap_chain->buffer_count ; i++) {
-			if (!buffers[i].is_fb) {
-				if (buffers[i].virt_addr) {
-					context->dispatch.gmm_unmap(buffers[i].virt_addr);
-				}
-				if (buffers[i].offset) {
-					context->dispatch.gmm_free(buffers[i].offset);
+
+		if(!buffers[i].is_contiguous){
+			for (i = 0 ; i < swap_chain->buffer_count ; i++) {
+				if (!buffers[i].is_fb) {
+					if (buffers[i].virt_addr) {
+						context->dispatch.gmm_unmap(buffers[i].virt_addr);
+					}
+					if (buffers[i].offset) {
+						context->dispatch.gmm_free(buffers[i].offset);
+					}
 				}
 			}
+		}
+		else{
+			context->dispatch.gmm_unmap_ci((unsigned long)buffers[0].virt_addr);
 		}
 	}
 
@@ -739,10 +752,18 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE device_h,
 	igd_dispatch_t *dispatch;
 	int flipable;
 
+	IMG_UINT32 ci_offset=0;
+
+
 	EMGD_TRACE_ENTER;
 	EMGD_DEBUG("device_h = 0x%p, buffer_count = %lu", device_h, buffer_count);
 	EMGD_DEBUG("flags = 0x%08lx, oem_flags = 0x%08lx", flags, oem_flags);
 
+	if(flags & PVR2D_CREATE_FLIPCHAIN_CI)
+	{
+		ci_offset = src_surf_attrib->ui32Reseved;
+
+	}
 
 	/*
 	 * Check the parameters and dependencies:
@@ -768,8 +789,10 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE device_h,
 	/* Is this is an OEM call (I.E. allocating a buffer)? */
 	if ((oem_flags & (PVR2D_CREATE_FLIPCHAIN_OEMDISPLAY |
 				PVR2D_CREATE_FLIPCHAIN_OEMGENERAL |
-				PVR2D_CREATE_FLIPCHAIN_OEMOVERLAY))) {
+				PVR2D_CREATE_FLIPCHAIN_OEMOVERLAY |
+				PVR2D_CREATE_FLIPCHAIN_CI))) {
 		flipable = 0;
+
 	} else {
 		/*
 		 * If this is suppose to be an actual flip-able swap chain, then
@@ -779,6 +802,7 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE device_h,
 			return PVRSRV_ERROR_TOO_FEW_BUFFERS;
 		}
 		flipable = 1;
+
 	}
 
 	devinfo = (emgddc_devinfo_t *) device_h;
@@ -893,6 +917,7 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE device_h,
 	 */
 	for (; i < buffer_count ; i++) {
 		unsigned long offset;
+		unsigned long virt_addr;
 		unsigned int width = 0;
 		unsigned int height = 0;
 		unsigned int pitch = 0;
@@ -900,6 +925,7 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE device_h,
 		unsigned long pf;
 		unsigned long flags = IGD_SURFACE_RENDER;
 		int ret;
+		unsigned int map_method=1;	/*1: gtt map by va driver*/
 
 		if (!(oem_flags & PVR2D_CREATE_FLIPCHAIN_OEMGENERAL)) {
 			flags |= IGD_SURFACE_DISPLAY;
@@ -917,15 +943,41 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE device_h,
 		height = dst_surf_attrib->sDims.ui32Height;
 		pitch = dst_surf_attrib->sDims.ui32ByteStride;
 		flags |= IGD_MIN_PITCH;
-		ret = dispatch->gmm_alloc_surface(&offset,
-			pf,
-			&width, &height,
-			&pitch, &size,
-			IGD_GMM_ALLOC_TYPE_NORMAL, &flags);
-		if (0 != ret) {
-			free_swap_chain(swap_chain, context);
-			EMGD_ERROR_EXIT("gmm_alloc_surface() failed (%d)", ret);
-			return PVRSRV_ERROR_OUT_OF_MEMORY;
+
+		if(oem_flags & PVR2D_CREATE_FLIPCHAIN_CI){
+			if(oem_flags & PVR2D_CREATE_FLIPCHAIN_CI_V4L2_MAP)
+				map_method = 0;
+
+
+			size=height*pitch;
+			ret = dispatch->gmm_map_ci(&offset,
+				ci_offset,
+				&virt_addr,
+				map_method,
+				size);
+
+
+			if (0 != ret) {
+				free_swap_chain(swap_chain, context);
+				EMGD_ERROR_EXIT("gmm_alloc_surface() failed (%d)", ret);
+				return PVRSRV_ERROR_OUT_OF_MEMORY;
+			}
+			buffers[i].is_contiguous = IMG_TRUE;
+
+		}
+		else{
+
+			ret = dispatch->gmm_alloc_surface(&offset,
+				pf,
+				&width, &height,
+				&pitch, &size,
+				IGD_GMM_ALLOC_TYPE_NORMAL, &flags);
+			if (0 != ret) {
+				free_swap_chain(swap_chain, context);
+				EMGD_ERROR_EXIT("gmm_alloc_surface() failed (%d)", ret);
+				return PVRSRV_ERROR_OUT_OF_MEMORY;
+			}
+			buffers[i].is_contiguous = IMG_FALSE;
 		}
 
 		dst_surf_attrib->sDims.ui32ByteStride = pitch;
@@ -936,8 +988,15 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE device_h,
 		buffers[i].height = height;
 		buffers[i].pitch = pitch;
 		buffers[i].size = (size + (PAGE_SIZE - 1)) & PAGE_MASK;
+
 		buffers[i].offset = offset;
-		buffers[i].virt_addr = dispatch->gmm_map(offset);
+
+		if(oem_flags & PVR2D_CREATE_FLIPCHAIN_CI){
+
+				buffers[i].virt_addr = (IMG_CPU_VIRTADDR)virt_addr;
+		}
+		else
+			buffers[i].virt_addr = dispatch->gmm_map(offset);
 		buffers[i].sync_data = sync_data[i];
 		buffers[i].is_fb = 0;
 	} /* for */
@@ -2106,8 +2165,8 @@ static emgd_error_t emgddc_init_devinfo(struct drm_device *dev,
 	cmd_proc_list[DC_FLIP_COMMAND] = emgddc_process_flip;
 
 	/* FIXME:  Not sure what these are for: */
-	sync_count_list[DC_FLIP_COMMAND][0] = 0; 
-	sync_count_list[DC_FLIP_COMMAND][1] = 2; 
+	sync_count_list[DC_FLIP_COMMAND][0] = 0;
+	sync_count_list[DC_FLIP_COMMAND][1] = 2;
 
 	if (pvr_jtable->pfnPVRSRVRegisterCmdProcList(devinfo->device_id,
 		&cmd_proc_list[0],
@@ -2152,8 +2211,6 @@ static emgd_error_t init_display(emgddc_devinfo_t *devinfo,
 	int mode_flags = IGD_QUERY_LIVE_MODES;
 	emgddc_buffer_t *buffer = &(devinfo->system_buffer);
 	int i = 1, j, ret;
-	emgddc_swapchain_t *swap_chain;
-	unsigned long lock_flags;
 
 	EMGD_TRACE_ENTER;
 
@@ -2162,25 +2219,6 @@ static emgd_error_t init_display(emgddc_devinfo_t *devinfo,
 	EMGD_DEBUG(" devinfo->which_devinfo=%d", devinfo->which_devinfo);
 	EMGD_DEBUG(" display=0x%p", display);
 	EMGD_DEBUG(" port_number=%u", port_number);
-
-
-	/* Mode changes invalidate flip-able swap chains.  We can't destroy them
-	 * behind the back of PVR services, but we can and should ignore all
-	 * pending and future buffer flips for existing swap chains.
-	 *
-	 * Note: new swap chains will be valid, and be able to perform flips.
-	 */
-	/* Obtain the lock, to hold-off future interrupt handling for a bit */
-	spin_lock_irqsave(&devinfo->swap_chain_lock, lock_flags);
-	swap_chain = devinfo->flipable_swapchains;
-	while (swap_chain != NULL) {
-		swap_chain->valid = EMGD_FALSE;
-		flush_flip_queue(swap_chain);
-		swap_chain = swap_chain->next;
-	}
-	/* Now that we've invalidated pending flips, release the lock */
-	spin_unlock_irqrestore(&devinfo->swap_chain_lock, lock_flags);
-
 
 	/* Clear the following lists, in case we are re-initializing: */
 	OS_MEMSET(devinfo->display_format_list, 0,
@@ -2346,6 +2384,84 @@ static emgd_error_t init_display(emgddc_devinfo_t *devinfo,
 
 } /* init_display() */
 
+/**
+ * Loops through the avaiable displays, invalidating the  associated flip-chains
+ * This function is called from igd_alter_displays so as to resolve any race
+ * conditions that may occur due to performing a flip during a mode-set.
+ *
+ * @param display     (IN) The display whose flipchains are to be invalidated.
+ */
+static int emgddc_invalidate_flip_chains(int display) {
+
+	emgddc_devinfo_t * devinfo;
+	emgddc_swapchain_t *swap_chain;
+	unsigned long lock_flags;
+	igd_surface_t surf;
+	igd_display_h display_handle;
+	igd_context_t *context;
+	int i;
+	int ret;
+
+	EMGD_TRACE_ENTER;
+	EMGD_DEBUG("Parameters:");
+	EMGD_DEBUG("display=0x%1x",display);
+
+	for (i = 0; i < MAX_DISPLAYS; i++) {
+		if (display & (1 << i)) {
+			devinfo = global_devinfo[i];
+
+			if (devinfo == NULL) {
+				EMGD_DEBUG("Skipping NULL display at index %d", i);
+				continue;
+			}
+
+
+			/* Mode changes invalidate flip-able swap chains.  We can't destroy
+			 * them behind the back of PVR services, but we can and should
+			 * ignore all pending and future buffer flips for existing swap
+			 * chains.
+			 * Note: new swap chains will be valid, and be able to perform flips.
+			 */
+			/* Obtain the lock, to hold-off future interrupt handling for a bit */
+			spin_lock_irqsave(&devinfo->swap_chain_lock, lock_flags);
+			swap_chain = devinfo->flipable_swapchains;
+			while (swap_chain != NULL) {
+				swap_chain->valid = EMGD_FALSE;
+
+				flush_flip_queue(swap_chain);
+				swap_chain = swap_chain->next;
+			}
+			/* Now that we've invalidated pending flips, release the lock */
+			spin_unlock_irqrestore(&devinfo->swap_chain_lock, lock_flags);
+
+			/* Reset the frame-buffer information to point to the system
+			 * buffer */
+			context = devinfo->priv->context;
+			display_handle = (devinfo->which_devinfo == 1)?
+								devinfo->priv->secondary:devinfo->priv->primary;
+
+			surf.offset = devinfo->system_buffer.offset;
+			surf.pitch = devinfo->system_buffer.pitch;
+			surf.width = devinfo->system_buffer.width;
+			surf.height = devinfo->system_buffer.height;
+			surf.pixel_format = devinfo->system_buffer.pixel_format;
+			surf.flags = IGD_SURFACE_RENDER | IGD_SURFACE_DISPLAY;
+
+			ret = context->dispatch.set_surface(display_handle,
+					IGD_PRIORITY_NORMAL, IGD_BUFFER_DISPLAY, &surf, NULL, 0);
+
+			if (ret) {
+				EMGD_ERROR("set_surface() returned %d for display at index %d",
+						ret, i);
+			}
+		}
+	}
+
+	EMGD_TRACE_EXIT;
+
+	return 0;
+}
+
 
 /**
  * [Re-]Initializes the 3DD's display/device-specific values for both devinfo
@@ -2476,6 +2592,10 @@ emgd_error_t emgddc_init(struct drm_device *dev)
 	 * initialized):
 	 */
 	priv->reinit_3dd = emgddc_reinit_3dd;
+
+	/* Used inside igd_alter_displays */
+	priv->invalidate_flip_chains = emgddc_invalidate_flip_chains;
+
 	ret = emgddc_reinit_3dd(dev);
 	if (ret != EMGD_OK) {
 		emgddc_free_all_devinfos();

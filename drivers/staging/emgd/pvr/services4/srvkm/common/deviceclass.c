@@ -26,6 +26,8 @@
 #include "pvr_bridge_km.h"
 
 #include "lists.h"
+#include "emgd_drm.h"
+
 DECLARE_LIST_ANY_VA(PVRSRV_DEVICE_NODE);
 DECLARE_LIST_FOR_EACH_VA(PVRSRV_DEVICE_NODE);
 DECLARE_LIST_INSERT(PVRSRV_DEVICE_NODE);
@@ -857,15 +859,17 @@ static PVRSRV_ERROR DestroyDCSwapChain(PVRSRV_DC_SWAPCHAIN *psSwapChain)
 		}
 	}
 
-    do
-    {
-        eError = PVRSRVDestroyCommandQueueKM(psSwapChain->psQueue);
-    } while (eError != PVRSRV_OK && (timeout-- > 0));
-	if (eError != PVRSRV_OK)
+	if (psSwapChain->psQueue)
 	{
-		PVR_DPF((PVR_DBG_ERROR,"DestroyDCSwapChainCallBack: Failed to destroy command queue"));
+		do
+		{
+			eError = PVRSRVDestroyCommandQueueKM(psSwapChain->psQueue);
+		} while (eError != PVRSRV_OK && (timeout-- > 0));
+		if (eError != PVRSRV_OK)
+		{
+			PVR_DPF((PVR_DBG_ERROR,"DestroyDCSwapChainCallBack: Failed to destroy command queue"));
+		}
 	}
-
 
 	eError = psDCInfo->psFuncTable->pfnDestroyDCSwapChain(psDCInfo->hExtDevice,
 															psSwapChain->hExtSwapChain);
@@ -1043,21 +1047,27 @@ PVRSRV_ERROR PVRSRVCreateDCSwapChainKM (PVRSRV_PER_PROCESS_DATA	*psPerProc,
 
 	OSMemSet (psSwapChain, 0, sizeof(PVRSRV_DC_SWAPCHAIN));
 
-    // try few times to get the lock
-    do
-    {
-        eError = PVRSRVCreateCommandQueueKM(1024, &psQueue);
-    } while (eError != PVRSRV_OK && (timeout-- > 0));
-
-	if(eError != PVRSRV_OK)
+	if (ui32OEMFlags & (PVR2D_CREATE_FLIPCHAIN_OEMDISPLAY |
+				PVR2D_CREATE_FLIPCHAIN_OEMGENERAL |
+				PVR2D_CREATE_FLIPCHAIN_OEMOVERLAY))
 	{
-		PVR_DPF((PVR_DBG_ERROR,"PVRSRVCreateDCSwapChainKM: Failed to create CmdQueue"));
-		goto ErrorExit;
+		psQueue = NULL;
+	}
+	else
+	{
+		do
+		{
+			eError = PVRSRVCreateCommandQueueKM(1024, &psQueue);
+		} while (eError != PVRSRV_OK && (timeout-- > 0));
+
+		if(eError != PVRSRV_OK)
+		{
+			PVR_DPF((PVR_DBG_ERROR,"PVRSRVCreateDCSwapChainKM: Failed to create CmdQueue"));
+			goto ErrorExit;
+		}
 	}
 
-
 	psSwapChain->psQueue = psQueue;
-
 
 	for(i=0; i<ui32BufferCount; i++)
 	{
@@ -1361,6 +1371,11 @@ PVRSRV_ERROR PVRSRVSwapToDCBufferKM(IMG_HANDLE	hDeviceKM,
 
 	psQueue = psBuffer->psSwapChain->psQueue;
 
+	if (!psQueue)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVSwapToDCBufferKM: Non-flippable swap chain"));
+		goto Exit;
+	}
 
 	apsSrcSync[0] = psBuffer->sDeviceClassBuffer.psKernelSyncInfo;
 
@@ -1505,6 +1520,12 @@ PVRSRV_ERROR PVRSRVSwapToDCSystemKM(IMG_HANDLE	hDeviceKM,
 
 
 	psQueue = psSwapChain->psQueue;
+
+	if (!psQueue)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVSwapToDCSystemKM: Non-flippable swap chain"));
+		goto Exit;
+	}
 
 #if defined(SUPPORT_CUSTOM_SWAP_OPERATIONS)
 

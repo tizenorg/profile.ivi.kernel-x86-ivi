@@ -21,7 +21,7 @@
 *
 *-----------------------------------------------------------------------------
 * @file  ch7036_iic.h
-* @version 1.1.4
+* @version 1.2.2
 *-----------------------------------------------------------------------------
 */
 
@@ -38,22 +38,12 @@ uint8 I2CRead(DEV_CONTEXT* pDevContext, uint8 index);
 void I2CWrite(DEV_CONTEXT* pDevContext, uint8 index, uint8 value);
 
 void I2CBlockWrite(DEV_CONTEXT* pDevContext,uint8 index, uint8* value, uint16 len);
-
-
 void DeviceReset(DEV_CONTEXT* pDevContext);
-
-
 void DeviceSetup(DEV_CONTEXT* pDevContext);
-
-
-
-
 
 uint8 iic_read(uint8 index);
 void iic_write(uint8 index, uint8 value);
 void iic_reset(void);
-
-
 uint32 iic_read_ex(MULTI_REG_ID reg_id);
 void iic_write_ex(MULTI_REG_ID reg_id, uint32 reg_val);
 

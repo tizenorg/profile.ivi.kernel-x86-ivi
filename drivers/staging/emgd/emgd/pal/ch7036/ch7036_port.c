@@ -21,7 +21,7 @@
 *
 *-----------------------------------------------------------------------------
 * @file  ch7036_port.c
-* @version 1.1.4
+* @version 1.2.5
 *-----------------------------------------------------------------------------
 */
 
@@ -29,13 +29,17 @@
 #include <linux/kernel.h>
 
 #include "ch7036_port.h"
-#include "ch7036_fw.h"
-#include "lvds/lvds.h"
+
+
+#ifdef T_LINUX
+	#include "lvds/lvds.h"
+#else
+	#include "lvds.h"
+#endif
 
 
 
-
-static pd_version_t  g_ch7036_version = {1, 0, 0, 0};
+static pd_version_t  g_ch7036_version = {1, 2, 5, 0};
 static unsigned long g_ch7036_dab_list[] = {0xEC,PD_DAB_LIST_END};
 
 
@@ -69,12 +73,9 @@ static pd_driver_t	 g_ch7036_drv = {
 };
 
 
-
-ch7036_edid_blk_t crt_edid;
-ch7036_edid_blk_t hdvi_edid;
-
-
-
+extern established_timings_t et_I[8];
+extern established_timings_t et_II[8];
+extern established_timings_t et_man;
 
 
 int PD_MODULE_INIT(ch7036_init, (void *handle))
@@ -104,6 +105,7 @@ int PD_MODULE_EXIT(ch7036_exit, (void))
 unsigned long ch7036_validate(unsigned long cookie)
 {
 	PD_DEBUG("ch7036: ch7036_validate()\n");
+
 	return cookie;
 }
 
@@ -111,50 +113,67 @@ unsigned long ch7036_validate(unsigned long cookie)
 int ch7036_open(pd_callback_t *p_callback, void **pp_context)
 {
 	uint8 device_ID;
-	/*uint8 reg;*/
-	ch7036_device_context_t* p_ctx = NULL;
+	ch7036_device_context_t* p_ctx;
 	DEV_CONTEXT* p_ch7xxx_context;
 
-	/*uint8 page, n;*/
+	ch7036_edid_blk_t *p_edid1, *p_edid2;
+
 
 	int ret;
 
 
-	PD_DEBUG("ch7036: ch7036_open()\n");
 
-	ret = PD_INTERNAL_LVDS_MODULE_OPEN(ch7036_internal_lvds_open,(p_callback, pp_context));
+	PD_DEBUG("ch7036: ch7036_open()- enter- ch7036 pd release- major [%x] minor [%x] patch [%x]\n",
+		g_ch7036_version.major,g_ch7036_version.minor,g_ch7036_version.patch);
+
+	ret = PD_INTERNAL_LVDS_MODULE_OPEN(ch7036_lvds_open,(p_callback, pp_context));
 	if ( ret != PD_SUCCESS)
 	{
-		if (p_ctx != NULL) {
-			pd_free(p_ctx->fw);
-			pd_free(p_ctx);
-		}
+
+
+		PD_ERROR("ch7036: ch7036_open: EXIT#1\n");
 		return ret;
 	}
 
-
 	p_ctx = pd_malloc(sizeof(ch7036_device_context_t));
 	if (p_ctx == NULL) {
+		PD_ERROR("ch7036: Error ! ch7036_open: pd_malloc() failed\n");
 		goto exit6;
 	}
 
 	pd_memset(p_ctx, 0, sizeof(ch7036_device_context_t));
 
+	/* per EMGD request */
+	p_edid1 = (ch7036_edid_blk_t *)p_ctx->cedid;
+	p_edid2 = (ch7036_edid_blk_t *)p_ctx->hedid;
+
+
 	p_ctx->fw = (FW7036_CFG *)(pd_malloc(sizeof(FW7036_CFG)));
 
-	if (p_ctx == NULL) {
+	if (p_ctx->fw == NULL) {
 		PD_ERROR("ch7036: Error ! ch7036_open: pd_malloc() failed allocating FW7036_CFG struct\n");
 		goto exit5;
 	}
 
-
-	if (p_ctx == NULL || *pp_context == NULL || p_callback == NULL) {
-		goto exit5;
+#if 0
+	ret = PD_INTERNAL_LVDS_MODULE_OPEN(ch7036_lvds_open,(p_callback, pp_context));
+	if ( ret != PD_SUCCESS)
+	{
+		pd_free(p_ctx->fw);
+		pd_free(p_ctx);
+		return ret;
 	}
+#endif
 
 	p_ctx->internal_lvds = *pp_context;
 
 	p_ctx->p_callback = p_callback;
+
+#ifdef LVDS_ONLY
+	*pp_context = (void *)p_ctx;
+	return (PD_SUCCESS);
+#endif
+
 
 
 	p_ctx->p_ch7xxx_context = pd_malloc(sizeof(DEV_CONTEXT));
@@ -168,12 +187,12 @@ int ch7036_open(pd_callback_t *p_callback, void **pp_context)
 	p_ch7xxx_context->pd_context = (void *)p_ctx;
 
 
+
 	I2CWrite(p_ch7xxx_context,0x03, 0x04);
 
 	device_ID = I2CRead(p_ch7xxx_context,0x50);
 
 	PD_DEBUG("ch7036: ch7036_open()- read device ID= 0x%.2X\n", device_ID);
-
 
 
 	if(device_ID != 0x56)
@@ -199,25 +218,99 @@ int ch7036_open(pd_callback_t *p_callback, void **pp_context)
 
 	}
 
-
 	p_ch7xxx_context->DeviceID = device_ID;
 
-
-	p_ctx->hpd = 0;
+	ch7036_reset(p_ctx);
+	pd_usleep(50);
 
 	if (ch7036_load_firmware(p_ctx) != SS_SUCCESS)   {
 		p_ctx->use_firmware =0;
 		p_ctx->cedid = NULL;
 		p_ctx->hedid = NULL;
 
-
 	}
 	else {
 		p_ctx->use_firmware =1;
-		p_ctx->cedid = (ch7036_edid_blk_t *)&crt_edid;
-		p_ctx->hedid = (ch7036_edid_blk_t *)&hdvi_edid;
+
+
+		p_ctx->cedid = (ch7036_edid_blk_t *)pd_malloc(sizeof(ch7036_edid_blk_t));
+
+		if (p_ctx->cedid == NULL) {
+			PD_ERROR("ch7036: Error ! ch7036_open: pd_malloc() failed allocating ch7036_edid_blk_t struct for crt");
+			goto exit3;
+		}
+
+		p_edid1 = (ch7036_edid_blk_t *)p_ctx->cedid ;
+
+		p_edid1->etiming_I = (established_timings_t *)pd_malloc(8 * sizeof(established_timings_t));
+		if (p_edid1->etiming_I == NULL) {
+			PD_ERROR("ch7036: Error ! ch7036_open: pd_malloc() failed allocating established_timings_t struct I for crt");
+			pd_free(p_ctx->cedid);
+			goto exit3;
+		}
+		p_edid1->etiming_II = (established_timings_t *)pd_malloc(8 * sizeof(established_timings_t));
+		if (p_edid1->etiming_II == NULL) {
+			PD_ERROR("ch7036: Error ! ch7036_open: pd_malloc() failed allocating established_timings_t struct II for crt");
+			pd_free(p_edid1->etiming_I);
+			pd_free(p_ctx->cedid);
+			goto exit3;
+		}
+
+		p_ctx->hedid = (ch7036_edid_blk_t *)pd_malloc(sizeof(ch7036_edid_blk_t));
+
+		if (p_ctx->hedid == NULL) {
+			PD_ERROR("ch7036: Error ! ch7036_open: pd_malloc() failed allocating ch7036_edid_blk_t struct for hdvi");
+			pd_free(p_edid1->etiming_I);
+			pd_free(p_edid1->etiming_II);
+			pd_free(p_ctx->cedid);
+
+			goto exit3;
+		}
+
+		p_edid2 = (ch7036_edid_blk_t *)p_ctx->hedid ;
+
+		p_edid2->etiming_I = (established_timings_t *)pd_malloc(8 * sizeof(established_timings_t));
+		if (p_edid2->etiming_I == NULL) {
+			PD_ERROR("ch7036: Error ! ch7036_open: pd_malloc() failed allocating established_timings_t struct I for crt");
+			pd_free(p_edid1->etiming_I);
+			pd_free(p_edid1->etiming_II);
+			pd_free(p_ctx->cedid);
+			pd_free(p_ctx->hedid);
+
+			goto exit3;
+		}
+
+		p_edid2->etiming_II = (established_timings_t *)pd_malloc(8 * sizeof(established_timings_t));
+
+		if (p_edid2->etiming_II == NULL) {
+			PD_ERROR("ch7036: Error ! ch7036_open: pd_malloc() failed allocating established_timings_t struct for hdvi");
+			pd_free(p_edid1->etiming_I);
+			pd_free(p_edid1->etiming_II);
+			pd_free(p_ctx->cedid);
+			pd_free(p_edid2->etiming_I);
+
+			pd_free(p_ctx->hedid);
+
+			goto exit3;
+		}
+
 
 	}
+
+
+	pd_memset(p_edid1->etiming_I, 0, 8 *
+			sizeof(established_timings_t));
+	pd_memset(p_edid1->etiming_II, 0, 8 *
+			sizeof(established_timings_t));
+
+	pd_memset(p_edid2->etiming_I, 0, 8 *
+			sizeof(established_timings_t));
+	pd_memset(p_edid2->etiming_II, 0, 8 *
+			sizeof(established_timings_t));
+
+
+
+
 
 
 
@@ -225,7 +318,7 @@ int ch7036_open(pd_callback_t *p_callback, void **pp_context)
 	if (p_ch7xxx_context->pInput_Info == NULL) {
 		PD_ERROR("ch7036: Error ! ch7036_open: pd_malloc() failed allocating INPUT_INFO struct");
 
-		goto exit3;
+		goto exit23;
 	}
 
 	p_ch7xxx_context->pOutput_Info = pd_malloc(sizeof(OUTPUT_INFO));
@@ -253,29 +346,42 @@ int ch7036_open(pd_callback_t *p_callback, void **pp_context)
 		goto exit1;
 	}
 
-	ch7036_initialize_device(p_ctx);
 
+	ch7036_initialize_device(p_ctx);
 
 	g_ch7036_drv.type = PD_DISPLAY_LVDS_INT;
 
 
 	*pp_context = (void *)p_ctx;
 
+	PD_DEBUG("ch7036: ch7036_open: EXIT w/ SUCCESS...ch7036 pd release- major [%x] minor [%x] patch [%x]\n",
+		g_ch7036_version.major,g_ch7036_version.minor,g_ch7036_version.patch);
 	return (PD_SUCCESS);
 
 exit1:
 	pd_free(p_ch7xxx_context->pOutput_Info);
 exit2:
 	pd_free(p_ch7xxx_context->pInput_Info);
+
+exit23:
+	pd_free(p_edid1->etiming_I);
+	pd_free(p_edid1->etiming_II);
+	pd_free(p_ctx->cedid);
+	pd_free(p_edid2->etiming_I);
+	pd_free(p_edid2->etiming_II);
+	pd_free(p_ctx->hedid);
+
 exit3:
 	p_ch7xxx_context->pd_context=NULL;
 	pd_free(p_ch7xxx_context);
 exit4:
-	pd_free(p_ctx->internal_lvds);
+
+	p_ctx->internal_lvds = NULL;
 	pd_free(p_ctx->fw);
 exit5:
 	pd_free(p_ctx);
 exit6:
+	PD_ERROR("ch7036: ch7036_open: EXIT- PD_ERR_NOMEM\n");
 	return PD_ERR_NOMEM;
 }
 
@@ -283,12 +389,20 @@ exit6:
 int ch7036_init_device(void *p_context)
 {
 	ch7036_device_context_t* p_ctx  = (ch7036_device_context_t*)p_context;
+	DEV_CONTEXT* p_ch7xxx_context = p_ctx->p_ch7xxx_context;
+	OUTPUT_INFO* pOutput_Info = p_ch7xxx_context->pOutput_Info;
+	int ret;
 
 	PD_DEBUG("ch7036: ch7036_init_device()-enter\n");
 
 	p_ctx->init_done = 1;
+	ret= PD_INTERNAL_LVDS_MODULE_INIT_DEVICE(ch7036_lvds_init_device, (p_ctx->internal_lvds));
 
-	return (PD_INTERNAL_LVDS_MODULE_INIT_DEVICE(ch7036_init_device, (p_ctx->internal_lvds)));
+	p_ctx->prev_outchannel = pOutput_Info->channel;
+	PD_DEBUG("ch7036: ch7036_init_device()-p_ctx->prev_outchannel = pOutput_Info->channel = [0x%x]\n",pOutput_Info->channel);
+
+	PD_DEBUG("ch7036: ch7036_init_device()-exit\n");
+	return ret;
 
 }
 
@@ -309,7 +423,6 @@ int ch7036_set_mode(void *p_context, pd_timing_t *p_mode, unsigned long flags)
 	PD_DEBUG("ch7036: ch7036_set_mode()-enter\n");
 
 
-
 	if (!p_ctx || !p_mode) {
 		return (PD_ERR_NULL_PTR);
 	}
@@ -318,10 +431,11 @@ int ch7036_set_mode(void *p_context, pd_timing_t *p_mode, unsigned long flags)
 	{
 		return (PD_ERR_NULL_PTR);
 	}
+
 	PD_DEBUG("ch7036_set_mode: requested width = %u height = %u\n",
 		p_mode->width, p_mode->height);
 
-
+#ifndef LVDS_ONLY
 	if (
 		(p_ctx->fp_width && (p_mode->width > p_ctx->fp_width)) ||
 		(p_ctx->fp_height && (p_mode->height > p_ctx->fp_height))
@@ -329,26 +443,29 @@ int ch7036_set_mode(void *p_context, pd_timing_t *p_mode, unsigned long flags)
 		return PD_ERR_MODE_NOTSUPP;
 	}
 
+	if( (p_ctx->fp_width == 640) && (p_ctx->fp_height == 480) ) {
+		p_ctx->downscaled[MODE_6x4_BYPASS] = 0;
+	}
+	else {
+		p_ctx->downscaled[MODE_6x4_BYPASS] = 1;
+		if( (!p_ctx->dwnscal_bypass) || ((p_ctx->fp_width <= 800) && (p_ctx->fp_height <= 600) )  )
+			p_ctx->downscaled[MODE_8x6_7x4_BYPASS] = 0;
+		else
+			p_ctx->downscaled[MODE_8x6_7x4_BYPASS] = 1;
 
-	p_ctx->p_cur_mode = p_mode;
-
+	}
 
 	if(pOutput_Info->channel  == CHANNEL_LVDS_HDMI_VGA_OFF) {
 
-		pOutput_Info->channel = ch7036_get_output_channel(p_ctx);
+		pOutput_Info->channel = p_ctx->prev_outchannel; //restore output channel before temp. power down
 		channel_on =1;
 	}
 
 
-
-
-	if(pOutput_Info->channel == CHANNEL_LVDS && p_ctx->use_firmware ) {
-		pOutput_Info->channel = CHANNEL_LVDS_HDMI;
-		p_ctx->req_ddc =1;
-	}
 	if (pOutput_Info->channel == CHANNEL_LVDS) {
-		pOutput_Info->channel = CHANNEL_LVDS_HDMI;
-		p_ctx->lvds_only =1;
+
+		pOutput_Info->channel = CHANNEL_LVDS_HDMI;	//force both channel on before setting in/out timing
+
 	}
 
 
@@ -359,7 +476,7 @@ int ch7036_set_mode(void *p_context, pd_timing_t *p_mode, unsigned long flags)
 
 	if(ch7036_device_prepare(p_ctx)== SS_UNSUCCESSFUL)
 	{
-		PD_DEBUG("ch7036_set_mode: ch7036_device_prepare()- NOT SUCCESS\n");
+		PD_DEBUG("ch7036_set_mode: ch7036_device_prepare()- NOT SUCCESS... ERROR CODE [%lu]\n", p_ctx->last_emsg);
 		return PD_ERR_UNSUCCESSFUL;
 	}
 
@@ -368,14 +485,19 @@ int ch7036_set_mode(void *p_context, pd_timing_t *p_mode, unsigned long flags)
 
 	if(ch7036_device_config(p_ctx) == SS_UNSUCCESSFUL)
 	{
-		PD_DEBUG("ch7036_set_mode: ch7036_device_config()- NOT SUCCESS\n");
+		PD_DEBUG("ch7036_set_mode: ch7036_device_config()- NOT SUCCESS...ERROR CODE [%lu]\n", p_ctx->last_emsg);
 		return PD_ERR_UNSUCCESSFUL;
 	}
 
-	if(channel_on)
-		pOutput_Info->channel = CHANNEL_LVDS_HDMI_VGA_OFF;
+	if(channel_on) {
 
-	ret = PD_INTERNAL_LVDS_MODULE_SET_MODE(ch7036_internal_lvds_set_mode,(p_ctx->internal_lvds,p_mode,flags));
+		pOutput_Info->channel = CHANNEL_LVDS_HDMI_VGA_OFF; //now, power down if it's tmp. powered up
+
+	}
+
+#endif
+
+	ret = PD_INTERNAL_LVDS_MODULE_SET_MODE(ch7036_lvds_set_mode,(p_ctx->internal_lvds,p_mode,flags));
 	if(ret != PD_SUCCESS)
 		return ret;
 
@@ -391,16 +513,17 @@ void ch7036_update_position(ch7036_device_context_t *p_ctx, OUTPUT_INFO* pOutput
 
 
 	if(pOutput_Info->channel & CHANNEL_HDMI) {
-
 		pOutput_Info->h_position = DEFAULT_POSITION;
 		pOutput_Info->v_position = DEFAULT_POSITION;
 
 	}
-	else {//pOutput_Info->channel & CHANNEL_VGA; CHANNEL_LVDS would never come here
 
-			pOutput_Info->h_position =  pd_get_attr(p_ctx->p_ch7036_attr_table, p_ctx->ch7036_num_attrs,PD_ATTR_ID_HPOSITION,
+	else { //pOutput_Info->channel & CHANNEL_VGA; note that CHANNEL_LVDS would never come here
+
+			pOutput_Info->h_position = (uint16)pd_get_attr(p_ctx->p_ch7036_attr_table, p_ctx->ch7036_num_attrs,PD_ATTR_ID_HPOSITION,
 					PD_GET_ATTR_LIST)->current_value;
-			pOutput_Info->v_position = pd_get_attr(p_ctx->p_ch7036_attr_table, p_ctx->ch7036_num_attrs,PD_ATTR_ID_VPOSITION,
+
+			pOutput_Info->v_position = (uint16)pd_get_attr(p_ctx->p_ch7036_attr_table, p_ctx->ch7036_num_attrs,PD_ATTR_ID_VPOSITION,
 					PD_GET_ATTR_LIST)->current_value;
 
 	}
@@ -420,10 +543,9 @@ int ch7036_post_set_mode(void *p_context, pd_timing_t *p_mode,
 	ch7036_device_context_t* p_ctx  = (ch7036_device_context_t*)p_context;
 	DEV_CONTEXT* p_ch7xxx_context = p_ctx->p_ch7xxx_context;
 	OUTPUT_INFO* pOutput_Info = p_ch7xxx_context->pOutput_Info;
-
 	int ret;
-	/*uint8 page, n;*/
-	pd_list_entry_attr_t  *list_entry;
+
+
 
 
 
@@ -436,11 +558,12 @@ int ch7036_post_set_mode(void *p_context, pd_timing_t *p_mode,
 		return (PD_ERR_NULL_PTR);
 	}
 
-	list_entry = (pd_list_entry_attr_t *)pd_get_attr(p_ctx->p_ch7036_attr_table, p_ctx->ch7036_num_attrs, PD_ATTR_ID_DISPLAY, PD_GET_ATTR_LIST_ENTRY);
-	ch7036_set_output_channel(p_ctx,(uint32)(list_entry->value));
+#ifndef LVDS_ONLY
 
 
-	PD_DEBUG("ch7036_post_set_mode- current output channel is [%x]\n",pOutput_Info->channel);
+
+	ch7036_set_output_channel(p_ctx, p_ctx->prev_outchannel);
+	PD_DEBUG("ch7036_post_set_mode- now, current pOutput_Info->channel is [%x]\n",pOutput_Info->channel);
 
 	if(ch7036_device_start(p_ctx) == SS_UNSUCCESSFUL)
 	{
@@ -450,34 +573,29 @@ int ch7036_post_set_mode(void *p_context, pd_timing_t *p_mode,
 
 
 
-	p_ctx->req_ddc = 0;
-	p_ctx->lvds_only = 0;
 
-#if 0
-	if(p_ctx->req_ddc && pOutput_Info->channel == CHANNEL_LVDS_HDMI && p_ctx->use_firmware) {
-
-		pOutput_Info->channel = CHANNEL_LVDS;
-		p_ctx->req_ddc = 0;
-	}
-
-	if (p_ctx->lvds_only  && pOutput_Info->channel == CHANNEL_LVDS_HDMI) {
-		pOutput_Info->channel = CHANNEL_LVDS;
-		p_ctx->lvds_only = 0;
-	}
 
 #endif
 
-	ret = PD_INTERNAL_LVDS_MODULE_POST_SET_MODE(ch7036_post_set_mode,(p_ctx->internal_lvds,p_mode,flags));
 
+	ret = PD_INTERNAL_LVDS_MODULE_POST_SET_MODE(ch7036_lvds_post_set_mode,(p_ctx->internal_lvds,p_mode,flags));
+
+#ifndef LVDS_ONLY
 	if(ret != PD_SUCCESS)
 		return ret;
 	else
 	{
+
 		ch7036_reset_datapath(p_ch7xxx_context);
 		pd_usleep(50);
+
+
 		ch7036_device_set_power(p_ctx, pOutput_Info->channel);
+
+		p_ctx->prev_outchannel = pOutput_Info->channel;
 	}
 
+#endif
 
 	return PD_SUCCESS;
 }
@@ -490,20 +608,76 @@ int ch7036_close(void *p_context)
 {
 
 	ch7036_device_context_t* p_ctx  = (ch7036_device_context_t*)p_context;
+	DEV_CONTEXT* p_ch7xxx_context = p_ctx->p_ch7xxx_context;
+	ch7036_edid_blk_t *p_edid1, *p_edid2;
+
+	p_edid1 = (ch7036_edid_blk_t *)p_ctx->cedid;
+	p_edid2 = (ch7036_edid_blk_t *)p_ctx->hedid;
+
 
 	PD_DEBUG("ch7036: ch7036_close()\n");
 
-	PD_INTERNAL_LVDS_MODULE_CLOSE(ch7036_internal_lvds_close, (p_ctx->internal_lvds));
+#ifndef LVDS_ONLY
+
+	ch7036_set_power(p_context, PD_POWER_MODE_D3);
+#endif
+
+	PD_INTERNAL_LVDS_MODULE_CLOSE(ch7036_lvds_close, (p_ctx->internal_lvds));
 
 	if (p_ctx!= NULL)
 	{
 
-		pd_free(p_ctx->p_ch7xxx_context->pInput_Info);
-		pd_free(p_ctx->p_ch7xxx_context->pOutput_Info);
-		pd_free(p_ctx->p_ch7xxx_context->pPrefer_Info);
-		pd_free(p_ctx->p_ch7xxx_context);
-		pd_free(p_ctx->p_ch7036_attr_table);
+		if(p_ctx->p_ch7xxx_context) {
+
+			pd_free(p_ch7xxx_context->pInput_Info);
+			p_ch7xxx_context->pInput_Info = NULL;
+
+			pd_free(p_ch7xxx_context->pOutput_Info);
+			p_ch7xxx_context->pOutput_Info = NULL;
+
+			pd_free(p_ch7xxx_context->pPrefer_Info);
+			p_ch7xxx_context->pPrefer_Info = NULL;
+
+			pd_free(p_ctx->p_ch7xxx_context);
+			p_ch7xxx_context = NULL;
+		}
+
+
+		if(p_edid1) {
+			pd_free(p_edid1->etiming_I);
+			pd_free(p_edid1->etiming_II);
+			pd_free(p_ctx->cedid);
+
+			p_edid1->etiming_I=NULL;
+			p_edid1->etiming_II=NULL;
+			p_ctx->cedid = NULL;
+
+		}
+		if(p_edid2) {
+			pd_free(p_edid2->etiming_I);
+			pd_free(p_edid2->etiming_II);
+			pd_free(p_ctx->hedid);
+
+			p_edid2->etiming_I=NULL;
+			p_edid2->etiming_II=NULL;
+			p_ctx->hedid = NULL;
+
+		}
+
+		if ( p_ctx->p_ch7036_attr_table) {
+			pd_free(p_ctx->p_ch7036_attr_table);
+			p_ctx->p_ch7036_attr_table = NULL;
+			p_ctx->ch7036_num_attrs = 0;
+		}
+
+		if(p_ctx->fw) {
+			pd_free(p_ctx->fw);
+			p_ctx->fw = NULL;
+		}
+
+
 		pd_free(p_ctx);
+		p_ctx = NULL;
 	}
 
 	return PD_SUCCESS;
@@ -515,42 +689,59 @@ int ch7036_get_timing_list(void *p_context, pd_timing_t *p_in_list,
 {
 	ch7036_device_context_t *p_ctx = (ch7036_device_context_t *)p_context;
 	DEV_CONTEXT* p_ch7xxx_context = p_ctx->p_ch7xxx_context;
-	/*OUTPUT_INFO* pOutput_Info = p_ch7xxx_context->pOutput_Info;*/
 
-	int ret = 1;
-//	int i;
-//	pd_timing_t * p_table;
-//	internal_lvds_context_t * p_lvds = (internal_lvds_context_t *)(p_ctx->internal_lvds);
+	int ret = 0;
+
+
+#ifndef T_PANEL_NATIVE_DTD
+	int i;
+	pd_timing_t * p_table;
+	lvds_context_t * p_lvds = (lvds_context_t *)(p_ctx->internal_lvds);
+
+#endif
+
+	pd_port_status_t port_status;
+
+
 
 	PD_DEBUG("ch7036: ch7036_get_timing_list()-enter\n");
 
 	if (p_ch7xxx_context->DeviceID != 0x56)
 	{
-		return (PD_ERR_NULL_PTR);
+		return (PD_ERR_NODEV);
 	}
+
+#ifdef LVDS_ONLY
+	PD_DEBUG("NUHAIRI: p_ctx->internal_lvds = %lu\n", p_ctx->internal_lvds);
+	if (p_ctx->internal_lvds != NULL){
+		PD_DEBUG("NUHAIRI: p_ctx->internal_lvds = %lu\n", p_ctx->internal_lvds);
+		return PD_INTERNAL_LVDS_MODULE_GET_TIMING_LIST(ch7036_get_timing_list, (p_ctx->internal_lvds,p_in_list,pp_out_list));
+	}
+	return PD_SUCCESS;
+#endif
+
 
 
 	if ( (g_ch7036_drv.type & PD_DISPLAY_LVDS_INT) || (g_ch7036_drv.type & PD_DISPLAY_LVDS_LHDV) )
 	{
-		ret = PD_INTERNAL_LVDS_MODULE_GET_TIMING_LIST(ch7036_internal_lvds_get_timing_list, (p_ctx->internal_lvds,p_in_list,pp_out_list));
-		PD_ERROR("ch7036: ch7036_get_timing_list()- ret = %X\n", ret);
+		ret = PD_INTERNAL_LVDS_MODULE_GET_TIMING_LIST(ch7036_lvds_get_timing_list, (p_ctx->internal_lvds,p_in_list,pp_out_list));
 
-
+		if(((lvds_context_t *)(p_ctx->internal_lvds))->native_dtd == 0 )
+			return PD_ERR_NO_TIMINGS;
 
 		p_ctx->p_lvds_table = *pp_out_list;
 
 #ifdef T_PANEL_NATIVE_DTD
 
 
+		pd_memcpy(&(p_ctx->native_dtd),((lvds_context_t *)(p_ctx->internal_lvds))->native_dtd,sizeof(pd_timing_t));
 
-		p_ctx->native_dtd = ((internal_lvds_context_t *)(p_ctx->internal_lvds))->native_dtd;
-		p_ctx->fp_width = ((internal_lvds_context_t *)(p_ctx->internal_lvds))->fp_width;
-		p_ctx->fp_height = ((internal_lvds_context_t *)(p_ctx->internal_lvds))->fp_height;
+		p_ctx->fp_width = ((lvds_context_t *)(p_ctx->internal_lvds))->fp_width;
+		p_ctx->fp_height = ((lvds_context_t *)(p_ctx->internal_lvds))->fp_height;
 
 		if( (p_ctx->fp_width == 0) || (p_ctx->fp_height == 0) )
-		{	PD_ERROR("ch7036: ch7036_get_timing_list()- ret = PD_ERR_NO_TIMINGS\n" );
 			return PD_ERR_NO_TIMINGS ;
-		}
+
 #else
 
 		for(i=0,p_table = *pp_out_list;i< 30;i++)
@@ -560,7 +751,9 @@ int ch7036_get_timing_list(void *p_context, pd_timing_t *p_in_list,
 					(p_table->refresh == 60) )
 				{
 
-					p_ctx->native_dtd =  p_table;
+
+
+					pd_memcpy(&(p_ctx->native_dtd),p_table,sizeof(pd_timing_t));
 					p_ctx->fp_width = p_table->width;
 					p_ctx->fp_height = p_table->height;
 
@@ -571,7 +764,8 @@ int ch7036_get_timing_list(void *p_context, pd_timing_t *p_in_list,
 
 			}
 
-			p_lvds->native_dtd = p_ctx->native_dtd;
+
+			pd_memcpy(p_lvds->native_dtd,&(p_ctx->native_dtd),sizeof(pd_timing_t));
 			p_lvds->fp_width = p_ctx->fp_width;
 			p_lvds->fp_height = p_ctx->fp_height;
 
@@ -579,7 +773,17 @@ int ch7036_get_timing_list(void *p_context, pd_timing_t *p_in_list,
 
 	}
 
-	PD_ERROR("ch7036: ch7036_get_timing_list()- return ret=%X;\n", ret);
+
+
+	if ( !p_ctx->init_done) {
+		PD_DEBUG("ch7036: ch7036_get_timing_list()-init is not done- inquire port status...\n");
+		ch7036_get_port_status((void *)p_ctx, &port_status);
+
+	}
+
+
+	ch7036_parse_edid(p_ctx);
+
 	return ret;
 
 }
@@ -590,15 +794,11 @@ int ch7036_get_attributes(void *p_context, unsigned long *p_num_attr,
 	pd_attr_t **pp_list)
 {
 	ch7036_device_context_t *p_ctx = (ch7036_device_context_t *)p_context;
-	DEV_CONTEXT* p_ch7xxx_context = p_ctx->p_ch7xxx_context;
-	/*int ret;*/
+
+
 
 	PD_DEBUG("ch7036: ch7036_get_attributes()-enter\n");
 
-	if (p_ch7xxx_context->DeviceID != 0x56)
-	{
-		return (PD_ERR_NULL_PTR);
-	}
 
 
 	if (!p_ctx || !p_num_attr || !pp_list) {
@@ -626,38 +826,33 @@ int ch7036_set_attributes(void *p_context, unsigned long num_attrs,
 
 	pd_port_status_t port_status;
 
-
 	pd_attr_t        *p_curr, *p_attr;
 	int ret;
-	unsigned long i;
+	unsigned long i,temp=0;
+	uint32 temp_chan;
+	ch7036_status_t status;
+
 
 	PD_DEBUG("ch7036: ch7036_set_attributes()-enter: num_attrs=%u\n", num_attrs);
 
-	if (p_ch7xxx_context->DeviceID != 0x56)
-	{
-		return (PD_ERR_NULL_PTR);
-	}
 
-
-	ret = PD_INTERNAL_LVDS_MODULE_SET_ATTRIBUTES(ch7036_set_attrs, (p_ctx->internal_lvds,num_attrs,p_list));
+	ret = PD_INTERNAL_LVDS_MODULE_SET_ATTRIBUTES(ch7036_lvds_set_attrs, (p_ctx->internal_lvds,num_attrs,p_list));
 
 
 
 	if(ret != PD_SUCCESS)
 		return ret;
 
-
-
-	#ifdef LVDS_ONLY
+#ifdef LVDS_ONLY
 		return PD_SUCCESS;
-	#endif
+#endif
 
 
 	if (!p_ctx->init_done) {
 
 		PD_DEBUG("ch7036: ch7036_set_attributes()- at bootup...\n");
 
-		PD_DEBUG("ch7036: ch7036_set_attributes()- p_ctx->hpd [%x}\n", p_ctx->hpd);
+		PD_DEBUG("ch7036: ch7036_set_attributes()- p_ctx->hpd [%x]\n", p_ctx->hpd);
 
 		p_attr = pd_get_attr(p_list, num_attrs, PD_ATTR_ID_DISPLAY, 0);
 		if (p_attr && (p_attr->flags & PD_ATTR_FLAG_VALUE_CHANGED) ) {
@@ -667,8 +862,8 @@ int ch7036_set_attributes(void *p_context, unsigned long num_attrs,
 				PD_GET_ATTR_LIST)->current_value
 			= p_attr->current_value;
 
-		}
 
+		}
 
 
 		p_attr = pd_get_attr(p_list, num_attrs, PD_ATTR_ID_HDMI_OUT_MODE, 0);
@@ -703,6 +898,8 @@ int ch7036_set_attributes(void *p_context, unsigned long num_attrs,
 
 
 		}
+
+
 
 
 		p_attr = pd_get_attr(p_list, num_attrs, PD_ATTR_ID_CRT_OUT_MODE, 0);
@@ -742,33 +939,26 @@ int ch7036_set_attributes(void *p_context, unsigned long num_attrs,
 			continue;
 
 
-
-		if (p_attr->name == NULL)
-		{
+		if( (p_attr->id == 0x1A) || (p_attr->id == 0x1B) ||
+			(p_attr->id == 0x3C) || (p_attr->id == 0x46) ||
+			(p_attr->id == 0x47) )
 			continue;
-		}
-		if ((p_attr->id != PD_ATTR_ID_DISPLAY)
-			&& (p_attr->id != PD_ATTR_ID_HDMI_OUT_MODE)
-			&& (p_attr->id != PD_ATTR_ID_DVI_OUT_MODE)
-			&& (p_attr->id != PD_ATTR_ID_CRT_OUT_MODE)
-			&& (p_attr->id != PD_ATTR_ID_HPOSITION)
-			&& (p_attr->id != PD_ATTR_ID_VPOSITION)
 
-			&& (p_attr->id != PD_ATTR_ID_HSCALE)
-			&& (p_attr->id !=  PD_ATTR_ID_VSCALE)
-			&& (p_attr->id !=  PD_ATTR_ID_HSCALE_CRT)
-			&& (p_attr->id !=  PD_ATTR_ID_VSCALE_CRT)
-			&& (p_attr->id !=  PD_ATTR_ID_DITHER_BYPASS)
-			&& (p_attr->id !=  PD_ATTR_ID_LOAD_FIRMWARE)
-			&& (p_attr->id !=  PD_ATTR_ID_REFRESH))
-		{
-			continue;
-		}
+#if 0
 
 		p_curr = pd_get_attr(p_ctx->p_ch7036_attr_table, p_ctx->ch7036_num_attrs,p_attr->id,
 				PD_GET_ATTR_LIST);
+#endif
 
 
+		p_curr = pd_get_attr(p_ctx->p_ch7036_attr_table, p_ctx->ch7036_num_attrs,p_attr->id,
+				0);
+		PD_DEBUG("ch7036_set_attributes(): attribute changed is of type [%ld] name [%s] id [%ld]\n",p_attr->type, p_attr->name, p_attr->id);
+
+		PD_DEBUG("ch7036_set_attributes():current value [%ld] requested value [%ld]\n",p_curr->current_value, p_attr->current_value);
+
+
+		temp = p_curr->current_value;
 		p_curr->current_value = p_attr->current_value;
 		switch (p_attr->id) {
 			case PD_ATTR_ID_DISPLAY:
@@ -776,23 +966,116 @@ int ch7036_set_attributes(void *p_context, unsigned long num_attrs,
 				list_item = (pd_list_entry_attr_t *)pd_get_attr(p_ctx->p_ch7036_attr_table, p_ctx->ch7036_num_attrs,PD_ATTR_ID_DISPLAY,
 							PD_GET_ATTR_LIST_ENTRY);
 
-				if(list_item->value & CHANNEL_DVI) {
+				p_attr->flags |= PD_ATTR_FLAG_SETMODE;
 
-					pOutput_Info->hdmi_fmt.is_dvi_mode=1;
-					list_item->value = (list_item->value & 0xF7) | CHANNEL_HDMI;
+				if(list_item->value == CHANNEL_AUTO_DETECT) {
+					p_ctx->man_sel_out = 0;
+
+					if(p_ctx->init_done) {
+						p_ctx->hpd |= CH7036HPD_RESERVED1; //force port status inquiry
+						ch7036_get_port_status((void *)p_ctx, &port_status);
+
+					}
+					break;
+				}
+				//end of CHANNEL_AUTO_DETECT, manual selection of display output begins
+
+
+				p_ctx->man_sel_out = 1;
+
+				//1- save a copy
+				temp_chan = p_ctx->prev_outchannel;
+				p_ctx->prev_outchannel = pOutput_Info->channel;
+
+				PD_DEBUG("ch7036_set_attributes():current list item value [0x%x]\n",list_item->value);
+
+				//2- get requested output channel- assume it's allowed
+
+				if(list_item->value & CHANNEL_DVI) {
+					pOutput_Info->channel = (list_item->value & 0x01) | CHANNEL_HDMI;
+				}
+				else
+					pOutput_Info->channel = list_item->value;
+
+				PD_DEBUG("ch7036_set_attributes():current output channel value [0x%x]\n",pOutput_Info->channel);
+
+				//3- check requested selection vs what is available
+				status = ch7036_get_attached_device(p_ctx); //manual mode- verify its selection and correct if needed
+
+				//4- NOT allowed display choice- also include when none is connected
+				if( status == SS_DISPLAY_CHOICE_NOT_ALLOWED) {  //restore previous states
+					PD_DEBUG("ch7036_set_attributes(): display choice is not allowed- restore prev. states...\n");
+
+					p_ctx->hpd &= 0xEF;	 //reset
+
+					if(p_ctx->init_done){
+						pOutput_Info->channel = p_ctx->prev_outchannel;
+						p_ctx->prev_outchannel = temp_chan;
+						p_curr->current_value = temp;
+						//when system is restarted right after this point, need to provide main driver w/ a valid
+						//restored choice
+						p_attr->current_value = p_curr->current_value;
+						if(p_curr->current_value==1)
+							p_ctx->man_sel_out = 0;
+
+					}
+					else { //at installation, when init is not done, if manual choice is not valid, revert to auto
+
+						p_curr->current_value = 1;
+						p_ctx->man_sel_out = 0;
+
+						if (pOutput_Info->channel & CHANNEL_HDMI) //DVI mapped to CHANNEL_HDMI
+						{
+							pOutput_Info->channel = (pOutput_Info->channel & 0x01) | CHANNEL_VGA;
+							p_ctx->prev_outchannel = pOutput_Info->channel;
+
+						}
+						else { //VGA
+							pOutput_Info->channel = (pOutput_Info->channel & 0x01) | CHANNEL_HDMI;
+							p_ctx->prev_outchannel = pOutput_Info->channel;
+						}
+
+
+					}
+
+					PD_DEBUG("ch7036_set_attributes(): p_curr->current_value is: [%x]\n",p_curr->current_value);
+					if(p_ctx->hpd == 0x50) {//none is attached
+						pOutput_Info->channel &= CHANNEL_LVDS;
+						p_ctx->prev_outchannel = pOutput_Info->channel;
+					}
+
+
+				}
+				PD_DEBUG("ch7036_set_attributes(): now- output display channel is: value [%ld]\n",pOutput_Info->channel);
+
+
+				//special case channel CHANNEL_xxx_HDMI:
+				//incoming dvi format => convert to hdmi format- or- incoming hdmi format => convert to dvi format
+				if( ( (pOutput_Info->hdmi_fmt.is_dvi_mode==1) && ((list_item->value & 0x02) == CHANNEL_HDMI) ) ||
+					( (pOutput_Info->hdmi_fmt.is_dvi_mode==0) && ((list_item->value & 0x08) == CHANNEL_DVI) )
+					)
+					p_ctx->hpd |= 0x40; //request edid read again to update hdmi/dvi format accordingly
+
+
+				//base on 'new' attached info, read edid and set proper display output channel, including DVI
+				//case: manual selection w/ hpd change
+				if(p_ctx->hpd & 0x44) 	{
+					ch7036_alter_display_channel(p_ctx);
 				}
 
+				if( (pOutput_Info->channel & 0x04) == CHANNEL_VGA || p_curr->current_value==1  /* Coerced Auto Detect */ )
+					break;
 
-				ch7036_set_output_channel(p_ctx,(uint32)list_item->value);
+				//case:
+				//channel CHANNEL_xxx_HDMI- update list item xxx_DVI or xxx_HDMI accordingly
+				if((pOutput_Info->channel & CHANNEL_HDMI) && (pOutput_Info->hdmi_fmt.is_dvi_mode==1) )
+					p_curr->current_value = (pOutput_Info->channel & 0x01) == CHANNEL_LVDS?3:6;//lvds-dvi:dvi
 
-				if (pOutput_Info->channel == CHANNEL_LVDS)
-
-
-					ch7036_set_power((void *)p_ctx,PD_POWER_MODE_D0);
 				else
-					p_attr->flags |= PD_ATTR_FLAG_SETMODE;
+					if((pOutput_Info->channel & CHANNEL_HDMI) && (pOutput_Info->hdmi_fmt.is_dvi_mode==0) )
+						p_curr->current_value = (pOutput_Info->channel & 0x01) == CHANNEL_LVDS?2:5;//lvds-hdmi:hdmi
 
-
+				PD_DEBUG("ch7036_set_attributes(): after alter channel- output display channel is: value [%ld]\n",pOutput_Info->channel);
 
 				break;
 
@@ -820,23 +1103,30 @@ int ch7036_set_attributes(void *p_context, unsigned long num_attrs,
 				p_attr->flags |= PD_ATTR_FLAG_SETMODE;
 				break;
 
-			case PD_ATTR_ID_HPOSITION:
+			case PD_ATTR_ID_HPOSITION: //these attributes are for vga only
 			case PD_ATTR_ID_VPOSITION:
-				if(pOutput_Info->channel & CHANNEL_HDMI)
-					p_curr->current_value = DEFAULT_POSITION;
-				else {
-					if(p_curr->current_value > ((pd_range_attr_t *)p_curr)->max)
-						p_curr->current_value = ((pd_range_attr_t *)p_curr)->max;
-					else if (p_curr->current_value < ((pd_range_attr_t *)p_curr)->min)
-						p_curr->current_value = ((pd_range_attr_t *)p_curr)->min;
-				}
+
+				PD_DEBUG("ch7036_set_attributes(): set vga h/v position...\n");
+
+				//save vga h/v attribute context
+				if(p_curr->current_value > ((pd_range_attr_t *)p_curr)->max)
+					p_curr->current_value = ((pd_range_attr_t *)p_curr)->max;
+				else if (p_curr->current_value < ((pd_range_attr_t *)p_curr)->min)
+					p_curr->current_value = ((pd_range_attr_t *)p_curr)->min;
+
+
+				if( pOutput_Info->channel & CHANNEL_HDMI)
+					break;
 
 				if (p_attr->id == PD_ATTR_ID_HPOSITION)
 					pOutput_Info->h_position = (uint16)(p_curr->current_value);
 				else
 					pOutput_Info->v_position = (uint16)(p_curr->current_value);
-				PD_DEBUG("ch7036_set_attributes(): updated position is: value [%d]\n",p_curr->current_value);
+
 				ch7036_set_position(p_ctx, (uint8)p_attr->id, (uint16)(p_curr->current_value));
+
+				PD_DEBUG("ch7036_set_attributes(): updated and set vga position: value [%d]\n",p_curr->current_value);
+
 				break;
 			case PD_ATTR_ID_HSCALE:
 			case PD_ATTR_ID_VSCALE:
@@ -853,7 +1143,7 @@ int ch7036_set_attributes(void *p_context, unsigned long num_attrs,
 					ch7036_set_scaling (pOutput_Info,PD_ATTR_ID_HSCALE, (uint8)p_curr->current_value);
 				else
 					ch7036_set_scaling (pOutput_Info,PD_ATTR_ID_VSCALE, (uint8)p_curr->current_value);
-				PD_DEBUG("ch7036_set_attributes(): updated scale value is: value [%ld]\n",p_curr->current_value);
+				PD_DEBUG("ch7036_set_attributes(): updated scale value is: value [%lu]\n",p_curr->current_value);
 
 				p_attr->flags |= PD_ATTR_FLAG_SETMODE;
 
@@ -861,103 +1151,129 @@ int ch7036_set_attributes(void *p_context, unsigned long num_attrs,
 			case PD_ATTR_ID_DITHER_BYPASS:
 
 
-				PD_DEBUG("ch7036_set_attributes(): updated quality enhance value is: value [%ld]\n",p_curr->current_value);
+				PD_DEBUG("ch7036_set_attributes(): updated quality enhance value is: value [%lu]\n",p_curr->current_value);
 				ch7036_set_quality_enhancement(p_ctx,(uint8)p_curr->current_value);
 				break;
 
+			case PD_ATTR_ID_DITHER:
+				p_ctx->dither_select = (uint8)p_curr->current_value;
+				PD_DEBUG("ch7036_set_attributes(): updated dither select value is: value [%lu]\n",p_curr->current_value);
+				ch7036_set_dither(p_ctx);
+
+				break;
+
+			case PD_ATTR_ID_TEXT_FILTER:
+
+				if(p_curr->current_value > ((pd_range_attr_t *)p_curr)->max)
+					p_curr->current_value = ((pd_range_attr_t *)p_curr)->max;
+				else if (p_curr->current_value < ((pd_range_attr_t *)p_curr)->min)
+					p_curr->current_value = ((pd_range_attr_t *)p_curr)->min;
+
+				PD_DEBUG("ch7036_set_attributes(): update text tuning value...\n");
+				ch7036_set_text_enhancement (p_ctx, (uint8) p_curr->current_value);
+
+				break;
+
 			case PD_ATTR_ID_LOAD_FIRMWARE:
-				PD_DEBUG("ch7036_set_attributes(): updated [load-firmware] value is: value [%ld]\n",p_curr->current_value);
-#if 0
-				if(p_curr->current_value)
-					p_ctx->use_firmware =1;
-				else
-					p_ctx->use_firmware =0;
-#endif
+				PD_DEBUG("ch7036_set_attributes(): updated [reload-firmware] value is: value [%lu]\n",p_curr->current_value);
+
+				break;
+
+			case PD_ATTR_ID_DWNSCAL_BYPASS:
+				PD_DEBUG("ch7036_set_attributes(): updated [dwnscal_bypass] value is: value [%lu]\n",p_curr->current_value);
+				if(p_curr->current_value ) {
+					p_ctx->dwnscal_bypass = 1;
+					p_ctx->downscaled[MODE_8x6_7x4_BYPASS]=1;
+				}
+				else {
+					p_ctx->dwnscal_bypass = 0;
+					p_ctx->downscaled[MODE_8x6_7x4_BYPASS]=0;
+				}
+
 				break;
 
 			case PD_ATTR_ID_REFRESH:
-				PD_DEBUG("ch7036_set_attributes(): refresh value is: value [%ld]\n",p_curr->current_value);
+				PD_DEBUG("ch7036_set_attributes(): refresh value is: value [%lu]\n",p_curr->current_value);
 
-				ch7036_get_port_status((void *)p_ctx, &port_status);
-				p_attr->flags |= PD_ATTR_FLAG_SETMODE;
-				if(p_curr->current_value ) {
-					p_curr->current_value= 0;
+				if(p_curr->current_value )
+						p_curr->current_value= 0;
+
+				if(p_ctx->init_done && !p_ctx->man_sel_out ) {
+
+						p_ctx->hpd |= CH7036HPD_RESERVED1; //force port status inquiry- edid read bit
+
+						ch7036_get_port_status((void *)p_ctx, &port_status);
+
+						p_attr->flags |= PD_ATTR_FLAG_SETMODE;
 
 				}
 				break;
 
 			default:
 
-				PD_DEBUG("ch7036_set_attr(): unhandled attr name[%s]id[%ld]curr_index[%ld]\n",p_attr->name, p_attr->id,p_attr->current_value);
+				PD_DEBUG("ch7036_set_attr(): unhandled attr name[%s]id[%ld]curr_index[%lu]\n",p_attr->name, p_attr->id,p_attr->current_value);
 				break;
 
 		}
 
-
 	}
 
+	PD_DEBUG("ch7036: ch7036_set_attributes()-p_ctx->man_sel_out at exit [0x%x]\n",p_ctx->man_sel_out);
 
+	PD_DEBUG("ch7036: ch7036_set_attributes()-p_ctx->hpd at exit [0x%x]\n",p_ctx->hpd);
 
 	PD_DEBUG("ch7036: ch7036_set_attributes()-exit\n");
 
 	return ret;
 }
 
-
-
-
 int ch7036_set_power(void *p_context, unsigned long state)
 {
 	ch7036_device_context_t *p_ctx = (ch7036_device_context_t *)p_context;
-	DEV_CONTEXT* p_ch7xxx_context = p_ctx->p_ch7xxx_context;
 	OUTPUT_INFO* pOutput_Info = (p_ctx->p_ch7xxx_context)->pOutput_Info;
 
 
-	pd_list_entry_attr_t  *list_entry;
 	int ret;
 
 
 	PD_DEBUG("ch7036: ch7036_set_power()-enter: requested state=%x\n", state);
 
+#ifdef LVDS_ONLY
+	return	PD_INTERNAL_LVDS_MODULE_SET_POWER(ch7036_set_power, (p_ctx->internal_lvds,state));
+#endif
+
 	if (!p_ctx)
 		return PD_ERR_NULL_PTR;
-
-	if (p_ch7xxx_context->DeviceID != 0x56)
-	{
-		return (PD_ERR_NULL_PTR);
-	}
 
 	if (state > PD_POWER_MODE_D3)
 		return PD_ERR_INVALID_POWER;
 
 	if (state != PD_POWER_MODE_D0) {
 
-
+		if(pOutput_Info->channel != CHANNEL_LVDS_HDMI_VGA_OFF)
+			p_ctx->prev_outchannel = pOutput_Info->channel; //store current output channel before temporarily powered down
 		pOutput_Info->channel = CHANNEL_LVDS_HDMI_VGA_OFF;
 
-		#ifndef LVDS_ONLY
-		ch7036_device_set_power(p_ctx,CHANNEL_LVDS_HDMI_VGA_OFF);
-		#endif
 
-		ret = PD_INTERNAL_LVDS_MODULE_SET_POWER(ch7036_internal_lvds_set_power, (p_ctx->internal_lvds,state));
+		ch7036_device_set_power(p_ctx,pOutput_Info->channel);
+
+		ret = PD_INTERNAL_LVDS_MODULE_SET_POWER(ch7036_lvds_set_power, (p_ctx->internal_lvds,state));
 
 
 	}
 	else {
 
 
-		list_entry = (pd_list_entry_attr_t *)pd_get_attr(p_ctx->p_ch7036_attr_table, p_ctx->ch7036_num_attrs, PD_ATTR_ID_DISPLAY, PD_GET_ATTR_LIST_ENTRY);
-		ch7036_set_output_channel(p_ctx,(uint32)(list_entry->value));
+		ch7036_set_output_channel(p_ctx,p_ctx->prev_outchannel); //restore previous output channel
 
 		PD_DEBUG("ch7036: ch7036_set_power()- p->ctx-hpd [0x%x]\n",p_ctx->hpd);
 		PD_DEBUG("ch7036: ch7036_set_power()- requested output channel- [%x]\n", pOutput_Info->channel);
 
 
-		PD_INTERNAL_LVDS_MODULE_SET_POWER(ch7036_internal_lvds_set_power, (p_ctx->internal_lvds,state));
+		PD_INTERNAL_LVDS_MODULE_SET_POWER(ch7036_lvds_set_power, (p_ctx->internal_lvds,state));
 
-		#ifndef LVDS_ONLY
 		ch7036_device_set_power(p_ctx,pOutput_Info->channel);
-		#endif
+
 	}
 
 
@@ -974,6 +1290,9 @@ int ch7036_get_power(void *p_context, unsigned long *p_state)
 
 	PD_DEBUG("ch7036: ch7036_get_power()\n");
 
+#ifdef LVDS_ONLY
+	return PD_INTERNAL_LVDS_MODULE_GET_POWER(ch7036_get_power, (p_ctx->internal_lvds,p_state));
+#endif
 
 	*p_state = p_ctx->pwr_state;
 
@@ -982,31 +1301,43 @@ int ch7036_get_power(void *p_context, unsigned long *p_state)
 
 int ch7036_save(void *p_context, void **state, unsigned long flags)
 {
-
 	ch7036_device_context_t *p_ctx = (ch7036_device_context_t *)p_context;
-
+	OUTPUT_INFO* pOutput_Info = (p_ctx->p_ch7xxx_context)->pOutput_Info;
 
 	PD_DEBUG("ch7036: ch7036_save()\n");
 
+#ifdef LVDS_ONLY
 
-	p_ctx->prev_outchannel = ch7036_get_output_channel(p_context);
+	return PD_INTERNAL_LVDS_MODULE_SAVE(ch7036_save,(p_ctx->internal_lvds, state, flags));
+#endif
 
+	//in Linux, when being called @ init, it incorrectly assigned unintialized global attribute value to prev outchannel
+	//p_ctx->prev_outchannel = ch7036_get_output_channel(p_context);
+	//fixed
+	p_ctx->prev_outchannel = pOutput_Info->channel;
 
 
 	*state = NULL;
 
 	return PD_SUCCESS;
-
 }
+
+
 
 int ch7036_restore(void *p_context, void *state, unsigned long flags)
 {
-
 	ch7036_device_context_t *p_ctx = (ch7036_device_context_t *)p_context;
+
 	unsigned long i;
 
 
+
 	PD_DEBUG("ch7036: ch7036_restore()\n");
+
+#ifdef LVDS_ONLY
+
+	return PD_INTERNAL_LVDS_MODULE_RESTORE(ch7036_restore,(p_ctx->internal_lvds, state, flags));
+#endif
 
 
 	if (ch7036_load_firmware(p_ctx) != SS_SUCCESS)   {
@@ -1019,13 +1350,13 @@ int ch7036_restore(void *p_context, void *state, unsigned long flags)
 	}
 
 
+
 	if(p_ctx->prev_outchannel == CHANNEL_LVDS_HDMI) {
 
 		ch7036_set_output_channel(p_context, p_ctx->prev_outchannel);
-		ch7036_set_mode(p_context, p_ctx->native_dtd, 0);
-		ch7036_post_set_mode(p_context, p_ctx->native_dtd, 0);
+		ch7036_set_mode(p_context, &(p_ctx->native_dtd), 0);
+		ch7036_post_set_mode(p_context, &(p_ctx->native_dtd), 0);
 	}
-
 
 
 	for(i=0;i<p_ctx->ch7036_num_attrs;i++) {
@@ -1051,36 +1382,67 @@ int ch7036_restore(void *p_context, void *state, unsigned long flags)
 int ch7036_get_port_status(void *context, pd_port_status_t *port_status)
 {
 	ch7036_device_context_t *p_ctx = (ch7036_device_context_t *)context;
-//	DEV_CONTEXT* p_ch7xxx_context = p_ctx->p_ch7xxx_context;
-//	OUTPUT_INFO* pOutput_Info = (p_ctx->p_ch7xxx_context)->pOutput_Info;
+	OUTPUT_INFO* pOutput_Info = (p_ctx->p_ch7xxx_context)->pOutput_Info;
 
-
+#if 0
+	FW7036_CFG* fv = (FW7036_CFG*) p_ctx->fw;
+	int ret;
+#endif
 
 	port_status->display_type = PD_DISPLAY_LVDS_INT;
 	port_status->connected    = PD_DISP_STATUS_UNKNOWN;
 
-	PD_DEBUG("ch7036: ch7036_get_port_status()-enter..\n");
 
+	PD_DEBUG("ch7036: ch7036_get_port_status()-enter... p_ctx->hpd [%x]\n", p_ctx->hpd);
+
+#if 0
+	PD_DEBUG("Get LHFM Version Information.\r\n");
+	ret = LHFM_get_version(p_ch7xxx_context, fv);
+	if (0==ret) {
+		PD_DEBUG("Ma_ver=%d, mi_ver=%d, did=%02X, rid= %02X, capability=%s\r\n",
+			fv->ver_major, fv->ver_minor, fv->did, fv->rid, (fv->capbility & 0x2) ? "EDID+HDCP" : "EDID");
+	}
+	else {
+		PD_DEBUG("--- failed!\r\n");
+		PD_DEBUG("status: [%s]\n",ret ==-1?"timeout!":"firmware_error!");
+	}
+#endif
+
+
+#ifdef LVDS_ONLY
+
+	return PD_INTERNAL_LVDS_MODULE_GET_PORT_STATUS(ch7036_get_port_status,(p_ctx->internal_lvds, port_status));
+#endif
+
+	if(! (p_ctx->hpd & CH7036HPD_RESERVED1) ) {
+		//note: main driver check port status several times, this block is to speed things up a little
+		if ((p_ctx->init_done) && (pOutput_Info->channel == p_ctx->prev_outchannel ) ) {
+			if(p_ctx ->hpd & 0x22)
+				port_status->connected = PD_DISP_STATUS_ATTACHED;
+			PD_DEBUG("ch7036: ch7036_get_port_status()-output channel UNCHANGED- exit. p_ctx->hpd [%x]\n", p_ctx->hpd);
+			return PD_SUCCESS;
+		}
+
+	}
 
 	if(p_ctx->use_firmware) {
 
 		ch7036_get_attached_device(p_ctx);
-
 		if(p_ctx ->hpd & 0x22)
 			port_status->connected = PD_DISP_STATUS_ATTACHED;
 
+		ch7036_alter_display_channel(p_ctx);
 
-		ch7036_alter_display_list(p_ctx);
-
-	}
-
-
-	PD_DEBUG("ch7036: ch7036_get_port_status()-exit. p_ctx->hpd [%x}\n", p_ctx->hpd);
+		}
 
 
+	p_ctx->hpd &= 0xEE;
+
+	PD_DEBUG("ch7036: ch7036_get_port_status()-exit. p_ctx->hpd [%x]\n", p_ctx->hpd);
 	return PD_SUCCESS;
-
 }
+
+
 
 
 int ch7036_initialize_device(ch7036_device_context_t *p_ctx)
@@ -1088,8 +1450,7 @@ int ch7036_initialize_device(ch7036_device_context_t *p_ctx)
 	DEV_CONTEXT* p_ch7xxx_context = p_ctx->p_ch7xxx_context;
 	OUTPUT_INFO* pOutput_Info = (p_ctx->p_ch7xxx_context)->pOutput_Info;
 	PREFER_INFO* pPrefer_Info = p_ch7xxx_context->pPrefer_Info;
-	//pd_attr_t *p_attr;
-	uint8 reg;
+	uint8 reg; //,i=0;
 
 	ch7036_edid_blk_t* p_hedid;
 	ch7036_edid_blk_t* p_cedid ;
@@ -1098,49 +1459,38 @@ int ch7036_initialize_device(ch7036_device_context_t *p_ctx)
 	PD_DEBUG("ch7036: ch7036_initialize_device()- ENTER...\n");
 
 
-	if (p_ch7xxx_context->DeviceID != 0x56)
-	{
-		return (PD_ERR_NULL_PTR);
-	}
 	p_ctx->init_done = 0;
+	p_ctx->hpd = 0;
 
+	p_ctx->downscaled[MODE_6x4_BYPASS] = 1;
+	p_ctx->downscaled[MODE_8x6_7x4_BYPASS] = 1;
+	p_ctx->dwnscal_bypass = 1;
 
-	if(p_ctx->hedid) {
+	if(p_ctx->use_firmware) {
+
 		p_hedid = (ch7036_edid_blk_t *)p_ctx->hedid;
 		p_cedid = (ch7036_edid_blk_t *)p_ctx->cedid;
+
+
+
+		pd_memcpy(p_cedid->etiming_I,et_I,8* sizeof(established_timings_t));
+		pd_memcpy(p_cedid->etiming_II,et_II,8* sizeof(established_timings_t));
+
+
+		p_cedid->etiming_man = &et_man;
+
+
+
+		pd_memcpy(p_hedid->etiming_I,et_I,8* sizeof(established_timings_t));
+		pd_memcpy(p_hedid->etiming_II,et_II,8* sizeof(established_timings_t));
+
+		p_hedid->etiming_man = &et_man;
+
 
 		p_cedid->is_edid = 0;
 		p_hedid->is_edid = 0;
 		p_cedid->ebn = 0;
 		p_hedid->ebn = 0;
-
-	}
-
-
-
-	pOutput_Info->hdmi_fmt.is_dvi_mode = 0;
-
-	pOutput_Info->channel = CHANNEL_LVDS | CHANNEL_HDMI;
-	p_ctx->req_ddc = 0;
-	p_ctx->lvds_only = 0;
-
-	PD_DEBUG("ch7036: ch7036_initialize_device()- set output channel to [%ld]\n",pOutput_Info->channel);
-
-
-
-	pOutput_Info->h_position = DEFAULT_POSITION;
-	pOutput_Info->v_position = DEFAULT_POSITION;
-
-
-	p_ctx->dither_select = DITHER_18_TO_18;
-
-	ch7036_set_scaling (pOutput_Info,PD_ATTR_ID_HSCALE, HDMI_DEFAULT_UNDERSCAN);
-	ch7036_set_scaling (pOutput_Info,PD_ATTR_ID_VSCALE, HDMI_DEFAULT_UNDERSCAN);
-
-	ch7036_set_prefer_timing_info(p_ctx,pPrefer_Info);
-
-
-	if(p_ctx->use_firmware) {
 
 
 		I2CWrite(p_ch7xxx_context,0x03, 0x04);
@@ -1149,16 +1499,48 @@ int ch7036_initialize_device(ch7036_device_context_t *p_ctx)
 		I2CWrite(p_ch7xxx_context,0x52, reg);
 
 
+		I2CWrite(p_ch7xxx_context,0x03, 0x0);
+		reg = I2CRead(p_ch7xxx_context,0x07);
+		reg = reg & 0x70;
+		I2CWrite(p_ch7xxx_context,0x07, reg);
+
+		I2CWrite(p_ch7xxx_context,0x4E, I2CRead(p_ch7xxx_context,0x4E) & 0x7F);
+
 		I2CWrite(p_ch7xxx_context,0x03, 0x01);
 		reg = I2CRead(p_ch7xxx_context,0x0F);
 		reg = reg & 0x7F;
 		I2CWrite(p_ch7xxx_context,0x0F, reg);
 
+		I2CWrite(p_ch7xxx_context,0x03, 0x03);
+		reg = I2CRead(p_ch7xxx_context,0x6E);
+		reg = reg & 0xBF;
+		I2CWrite(p_ch7xxx_context,0x6E, reg | 0x40);
 
-		ch7036_get_attached_device(p_ctx);
 
 	}
 
+
+	pOutput_Info->hdmi_fmt.is_dvi_mode = 0;
+
+	pOutput_Info->channel = CHANNEL_LVDS | CHANNEL_HDMI;
+
+
+
+	PD_DEBUG("ch7036: ch7036_initialize_device()- default output channel is [%u]\n",pOutput_Info->channel);
+
+
+
+	pOutput_Info->h_position = DEFAULT_POSITION;
+	pOutput_Info->v_position = DEFAULT_POSITION;
+
+
+	p_ctx->dither_select = DITHER_18_TO_18;
+	p_ctx->man_sel_out= 0;
+
+	ch7036_set_scaling (pOutput_Info,PD_ATTR_ID_HSCALE, HDMI_DEFAULT_UNDERSCAN);
+	ch7036_set_scaling (pOutput_Info,PD_ATTR_ID_VSCALE, HDMI_DEFAULT_UNDERSCAN);
+
+	ch7036_set_prefer_timing_info(p_ctx,pPrefer_Info);
 
 	return PD_SUCCESS;
 }

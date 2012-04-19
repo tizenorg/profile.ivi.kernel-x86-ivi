@@ -77,6 +77,11 @@ extern void* gp_bc_Anchor[BUFCLASS_DEVICE_MAX_ID];
 #define MAX_STREAM_TAG 0xFFFFFFF0
 unsigned long bc_stream_tag = 0;
 
+typedef enum _BC_DEVICE_STATE {
+	BC_DEV_READY = 0xF0,
+	BC_DEV_NOT_READY,
+} BC_Dev_Status;
+
 #if 0
 MODULE_SUPPORTED_DEVICE (DEVNAME);
 
@@ -110,6 +115,12 @@ unsigned long g_ulMemCurrent = 0;
 * 0 - Uninitialized, 1 - Initialized.
 */
 static int flg_bc_ts_init = 0;
+
+/*
+** Function: Set device state
+** state: 0 - enable; 1 - disable
+*/
+void emgd_bc_ts_set_state(BC_DEVINFO *psDevInfo, const IMG_CHAR state);
 
 int emgd_bc_ts_init(void){
     int i, j;
@@ -562,9 +573,6 @@ int BC_DestroyBuffers(void *psDevInfo) {
     DevInfo->sBufferInfo.ui32ByteStride = 0;
     DevInfo->sBufferInfo.ui32Flags = 0;
     DevInfo->sBufferInfo.ui32BufferCount = 0;
-	memset(DevInfo->sBufferInfo.szDeviceName + strlen(DevInfo->sBufferInfo.szDeviceName),
-			0,
-			MAX_BUFFER_DEVICE_NAME_SIZE - strlen(DevInfo->sBufferInfo.szDeviceName));
 
 	EMGD_TRACE_EXIT;
 
@@ -603,11 +611,12 @@ static __inline int emgd_bc_ts_bridge_init(struct drm_device *drv, void* arg, st
 			} else {
 				bc_stream_tag++;
 			}
-			if ((strlen(psDevInfo->sBufferInfo.szDeviceName) + sizeof(bc_stream_tag)) <= (MAX_BUFFER_DEVICE_NAME_SIZE - 1)) {
-			memcpy(psDevInfo->sBufferInfo.szDeviceName + strlen(psDevInfo->sBufferInfo.szDeviceName) + 1, &bc_stream_tag, sizeof(bc_stream_tag));
-			} else {
-				EMGD_ERROR("Failed to Add stream tag");
-			}
+
+			*(IMG_UINT32 *)(psDevInfo->sBufferInfo.szDeviceName + TSBUFFERCLASS_VIDEOID_OFFSET) = bc_stream_tag;
+
+			/* Disable device*/
+			emgd_bc_ts_set_state(psDevInfo, 0);
+
 			EMGD_DEBUG("Grab a Device - 0x%lx , ID %lu, idx - %d\n",
 				(unsigned long)psDevInfo,
 				psBridge->dev_id,
@@ -642,6 +651,10 @@ static __inline int emgd_bc_ts_bridge_uninit(struct drm_device *drv, void* arg, 
 	}
 
 	psDevInfo = (BC_DEVINFO *)GetAnchorPtr(psBridge->dev_id);
+
+	/* To disable buffer class device*/
+	emgd_bc_ts_set_state(psDevInfo, 0);
+
 	if (EMGD_OK == BC_DestroyBuffers((void *)psDevInfo)) {
 		EMGD_DEBUG("Free Device -  %lu", psBridge->dev_id);
 		bc_video_id_usage[i] = 0,
@@ -722,6 +735,8 @@ static __inline int emgd_bc_ts_bridge_release_buffers(struct drm_device *drv, vo
 	}
 
 	if (NULL != psDevInfo && 1 == bc_video_id_usage[psDevInfo->sBufferInfo.ui32BufferDeviceID]) {
+		emgd_bc_ts_set_state(psDevInfo, 0);
+
    		if (EMGD_OK == BC_DestroyBuffers((void *)psDevInfo)) {
 			psBridge->rtn = 0;
 			err = EMGD_OK;
@@ -763,6 +778,20 @@ static __inline int emgd_bc_ts_bridge_set_buffer_info(struct drm_device *drv, vo
 		EMGD_ERROR("input device id is invalid");
 		return err;
 	}
+	/*  To Set Buffer Class Device State */
+	if (0xFF == psBridge->buf_id && BUFCLASS_BUFFER_MAX < psBridge->buf_id) {
+			/* 0xFF - Indicates Buffer Class Device is ready. 0xF0 - not ready */
+		if (BC_DEV_READY == psBridge->buf_tag && 0 < devinfo->sBufferInfo.ui32BufferCount) {
+			emgd_bc_ts_set_state(devinfo, 1);
+			EMGD_DEBUG("dev_id %lu Enable to be Ready!\n", psBridge->dev_id);
+			goto SUCCESS_OK;
+		}
+		if (BC_DEV_NOT_READY == psBridge->buf_tag) {
+			emgd_bc_ts_set_state(devinfo, 0);
+			EMGD_DEBUG("dev_id %lu Disabled!\n", psBridge->dev_id);
+			goto SUCCESS_OK;
+		}
+	}
 
    	if (psBridge->buf_id >= devinfo->sBufferInfo.ui32BufferCount) {
         EMGD_ERROR("Invalid buf_id");
@@ -785,6 +814,7 @@ static __inline int emgd_bc_ts_bridge_set_buffer_info(struct drm_device *drv, vo
 		bcBuf->psSysAddr[0].uiAddr = psBridge->phyaddr;
 	}
 
+SUCCESS_OK:
 	psBridge->rtn = 0;
 
 	EMGD_TRACE_EXIT;
@@ -959,4 +989,11 @@ int emgd_bc_ts_get_buffer_index(struct drm_device *dev, void *arg, struct drm_fi
 	EMGD_TRACE_EXIT;
 
 	return 0;
+}
+
+void emgd_bc_ts_set_state(BC_DEVINFO *psDevInfo, const IMG_CHAR state)
+{
+	if (NULL != psDevInfo) {
+		psDevInfo->sBufferInfo.szDeviceName[TSBUFFERCLASS_DEVSTATUS_OFFSET] = state;
+	}
 }

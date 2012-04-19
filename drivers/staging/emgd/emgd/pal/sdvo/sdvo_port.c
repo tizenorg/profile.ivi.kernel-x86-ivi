@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: sdvo_port.c
- * $Revision: 1.30 $
+ * $Revision: 1.31 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -34,6 +34,12 @@
 
 
 #include "sdvo_port.h"
+
+#define PFIT_CONTROL		0x61230  /* Panel Fitting Control Register Address*/
+#define PFIT_PIPEB_ENABLED	0xA0000000
+#define CH7308_VENDOR_ID	2
+#define CH7308_DEVICE_ID	0x41
+#define CH7308_REVISION_ID	1
 
 /* .......................................................................... */
 
@@ -2452,6 +2458,33 @@ int sdvo_set_mode(void *p_context, pd_timing_t *p_mode, unsigned long flags)
 
 	}
 #endif
+	/*
+	 * Disable panel fitting for CH7308 card on Pipe B if enabled, because it
+	 * handles its own upscaling
+	 */
+	if ((p_ctx->dev_cap.vendor_id == CH7308_VENDOR_ID) &&
+			(p_ctx->dev_cap.device_id == CH7308_DEVICE_ID) &&
+			(p_ctx->dev_cap.revision_id == CH7308_REVISION_ID)) {
+		pd_reg_t reg_list[2];
+
+		reg_list[0].reg = PFIT_CONTROL;
+		reg_list[1].reg = PD_REG_LIST_END;
+
+		/*Read the current value of the panel fitting control register*/
+		p_ctx->p_callback->read_regs(p_ctx->p_callback->callback_context,
+				reg_list, PD_REG_MIO);
+
+		PD_DEBUG("PFIT_CONTROL 0x%lx = 0x%lx", PFIT_CONTROL,reg_list[0].value);
+
+		if((reg_list[0].value & PFIT_PIPEB_ENABLED) == PFIT_PIPEB_ENABLED ){
+			/* Disable panel fitting */
+			reg_list[0].value = 0x0;
+			p_ctx->p_callback->write_regs(p_ctx->p_callback->callback_context,
+					reg_list, PD_REG_MIO);
+			PD_DEBUG(" Value 0x%lx written to PFIT_CONTROL 0x%lx",
+					reg_list[0].value,PFIT_CONTROL);
+		}
+	}
 
 	status = sdvo_set_input_timings(p_ctx, &dtd_in);
 	if ((status != SS_SUCCESS) && (status != SS_NOT_SUPPORTED)) {

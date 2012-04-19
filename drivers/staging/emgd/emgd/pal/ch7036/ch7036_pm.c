@@ -21,14 +21,13 @@
 *
 *-----------------------------------------------------------------------------
 * @file  ch7036_pm.c
-* @version 1.1.4
+* @version 1.2.4
 *-----------------------------------------------------------------------------
 */
 
 
-#include "ch7036_typedef.h"
-#include "ch7036_iic.h"
 
+#include "ch7036_intf.h"
 
 
 
@@ -42,9 +41,10 @@ void ch7036_set_power_lvds(DEV_CONTEXT* p_ch7xxx_context)
 	OUTPUT_INFO* pOutput_Info = p_ch7xxx_context->pOutput_Info;
 	uint8 reg=0x00;
 
-
+	PD_DEBUG("ch7036: ch7036_set_power_lvds()-enter...channel [%lu]\n", pOutput_Info->channel);
 	if(pOutput_Info->channel & CHANNEL_LVDS)
 	{
+
 
 		I2CWrite(p_ch7xxx_context,0x03, 0x01);
 		reg = I2CRead(p_ch7xxx_context,0x1A);
@@ -56,7 +56,8 @@ void ch7036_set_power_lvds(DEV_CONTEXT* p_ch7xxx_context)
 	  if(((pOutput_Info->channel & CHANNEL_HDMI)==0x00)&&
 		 ((pOutput_Info->channel & CHANNEL_VGA) == 0x00))
 	    {
-		 reg = reg | 0x80;
+
+			reg = reg | 0x80;
 	    }
 		 I2CWrite(p_ch7xxx_context,0x11, reg);
 
@@ -79,8 +80,12 @@ void ch7036_set_power_lvds(DEV_CONTEXT* p_ch7xxx_context)
         I2CWrite(p_ch7xxx_context,0x0A, reg);
 
 
+		I2CWrite(p_ch7xxx_context,0x4E, I2CRead(p_ch7xxx_context,0x4E) | 0x80 );
+
 
 		if((pOutput_Info->channel & CHANNEL_HDMI) == 0x00 && (pOutput_Info->channel & CHANNEL_VGA) == 0x00){
+
+
 		 I2CWrite(p_ch7xxx_context,0x03, 0x00);
 		 reg = I2CRead(p_ch7xxx_context,0x07);
 		 reg = reg | 0x02;
@@ -108,21 +113,26 @@ void ch7036_set_power_lvds(DEV_CONTEXT* p_ch7xxx_context)
 	{
 
 
+
         I2CWrite(p_ch7xxx_context,0x03, 0x00);
+
+		I2CWrite(p_ch7xxx_context,0x4E, I2CRead(p_ch7xxx_context,0x4E) & 0x7F );
+
 		reg = I2CRead(p_ch7xxx_context,0x0A);
 		reg = reg | 0x08;
         I2CWrite(p_ch7xxx_context,0x0A, reg);
 
 		if((pOutput_Info->channel & CHANNEL_HDMI) == 0x00 && (pOutput_Info->channel & CHANNEL_VGA)==0x00)
 		{
-		 I2CWrite(p_ch7xxx_context,0x03, 0x04);
-		 reg = I2CRead(p_ch7xxx_context,0x63);
-		 reg = reg | 0xFC;
-		 I2CWrite(p_ch7xxx_context,0x63, reg);
 
-		 reg = I2CRead(p_ch7xxx_context,0x64);
-		 reg = reg | 0x01;
-		 I2CWrite(p_ch7xxx_context,0x64, reg);
+			I2CWrite(p_ch7xxx_context,0x03, 0x04);
+			reg = I2CRead(p_ch7xxx_context,0x63);
+			reg = reg | 0xFC;
+			I2CWrite(p_ch7xxx_context,0x63, reg);
+
+			reg = I2CRead(p_ch7xxx_context,0x64);
+			reg = reg | 0x01;
+			I2CWrite(p_ch7xxx_context,0x64, reg);
 		}
 
 		I2CWrite(p_ch7xxx_context,0x03, 0x04);
@@ -151,9 +161,10 @@ void ch7036_set_power_hdmi(DEV_CONTEXT* p_ch7xxx_context)
 	INPUT_INFO* pInput_Info = p_ch7xxx_context->pInput_Info;
 	uint8 reg=0x00;
 
-
+	PD_DEBUG("ch7036: ch7036_set_power_hdmi()-enter...channel [%lu]\n", pOutput_Info->channel);
    if(pOutput_Info->channel  & CHANNEL_HDMI)
    {
+
 
         I2CWrite(p_ch7xxx_context,0x03, 0x04);
 		reg = I2CRead(p_ch7xxx_context,0x52);
@@ -229,13 +240,6 @@ void ch7036_set_power_hdmi(DEV_CONTEXT* p_ch7xxx_context)
 		I2CWrite(p_ch7xxx_context,0x07, reg);
 
 
-
-
-
-
-
-
-
 		I2CWrite(p_ch7xxx_context,0x03, 0x01);
 		reg = I2CRead(p_ch7xxx_context,0x16);
 		reg = reg & 0xF7;
@@ -264,23 +268,11 @@ void ch7036_set_power_hdmi(DEV_CONTEXT* p_ch7xxx_context)
 
 
 
-
-
-
-
-
-
-
    }else {
 
 
-
-
-
-
-
-
 	   if((pOutput_Info->channel  & CHANNEL_VGA) == 0x00){
+
 
         I2CWrite(p_ch7xxx_context,0x03, 0x00);
 		reg = I2CRead(p_ch7xxx_context,0x0A);
@@ -332,20 +324,11 @@ void ch7036_set_power_hdmi(DEV_CONTEXT* p_ch7xxx_context)
 		}
 
 
-
-
-
-
-
 		I2CWrite(p_ch7xxx_context,0x03, 0x00);
 		reg = I2CRead(p_ch7xxx_context,0x07);
 		reg = reg | 0x40;
 		reg = reg | 0x01;
 		I2CWrite(p_ch7xxx_context,0x07, reg);
-
-
-
-
 
 
 
@@ -391,25 +374,15 @@ void ch7036_set_power_crt(DEV_CONTEXT* p_ch7xxx_context)
 	OUTPUT_INFO* pOutput_Info = p_ch7xxx_context->pOutput_Info;
 	uint8 reg=0x00;
 
-
+	PD_DEBUG("ch7036: ch7036_set_power_crt()-enter...channel [%lu]\n", pOutput_Info->channel);
 	if(pOutput_Info->channel & CHANNEL_VGA)
 	 {
+
 
 	   I2CWrite(p_ch7xxx_context,0x03, 0x01);
 		reg = I2CRead(p_ch7xxx_context,0x11);
 		reg = reg & 0x7F;
 	    I2CWrite(p_ch7xxx_context,0x11, reg);
-
-
-
-
-
-
-
-
-
-
-
 
 
 		I2CWrite(p_ch7xxx_context,0x03, 0x00);
@@ -454,6 +427,8 @@ void ch7036_set_power_crt(DEV_CONTEXT* p_ch7xxx_context)
 
 	}else if((pOutput_Info->channel & CHANNEL_VGA) == 0x00){
 
+
+
 		I2CWrite(p_ch7xxx_context,0x03, 0x00);
 
 		 reg = I2CRead(p_ch7xxx_context,0x08);
@@ -463,6 +438,9 @@ void ch7036_set_power_crt(DEV_CONTEXT* p_ch7xxx_context)
 
 
 		if((pOutput_Info->channel & CHANNEL_HDMI)==0x00){
+
+
+
 	     I2CWrite(p_ch7xxx_context,0x03, 0x01);
 		 reg = I2CRead(p_ch7xxx_context,0x11);
 		 reg = reg | 0x80;

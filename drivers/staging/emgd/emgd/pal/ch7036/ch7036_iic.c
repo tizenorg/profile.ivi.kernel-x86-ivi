@@ -21,9 +21,12 @@
 *
 *-----------------------------------------------------------------------------
 * @file  ch7036_iic.c
-* @version 1.1.4
+* @version 1.2.4
 *-----------------------------------------------------------------------------
 */
+
+
+
 
 
 #include "ch7036_iic.h"
@@ -34,14 +37,6 @@ static uint8 g_nCurPage = 0;
 static uint8 g_nCurRegmap[REG_PAGE_NUM][REG_NUM_PER_PAGE];
 
 int g_verbose = 0;
-
-
-
-
-void SetPower(DEV_CONTEXT* pDevContext);
-
-
-
 
 void DeviceReset(DEV_CONTEXT* pDevContext)
 {
@@ -119,42 +114,6 @@ void DeviceSetup(DEV_CONTEXT* pDevContext)
 }
 
 
-#if 0
-void SetPower(DEV_CONTEXT* pDevContext)
-{
-	uint8 page =0;
-	uint8 index;
-	uint32 reg_id, end;
-
-
-
-	reg_id = (uint32)HDMI_PD;
-	end = (uint32)MUL_ID_END;
-
-	I2CWrite(pDevContext,0x03, page);
-
-	while (reg_id < end)
-	{
-		if (page != g_MultiRegTable[reg_id].PageIndex)
-		{
-			page = g_MultiRegTable[reg_id ].PageIndex;
-			I2CWrite(pDevContext,0x03, page);
-		}
-		index = g_MultiRegTable[reg_id ].LowRegIndex;
-		I2CWrite(pDevContext,index, g_nCurRegmap[page][index]);
-		reg_id++;
-	}
-
-	I2CWrite(pDevContext,0x03, 0);
-	I2CWrite(pDevContext,0x1C, g_nCurRegmap[0][0x1C]);
-	I2CWrite(pDevContext,0x1D, g_nCurRegmap[0][0x1D]);
-
-}
-#endif
-
-
-
-
 uint8 iic_read(uint8 index)
 {
 	return g_nCurRegmap[g_nCurPage][index];
@@ -200,13 +159,13 @@ uint32 iic_read_ex(MULTI_REG_ID reg_id)
 	oldpage = iic_read(0x03);
 	iic_write(0x03, g_MultiRegTable[i].PageIndex);
 
-	if(-1 != g_MultiRegTable[i].TopRegIndex)
+	if(NOOP_INDEX != g_MultiRegTable[i].TopRegIndex)
 		n0 = iic_read(g_MultiRegTable[i].TopRegIndex);
 
-	if(-1 != g_MultiRegTable[i].HighRegIndex)
+	if(NOOP_INDEX != g_MultiRegTable[i].HighRegIndex)
 		n1 = iic_read(g_MultiRegTable[i].HighRegIndex);
 
-	if(-1 != g_MultiRegTable[i].MiddleRegIndex)
+	if(NOOP_INDEX != g_MultiRegTable[i].MiddleRegIndex)
 		n2 = iic_read(g_MultiRegTable[i].MiddleRegIndex);
 
 	n3 = iic_read(g_MultiRegTable[i].LowRegIndex);
@@ -287,7 +246,7 @@ void iic_write_ex(MULTI_REG_ID reg_id, uint32 value)
 	iic_write(g_MultiRegTable[i].LowRegIndex, (uint8)n1);
 	value_local >>= g_MultiRegTable[i].LowEndBit - g_MultiRegTable[i].LowStartBit + 1;
 
-	if(-1 != g_MultiRegTable[i].MiddleRegIndex)
+	if(NOOP_INDEX != g_MultiRegTable[i].MiddleRegIndex)
 	{
 		mask = 1;
 		mask <<= g_MultiRegTable[i].MiddleEndBit - g_MultiRegTable[i].MiddleStartBit + 1;
@@ -301,7 +260,7 @@ void iic_write_ex(MULTI_REG_ID reg_id, uint32 value)
 		iic_write(g_MultiRegTable[i].MiddleRegIndex, (uint8)n2);
 		value_local >>= g_MultiRegTable[i].MiddleEndBit - g_MultiRegTable[i].MiddleStartBit + 1;
 
-		if(-1 != g_MultiRegTable[i].HighRegIndex)
+		if(NOOP_INDEX != g_MultiRegTable[i].HighRegIndex)
 		{
 			mask = 1;
 			mask <<= g_MultiRegTable[i].HighEndBit - g_MultiRegTable[i].HighStartBit + 1;
@@ -315,7 +274,7 @@ void iic_write_ex(MULTI_REG_ID reg_id, uint32 value)
 			iic_write(g_MultiRegTable[i].HighRegIndex, (uint8)n3);
 			value_local >>= g_MultiRegTable[i].HighEndBit - g_MultiRegTable[i].HighStartBit + 1;
 
-			if(-1 != g_MultiRegTable[i].TopRegIndex)
+			if(NOOP_INDEX != g_MultiRegTable[i].TopRegIndex)
 			{
 				mask = 1;
 				mask <<= g_MultiRegTable[i].TopEndBit - g_MultiRegTable[i].TopStartBit +1;

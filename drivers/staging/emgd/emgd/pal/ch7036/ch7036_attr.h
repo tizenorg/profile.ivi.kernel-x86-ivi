@@ -21,13 +21,13 @@
 *
 *-----------------------------------------------------------------------------
 * @file  ch7036_attr.h
-* @version 1.1.4
+* @version 1.2.5
 *-----------------------------------------------------------------------------
 */
 
 
 
-#include <linux/kernel.h>
+//#include <linux/kernel.h>
 
 #ifndef _CH7036_ATTR_H_
 #define _CH7036_ATTR_H_
@@ -66,11 +66,11 @@ void ch7036_set_vflip (OUTPUT_INFO* pOutput_Info);
 
 ch7036_status_t ch7036_set_output_channel(void* p_context, uint32 channel);
 unsigned long ch7036_get_output_channel(void* p_context);
-ch7036_status_t ch7036_alter_display_list (ch7036_device_context_t *p_ctx);
+ch7036_status_t ch7036_alter_display_channel (ch7036_device_context_t *p_ctx);
 
 pd_list_entry_attr_t * ch7036_get_updated_display_ouput_entry(ch7036_device_context_t *p_ctx, uint32 channel);
 
-void ch7036_set_text_enhancement (PREFER_INFO* pPrefer_Info);
+void ch7036_set_text_enhancement (ch7036_device_context_t *p_ctx, uint8 val);
 void ch7036_set_quality_enhancement(ch7036_device_context_t *p_ctx, uint8 val);
 
 void ch7036_set_pll_refdly(PREFER_INFO* pPrefer_Info);
@@ -79,7 +79,7 @@ void ch7036_set_lvds_txdrv_ctrl(PREFER_INFO* pPrefer_Info);
 
 void ch7036_set_dither(ch7036_device_context_t* p_ctx);
 
-void ch7036_redo_edid_if_needed(ch7036_device_context_t *p_ctx, void* p_edidblk);
+void ch7036_redo_edid_if_needed(ch7036_device_context_t *p_ctx, void* p_edidblk, uint32 channel);
 
 
 #endif

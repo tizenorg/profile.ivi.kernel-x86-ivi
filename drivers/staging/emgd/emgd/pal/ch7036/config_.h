@@ -21,7 +21,7 @@
 *
 *-----------------------------------------------------------------------------
 * @file  config_.h
-* @version 1.1.4
+* @version 1.2.3
 *-----------------------------------------------------------------------------
 */
 
@@ -34,30 +34,15 @@
 #define T_POST_SETMODE
 #define T_LVDS_CLOSE
 
-
-
-
 #define T_SET_TIMING
 
-
-
-
 #define T_PD_DISPLAY_LVDS_INT
-
-
-
 
 #define T_DEVICE_DETECTION
 #define T_RES_DEALLOC
 
-
-
-
-
-
 #define T_TEST_HW
 #define T_RESET
-
 
 
 #define T_HDMI_TIMING_TABLE
@@ -67,10 +52,6 @@
 
 #define T_LH_POWER_ON_OFF
 
-
-
-
-
 #define T_CH7036_USE_LVDS_ATTR_TABLE
 
 #define T_CH7036_INIT_ATTR_TABLE
@@ -78,10 +59,15 @@
 
 #define T_CH7036_USE_FIRMWARE
 
+#define T_CH7036_EDID_DUMP
+#undef T_CH7036_EDID_DUMP
+
+#define T_SHOW_EDID_DISPLAY_ATTR
+#undef T_SHOW_EDID_DISPLAY_ATTR
 
 #define T_LINUX
+//#undef T_LINUX
 
-
-
+#define T_CONFIG_PLB
 
 #endif

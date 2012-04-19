@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: drm_emgd_private.h
- * $Revision: 1.21 $
+ * $Revision: 1.22 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -96,6 +96,12 @@ typedef struct _drm_emgd_private {
 	 * alter_displays()
 	 */
 	int (*reinit_3dd)(struct drm_device *dev);
+
+	/**
+	 * Function to invalidate the flip-chains assosciated with a display (or all
+	 * displays). Called from igd_alter_displays before a possible mode_change
+	 */
+	int (*invalidate_flip_chains)(int display);
 
 
 	/** The context is set during the DRM module load function. */

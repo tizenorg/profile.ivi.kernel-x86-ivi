@@ -21,30 +21,29 @@
 *
 *-----------------------------------------------------------------------------
 * @file  ch7036_fw.c
-* @version 1.1.4
+* @version 1.2.5
 *-----------------------------------------------------------------------------
 */
 
 
 
 #include "ch7036_intf.h"
-#include "ch7036_fw.h"
 
-#include "hdcp7036.car"
+#include "edid7036.car"
 
 
 #define EDID_RETRY_MAX_TIMES 5
 #define HPD_LOOP_MAX 10
 
 
-
-#define SLEEP_TIME 40
+#define SLEEP_TIME 200
 
 
 #define lhfm_size  sizeof(lhfm_array)
 
+#define LHFM_TIMEOUT	10
 
-#define LHFM_TIMEOUT	0x1F
+static unsigned char edid_header[8]={0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x00};
 
 static unsigned char es_map[16] = {
 	0x26,0x27,0x42,0x43,0x44,0x45,0x46,0x47,
@@ -53,35 +52,33 @@ static unsigned char es_map[16] = {
 
 
 
+
+
 established_timings_t et_I[8] = {
-	{0,"800x600_60"},
-	{0,"800x600_56"},
-	{0,"640x480_75"},
-	{0,"640x480_72"},
-	{0,"640x480_67"},
-	{0,"640x480_60"},
-	{0,"720x400_88"},
-	{0,"720x400_70"}
+	{0,"800x600_60", {OUT_DVI_800x600_60,OUT_HDMI_END, OUT_CRT_800x600_60} },
+	{0,"800x600_56", {OUT_DVI_800x600_56,OUT_HDMI_END, OUT_CRT_800x600_56} },
+	{0,"640x480_75", {OUT_DVI_640x480_75, OUT_HDMI_END, OUT_CRT_640x480_75} },
+	{0,"640x480_72", {OUT_DVI_640x480_72, OUT_HDMI_END, OUT_CRT_640x480_72} },
+	{0,"640x480_67", {OUT_DVI_END, OUT_HDMI_END, OUT_CRT_END } },
+	{0,"640x480_60", {OUT_DVI_640x480_60, OUT_HDMI_640x480P_60, OUT_CRT_640x480_60} },
+	{0,"720x400_88", {OUT_DVI_END, OUT_HDMI_END, OUT_CRT_END } },
+	{0,"720x400_70", {OUT_DVI_720x400_70, OUT_HDMI_END, OUT_CRT_END} },
 };
 
 established_timings_t et_II[8] ={
-	{0, "1280x1024_75"},
-	{0, "1024x768_75"},
-	{0, "1024x768_70"},
-	{0, "1024x768_60"},
-	{0, "1024x768_87"},
-	{0, "832x624_75"},
-	{0, "800x600_75"},
-	{0, "800x600_72"}
+	{0, "1280x1024_75", {OUT_DVI_1280x1024_75, OUT_HDMI_END, OUT_CRT_1280x1024_75} },
+	{0, "1024x768_75", {OUT_DVI_1024x768_75, OUT_HDMI_END, OUT_CRT_1024x768_75} },
+	{0, "1024x768_70", {OUT_DVI_1024x768_70, OUT_HDMI_END, OUT_CRT_1024x768_70} },
+	{0, "1024x768_60", {OUT_DVI_1024x768_60, OUT_HDMI_END, OUT_CRT_1024x768_60} },
+	{0, "1024x768_87", {OUT_DVI_END, OUT_HDMI_END, OUT_CRT_END} },
+	{0, "832x624_75", {OUT_DVI_END, OUT_HDMI_END, OUT_CRT_END} },
+	{0, "800x600_75", {OUT_DVI_800x600_75, OUT_HDMI_END, OUT_CRT_800x600_75} },
+	{0, "800x600_72", {OUT_DVI_800x600_72, OUT_HDMI_END, OUT_CRT_800x600_72} }
 };
 
 established_timings_t et_man = {
-	0, "1152x870_75"
+	0, "1152x870_75", {OUT_DVI_END, OUT_HDMI_END, OUT_CRT_END}
 };
-
-extern OUT_FMT hdmi_timing_table[OUT_HDMI_END];
-extern OUT_FMT dvi_timing_table[OUT_DVI_END];
-extern OUT_FMT ch_vga_timing_table[OUT_CRT_END];
 
 
 int LHFM_get_version(DEV_CONTEXT* p_ch7xxx_context,struct _FW7036_CFG* cfg)
@@ -122,9 +119,6 @@ int LHFM_get_version(DEV_CONTEXT* p_ch7xxx_context,struct _FW7036_CFG* cfg)
 
 				 }
 
-
-
-
 			 }
 
 		 }
@@ -133,88 +127,22 @@ int LHFM_get_version(DEV_CONTEXT* p_ch7xxx_context,struct _FW7036_CFG* cfg)
 }
 
 
-
-ch7036_status_t LHFM_get_hdmi_hpd(DEV_CONTEXT* p_ch7xxx_context,uint8 *hpd)
-{
-
-	unsigned char reg;
-	unsigned wj, count=0;
-	ch7036_status_t status = SS_FIRMWARE_TIMEOUT;
-
-
-	do {
-
-
-		 I2CWrite(p_ch7xxx_context,0x03, 0x00);
-		 reg = I2CRead(p_ch7xxx_context,0x4F);
-
-
-		 if (0==(LHFM_REQUEST & reg)) {
-
-			 I2CWrite(p_ch7xxx_context,0x4F, (LHFM_REQUEST+ LHFM_GET_HPD));
-			 wj = 0;
-
-			 while (wj++< LHFM_TIMEOUT) {
-				 I2CWrite(p_ch7xxx_context,0x03, 0x00);
-				 reg = I2CRead(p_ch7xxx_context,0x4F);
-
-				 if(reg == LHFM_GET_HPD) {
-
-					 reg = I2CRead(p_ch7xxx_context,0x50);
-
-					 if (!(LHFM_RET_ERROR & reg)) {
-
-						    I2CWrite(p_ch7xxx_context,0x03, 0x01);
-						    reg = I2CRead(p_ch7xxx_context,es_map[0]);
-
-							if (hpd) *hpd = reg;
-
-							PD_DEBUG("ch7036: LHFM_get_hdmi_hpd- SUCCESS- hpd [%x]\n", *hpd);
-							return SS_SUCCESS;
-					 } else {
-
-						 status = SS_FIRMWARE_ERR;
-					 }
-
-				 }
-
-				if(status == SS_FIRMWARE_ERR)  break;
-				pd_usleep(SLEEP_TIME);
-
-			 }
-
-		 }
-
-		pd_usleep(SLEEP_TIME);
-		PD_DEBUG("ch7036: LHFM_get_hdmi_hpd- NOT SUCCESS-status = [%s]\n",status==SS_FIRMWARE_ERR?"firmware error":"timeout");
-
-	} while ( ( (status== SS_FIRMWARE_ERR) || (status== SS_FIRMWARE_TIMEOUT) ) && ( (++count) < HPD_LOOP_MAX) );
-
-
-	return status;
-}
-
-
 void LHFM_enable_crt_hpd(DEV_CONTEXT* p_ch7xxx_context)
 {
 	uint8 reg;
 
+	PD_DEBUG("ch7036: LHFM_enable_crt_hpd-enter\n");
 
 	I2CWrite(p_ch7xxx_context,0x03, 0x04);
 	reg = I2CRead(p_ch7xxx_context,0x57);
 	I2CWrite(p_ch7xxx_context,0x57, reg | 0x02);
 
-
 	pd_usleep(SLEEP_TIME);
-
 
 	I2CWrite(p_ch7xxx_context,0x03, 0x00);
-	reg = I2CRead(p_ch7xxx_context,0x74);
-	I2CWrite(p_ch7xxx_context,0x74, reg | 0x02);
+	I2CWrite(p_ch7xxx_context,0x08, I2CRead(p_ch7xxx_context,0x08) & 0xF1);
 
 	pd_usleep(SLEEP_TIME);
-
-
 }
 
 
@@ -224,38 +152,23 @@ ch7036_status_t LHFM_get_crt_hpd(DEV_CONTEXT* p_ch7xxx_context)
 	unsigned char reg, count =0;
 	ch7036_status_t status = SS_CRT_HPD_NOTCONNECTED;
 
-
 	do {
+
 		I2CWrite(p_ch7xxx_context,0x03, 0x00);
 		reg = I2CRead(p_ch7xxx_context,0x74);
 		I2CWrite(p_ch7xxx_context,0x74, reg & 0xFD);
-
 		pd_usleep(SLEEP_TIME);
 
 		I2CWrite(p_ch7xxx_context,0x03, 0x00);
 		reg = I2CRead(p_ch7xxx_context,0x74);
 		I2CWrite(p_ch7xxx_context,0x74, reg | 0x02);
-
 		pd_usleep(SLEEP_TIME);
-
 
 		I2CWrite(p_ch7xxx_context,0x03, 0x01);
 		reg = I2CRead(p_ch7xxx_context,0x7C);
 
-
-
-		PD_DEBUG("ch7036: LHFM_get_crt_hpd- DAC sense- reg dump [%x]\n", reg);
-
-		if( (reg & 0xFC) == 0x54 || (reg & 0xFC) == 0x50 ){
-
+		if( (reg & 0xF0) == 0x50  || (reg & 0xF4) == 0x14 || (reg & 0xF4) == 0x44)
 			status= SS_SUCCESS;
-
-		}
-		else
-			LHFM_enable_crt_hpd(p_ch7xxx_context);
-
-		pd_usleep(SLEEP_TIME+100000);
-
 
 	} while ( (status == SS_CRT_HPD_NOTCONNECTED) && ( (++count) < HPD_LOOP_MAX ) );
 
@@ -263,6 +176,8 @@ ch7036_status_t LHFM_get_crt_hpd(DEV_CONTEXT* p_ch7xxx_context)
 	I2CWrite(p_ch7xxx_context,0x03, 0x00);
 	reg = I2CRead(p_ch7xxx_context,0x74);
 	I2CWrite(p_ch7xxx_context,0x74, reg & 0xFD);
+
+	I2CWrite(p_ch7xxx_context,0x08, I2CRead(p_ch7xxx_context,0x08) | 0x0E);
 
 	return status;
 
@@ -298,9 +213,6 @@ ch7036_status_t LHFM_get_hdmi_modeinfo(DEV_CONTEXT* p_ch7xxx_context,unsigned ch
 
 				 }
 
-
-
-
 			 }
 
 		 }
@@ -308,7 +220,6 @@ ch7036_status_t LHFM_get_hdmi_modeinfo(DEV_CONTEXT* p_ch7xxx_context,unsigned ch
 	return SS_FIRMWARE_TIMEOUT;
 
 }
-
 
 
 ch7036_status_t LHFM_get_edid(DEV_CONTEXT* p_ch7xxx_context,unsigned char* edid, unsigned char* ebn, unsigned char flag)
@@ -319,30 +230,31 @@ ch7036_status_t LHFM_get_edid(DEV_CONTEXT* p_ch7xxx_context,unsigned char* edid,
 	unsigned char reg;
 	unsigned wj;
 
-	ch7036_status_t status = SS_SUCCESS;
+	ch7036_status_t status;
 
 
+
+	status = SS_SUCCESS;
 	*ebn = 0;
 
+	pd_memset(edid, 0, EDID_SIZE);
 
-	for (i=0; i<512; i++) edid[i]=0;
+	I2CWrite(p_ch7xxx_context,0x03, 0x00);
+	reg = I2CRead(p_ch7xxx_context,0x4F);
 
-	 I2CWrite(p_ch7xxx_context,0x03, 0x00);
-	 reg = I2CRead(p_ch7xxx_context,0x4F);
+	if( (reg & LHFM_REQUEST) != 0 )
+		return SS_FIRMWARE_ERR; //mcu is busy
+	else { //mcu is ready to serve host request
 
-
-	 if (0==(LHFM_REQUEST & reg)) {
-
-
-		 for(i=0,j=0; i < 8; i++,j+=16) {
+		for(i=0,j=0; i < 8; i++,j+=16) {
 
 		    I2CWrite(p_ch7xxx_context,0x03, 0x00);
-			I2CWrite(p_ch7xxx_context,0x50, i + flag);
+			I2CWrite(p_ch7xxx_context,0x50, i | flag);
 			I2CWrite(p_ch7xxx_context,0x4F, (LHFM_REQUEST+LHFM_GET_EDID));
 			wj = 0;
 
 			status = SS_FIRMWARE_TIMEOUT;
-
+			PD_DEBUG("ch7036: LHFM_get_edid- block [%d] - getting [%d]- 16 bytes - wj=[0x%x]\n",*ebn,i+1,wj);
 			while (wj++< (2*LHFM_TIMEOUT) ) {
 				 I2CWrite(p_ch7xxx_context,0x03, 0x00);
 				 pd_usleep(SLEEP_TIME);
@@ -356,86 +268,80 @@ ch7036_status_t LHFM_get_edid(DEV_CONTEXT* p_ch7xxx_context,unsigned char* edid,
 					 if (!(LHFM_RET_ERROR & reg)) {
 							I2CWrite(p_ch7xxx_context,0x03, 0x01);
 							for (ie=0; ie<16; ie++) edid[j+ie] = I2CRead(p_ch7xxx_context,es_map[ie] );
-
-
 							break;
 					 }
-					 else {
-
-
-
-
-						return SS_FIRMWARE_ERR;
-
-					 }
+					 else
+							return SS_FIRMWARE_ERR;
 
 				 }
 
 
-			}
+			} //while block
 
 			status = SS_SUCCESS;
 
+		} //for
 
-		}
-
+		for(i=0;i<8;i++)
+			if (edid_header[i] != edid[i]) {
+				return SS_FIRMWARE_ERR;
+			}
 
 		(*ebn)++;
 
+		if(flag & 0x80 && (edid[0x7E] > 0) ) {
+			PD_DEBUG("ch7036: LHFM_get_edid- incorrect # of VGA EDID blocks read [%x]\n",edid[0x7E]);
+			return SS_FIRMWARE_ERR;
+		}
 
 		k2 = edid[0x7E];
 
 		k2 = (k2 > 3)? 3 : k2;
-		if (k2>0) {
-		  for (k1=1; k1<=k2; k1++) {
 
+		if (k2>0) { //case: there are more than 1 blocks
+			for (k1=1; k1<=k2; k1++) {
 
+				for(i=k1*8; i < 8+k1*8; i++,j+=16){
+					I2CWrite(p_ch7xxx_context,0x03, 0x00);
+					I2CWrite(p_ch7xxx_context,0x50, i + flag);
+					I2CWrite(p_ch7xxx_context,0x4F, (LHFM_REQUEST+LHFM_GET_EDID));
+					wj = 0;
 
-		    for(i=k1*8; i < 8+k1*8; i++,j+=16){
-				I2CWrite(p_ch7xxx_context,0x03, 0x00);
-			    I2CWrite(p_ch7xxx_context,0x50, i + flag);
-				I2CWrite(p_ch7xxx_context,0x4F, (LHFM_REQUEST+LHFM_GET_EDID));
-				wj = 0;
+					status = SS_FIRMWARE_TIMEOUT;
+					PD_DEBUG("ch7036: LHFM_get_edid- block [%d] - getting [%d]- 16 bytes - wj=[0x%x]\n",k1,i+1,wj);
+					while (wj++< (2*LHFM_TIMEOUT)) {
+						I2CWrite(p_ch7xxx_context,0x03, 0x00);
+						pd_usleep(SLEEP_TIME);
 
-				status = SS_FIRMWARE_TIMEOUT;
+						reg = I2CRead(p_ch7xxx_context,0x4F);
 
-				while (wj++< (2*LHFM_TIMEOUT)) {
-					 I2CWrite(p_ch7xxx_context,0x03, 0x00);
-					 pd_usleep(SLEEP_TIME);
-
-					 reg = I2CRead(p_ch7xxx_context,0x4F);
-
-					 if(reg == LHFM_GET_EDID) {
-						 reg = I2CRead(p_ch7xxx_context,0x50);
-						 if (!(LHFM_RET_ERROR & reg)) {
+						if(reg == LHFM_GET_EDID) {
+							reg = I2CRead(p_ch7xxx_context,0x50);
+							if (!(LHFM_RET_ERROR & reg)) {
 								I2CWrite(p_ch7xxx_context,0x03, 0x01);
 								for (ie=0; ie<16; ie++) edid[j+ie] = I2CRead(p_ch7xxx_context,es_map[ie] );
-
-
 								break;
-						 }
-						 else {
-
-							return SS_FIRMWARE_ERR;
-						 }
-					 }
+							}
+							else
+								return SS_FIRMWARE_ERR;
 
 
+						}
+
+					} //while
+
+					status = SS_SUCCESS;
+
+				}//nested for
+
+				(*ebn)++;
+
+			} //outermost for
 
 
-				 }
+		} //if- case: there are more than 1 blocks
 
-				status = SS_SUCCESS;
-			}
-
-			(*ebn)++;
-		  }
-
-		}
-
-
-
-	 }
+	} //else - case:  mcu is ready to serve host request
 
 	return status;
 
@@ -449,28 +355,23 @@ int LHFM_load_firmware(DEV_CONTEXT* p_ch7xxx_context)
 	unsigned fs1;
 	unsigned char ch;
 
+	PD_DEBUG("ch7036: LHFM_load_firmware- firmware size [0x%.8X]\n",lhfm_size);
 
 	I2CWrite(p_ch7xxx_context,0x03, 0x04);
-
 	ch = 0x29 | I2CRead(p_ch7xxx_context,0x52);
 	I2CWrite(p_ch7xxx_context,0x52, ch & 0xFB);
 
 
-
 	I2CWrite(p_ch7xxx_context,0x5B, 0x9E);
-
 	I2CWrite(p_ch7xxx_context,0x5B, 0xB3);
 
-
 	I2CWrite(p_ch7xxx_context,0x03, 0x04);
-
 	I2CWrite(p_ch7xxx_context,0x03, 0x07);
 
-
-	for (fs1=0; fs1<lhfm_size; fs1++) {
-
+	for (fs1=0; fs1<lhfm_size; fs1++)
 		I2CWrite(p_ch7xxx_context, 0x07, lhfm_array[fs1]);
-	}
+
+
 
 	I2CWrite(p_ch7xxx_context, 0x03, 0x03);
 	ch = I2CRead(p_ch7xxx_context,0x74);
@@ -485,15 +386,81 @@ int LHFM_load_firmware(DEV_CONTEXT* p_ch7xxx_context)
 		I2CWrite(p_ch7xxx_context, 0x52, ch | 0x24);
 	}
 
-
 	I2CWrite(p_ch7xxx_context, 0x03, 0x00);
-
 
 	return 0;
 }
-
+#if 0
 void ch7036_dump( char *s, int size, unsigned char *regdata)
 {
+	char temp[18];
+    int ch;
+
+    int i,j, size1;
+
+    temp[16] = '?';
+    temp[17] = '\n';
+
+	PD_DEBUG("\n");
+    PD_DEBUG("+--------------------------------------------------------------------+\n");
+    PD_DEBUG("|%s |\n",s);
+    PD_DEBUG("+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+-----------------+\n");
+    PD_DEBUG("|  | 0| 1| 2| 3| 4| 5| 6| 7| 8| 9| A| B| C| D| E| F|                 |\n");
+    PD_DEBUG("++++--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+-----------------+\n");
+
+    size1 = size % 16;
+    size = size/16;
+
+    for (i=0; i<size; i++) {
+
+
+       PD_DEBUG("|%02x>", 0xFF & i*16);
+
+
+	   for (j=0; j<16; j++) {
+           ch = regdata[i*16+j];
+           PD_DEBUG("%02X|", ch);
+
+#if 0
+
+
+		   if( (ch >= 0x30 && ch <= 0x39) || (ch >= 0x61 && ch <= 0x7A) || (ch >= 0x41 && ch <= 0x5C) )
+				temp[j]='.';
+		   else
+			   temp[j]=(char)ch;
+#endif
+
+        }
+
+	   PD_DEBUG("\n");
+	}
+
+	if (size1) {
+
+        PD_DEBUG( "|%02x>", 0xFF & size*16);
+
+		for (j=0; j<size1; j++) {
+           ch = regdata[size*16+j];
+           PD_DEBUG("%02X|", ch);
+#if 0
+
+			if( (ch >= 0x30 && ch <= 0x39) || (ch >= 0x61 && ch <= 0x7A) || (ch >= 0x41 && ch <= 0x5C) )
+				temp[j]='.';
+		   else
+			   temp[j]=(char)ch;
+#endif
+
+        }
+		for (j=size1; j<16; j++) {
+
+           PD_DEBUG("   ");
+
+        }
+
+	}
+
+	PD_DEBUG("\n");
 
     return;
 }
+#endif

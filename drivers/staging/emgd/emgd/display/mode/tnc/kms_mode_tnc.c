@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: kms_mode_tnc.c
- * $Revision: 1.3 $
+ * $Revision: 1.5 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2011, Intel Corporation.
  *
@@ -583,6 +583,7 @@ static void kms_set_pipe_pwr_tnc(emgd_crtc_t *emgd_crtc, unsigned long enable)
 {
 	unsigned long       pipe_conf;
 	unsigned long       port_type;
+	unsigned long 		temp;
 	struct drm_device  *dev;
 	igd_display_pipe_t *pipe;
 	igd_context_t      *context;
@@ -596,8 +597,8 @@ static void kms_set_pipe_pwr_tnc(emgd_crtc_t *emgd_crtc, unsigned long enable)
 
 	pipe      = emgd_crtc->igd_pipe;
 	port_type = get_port_type(emgd_crtc->crtc_id);
-	pipe_conf = device_data_tnc->pipe_preserve &
-					READ_MMIO_REG_TNC(port_type, pipe->pipe_reg);
+	pipe_conf = READ_MMIO_REG_TNC(port_type, pipe->pipe_reg);
+
 
 	/* Do nothing if current power state is same as what we want to set */
 	/* The PIPE_ENABLE bit is at bit-position 31 */
@@ -622,10 +623,16 @@ static void kms_set_pipe_pwr_tnc(emgd_crtc_t *emgd_crtc, unsigned long enable)
 		/* check when the pipe is disabled. */
 		wait_pipe(port_type, pipe->pipe_reg, 0);
 
-		/* Disable DPLL */
-		//WRITE_MMIO_REG_TNC(pt, PIPE(display)->clock_reg->dpll_control,
-		//	READ_MMIO_REG_TNC(pt,
-		//		PIPE(display)->clock_reg->dpll_control) & ~0x80000000L);
+		/* Make sure the associated DPLL is turned off. */
+		temp = READ_MMIO_REG_TNC(port_type, pipe->clock_reg->dpll_control);
+		if (temp & BIT31) {
+			/* Double buffered */
+			WRITE_MMIO_REG_TNC(port_type, pipe->clock_reg->dpll_control,
+				temp & ~BIT31);
+			WRITE_MMIO_REG_TNC(port_type, pipe->clock_reg->dpll_control,
+				temp & ~BIT31);
+		}
+
 
 		EMGD_DEBUG("Set Pipe Power: OFF");
 
@@ -676,6 +683,7 @@ static void kms_program_pipe_tnc(emgd_crtc_t *emgd_crtc)
 	emgd_encoder_t     *emgd_encoder = NULL;
 	pd_timing_t        *vga_timing   = NULL;
 
+	unsigned long flag_clip_fix;
 	unsigned long pipe_reg;
 	unsigned long temp;
 	unsigned long pt;
@@ -684,6 +692,7 @@ static void kms_program_pipe_tnc(emgd_crtc_t *emgd_crtc)
 	int           i;
 	tnc_wa_timing_t *wa;
 	/* igd_framebuffer_info_t *fb_info = PLANE(display)->fb_info; */
+	platform_context_tnc_t *platform_context;
 
 	EMGD_TRACE_ENTER;
 
@@ -696,10 +705,48 @@ static void kms_program_pipe_tnc(emgd_crtc_t *emgd_crtc)
 	dev      = ((struct drm_crtc *)(&emgd_crtc->base))->dev;
 	context  = ((drm_emgd_priv_t *)dev->dev_private)->context;
 
+	platform_context = (platform_context_tnc_t *) mode_context->context->platform_context;
+	flag_clip_fix    = mode_context->clip_hw_fix;
+
 	EMGD_DEBUG("Device power state: D%ld", context->device_context.power_state);
 
-	pipe_conf = device_data_tnc->pipe_preserve &
-		READ_MMIO_REG_TNC(pt, pipe->pipe_reg);
+	pipe_conf = READ_MMIO_REG_TNC(pt, pipe->pipe_reg);
+
+	/* Preserving bits 0:17, bit 20, bit 24, bit 26, bit 29:30.  The spec on
+	 * which bits to preserve has been updated since we've originally written
+	 * the code for the non-KMS path.  However, to minimize risk of this fix,
+	 * we are only updating them here.  This is why we are not using
+	 * device_data_tnc->pipe_preserve.  */
+	pipe_conf &= 0x6513FFFF;
+
+	/* For TNC B1, enable hardware cliping fix*/
+	if((platform_context->tnc_dev3_rid == TNC_B1_DEV3_RID)&&
+		(flag_clip_fix & IGD_CLIP_FIX_GLOBAL_ENABLE)) {
+
+		/* Disable SDVO Pipe in Device 2 and Device 3 */
+		WRITE_MMIO_REG_TNC(IGD_PORT_LVDS, pipe->pipe_reg,
+			pipe_conf & (~0x80000000L));
+
+		WRITE_MMIO_REG_TNC(IGD_PORT_SDVO, pipe->pipe_reg,
+			pipe_conf & (~0x80000000L));
+
+		/* check when the pipe is disabled. */
+		wait_pipe(IGD_PORT_LVDS, pipe->pipe_reg, 0);
+
+		/* Enable clipping hardware fix */
+		temp = READ_MMIO_REG_TNC(IGD_PORT_LVDS, DSP_CHICKENBITS);
+		if(flag_clip_fix & IGD_CLIP_FIX_REPLACE_STALL) {
+			temp |= BIT18;
+		} else {
+			temp &= ~BIT18;
+		}
+		if(flag_clip_fix & IGD_CLIP_FIX_DISABLE_THROTTLE) {
+			temp |= BIT15;
+		} else {
+			temp &= ~BIT15;
+		}
+		WRITE_MMIO_REG_TNC(IGD_PORT_LVDS, DSP_CHICKENBITS, temp);
+	}
 
 	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
 		if (((struct drm_crtc *)(&emgd_crtc->base)) == encoder->crtc) {
@@ -927,6 +974,7 @@ static void kms_program_pipe_tnc(emgd_crtc_t *emgd_crtc)
 			pipe_conf &= ~(INTERLACE_EN);
 		}
 
+		pipe_conf |= PIPE_ENABLE;
 		WRITE_MMIO_REG_TNC(ports_tnc[i], pipe->pipe_reg, pipe_conf);
 		WRITE_MMIO_REG_TNC(ports_tnc[i], pipe->pipe_reg, pipe_conf);
 
@@ -966,7 +1014,8 @@ static void kms_program_pipe_tnc(emgd_crtc_t *emgd_crtc)
 		/*  Enable Chicken Bit */
 		/*  Setting BIT6 enable Pipe B Palette Write
          *  to prevent hang during palette write */
-		WRITE_MMIO_REG_TNC(IGD_PORT_LVDS, 0x70400, 0x4088 | BIT6);
+		temp = READ_MMIO_REG_TNC(IGD_PORT_LVDS, DSP_CHICKENBITS);
+		WRITE_MMIO_REG_TNC(IGD_PORT_LVDS, DSP_CHICKENBITS, temp | BIT6);
 	}
 
 	EMGD_TRACE_EXIT;
@@ -1006,13 +1055,6 @@ static void kms_set_plane_pwr_tnc(emgd_crtc_t *emgd_crtc, unsigned long enable)
 	plane_reg     = plane->plane_reg;
 	plane_control = EMGD_READ32(context->device_context.virt_mmadr + plane_reg);
 
-	if(plane->plane_reg == DSPACNTR) {
-		plane_control &= device_data_tnc->plane_a_preserve;
-	} else { /* if it's plane b or plane c */
-		plane_control &= device_data_tnc->plane_b_c_preserve;
-	}
-
-
 	if((enable == FALSE) ||
 		(context->device_context.power_state != IGD_POWERSTATE_D0)) {
 		/*
@@ -1022,11 +1064,22 @@ static void kms_set_plane_pwr_tnc(emgd_crtc_t *emgd_crtc, unsigned long enable)
 		 */
 		disable_vga_tnc(context->device_context.virt_mmadr);
 
+		/* The Sprite and Cursor planes need to turned off for the modeset
+		   to succeed. */
+	EMGD_WRITE32(0x0, context->device_context.virt_mmadr + DSPCCNTR);
+	EMGD_WRITE32(0x0, context->device_context.virt_mmadr + DSPCCNTR + DSP_START_OFFSET);
+
+	EMGD_WRITE32(0x0, context->device_context.virt_mmadr + CUR_B_CNTR);
+	EMGD_WRITE32(0x0, context->device_context.virt_mmadr + CUR_B_CNTR + CUR_BASE_OFFSET);
+
+	EMGD_WRITE32(0x0, context->device_context.virt_mmadr + CUR_A_CNTR);
+	EMGD_WRITE32(0x0, context->device_context.virt_mmadr + CUR_B_CNTR + CUR_BASE_OFFSET);
+
 		/*
 		 * To turn off plane A or B, the program have to trigger the plane A
 		 * or B start register.  Or else, it will not work.
 		 */
-		//plane_control &= 0xEFFFFFFF;
+		plane_control &= ~BIT31;
 
 		EMGD_WRITE32(plane_control,
 						context->device_context.virt_mmadr + plane_reg);
@@ -1035,8 +1088,8 @@ static void kms_set_plane_pwr_tnc(emgd_crtc_t *emgd_crtc, unsigned long enable)
 			plane_reg + DSP_START_OFFSET),
 			context->device_context.virt_mmadr + plane_reg + DSP_START_OFFSET);
 	} else {
-		/* Enable Pipe */
-		plane_control |= 0x80000000;
+		/* Enable Plane */
+		plane_control |= BIT31;
 
 		EMGD_WRITE32(plane_control,
 			context->device_context.virt_mmadr + plane_reg);
@@ -1100,32 +1153,6 @@ static void kms_program_plane_tnc(emgd_crtc_t *emgd_crtc, unsigned long status)
 	}
 
 
-	if((status == FALSE) ||
-		(context->device_context.power_state != IGD_POWERSTATE_D0)) {
-
-		/*
-		 * Note: The vga programming code does not have an "off". So
-		 * when programming the plane to off we make sure VGA is off
-		 * as well.
-		 */
-		disable_vga_tnc(context->device_context.virt_mmadr);
-
-		/*
-		 * To turn off plane A or B, the program have to triger the plane A or B
-		 * start register.  Or else, it will not work.
-		 */
-		EMGD_WRITE32(plane_control,
-						context->device_context.virt_mmadr + plane_reg);
-
-		EMGD_WRITE32(EMGD_READ32(context->device_context.virt_mmadr +
-			plane_reg + DSP_START_OFFSET),
-			context->device_context.virt_mmadr + plane_reg + DSP_START_OFFSET);
-
-		wait_for_vblank_tnc(pipe->pipe_reg);
-		EMGD_TRACE_EXIT;
-		return;
-	}
-
 	/*
 	 * Note: The very first pass through this function will be with
 	 * status false and timings == NULL. Don't use the timings before
@@ -1146,7 +1173,7 @@ static void kms_program_plane_tnc(emgd_crtc_t *emgd_crtc, unsigned long status)
 	disable_vga_tnc(context->device_context.virt_mmadr);
 
 	/* enable plane, select pipe, enable gamma correction logic */
-	plane_control |= 0x80000000 | (pipe->pipe_num<<24);
+	plane_control |= (pipe->pipe_num<<24);
 	pipe->plane = plane;
 	plane_control |= (1<<30);
 
@@ -1438,7 +1465,6 @@ static int kms_program_port_sdvo_tnc(emgd_encoder_t *emgd_encoder,
 {
 	unsigned long port_control;
 	unsigned long pd_powerstate = PD_POWER_MODE_D3;
-	unsigned long preserve = 0;
 	unsigned long upscale = 0;
 	igd_timing_info_t  local_timing;
 	igd_timing_info_t  *timing    = NULL;
@@ -1472,8 +1498,7 @@ static int kms_program_port_sdvo_tnc(emgd_encoder_t *emgd_encoder,
 
 	timing = pipe->timing;
 
-	port_control = preserve & READ_MMIO_REG_TNC(IGD_PORT_SDVO,
-			port->port_reg);
+	port_control = READ_MMIO_REG_TNC(IGD_PORT_SDVO, port->port_reg);
 
 	if (status == TRUE) {
 		if (!(port->pt_info->flags & IGD_DISPLAY_ENABLE)) {

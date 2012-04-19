@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: igd_mode.h
- * $Revision: 1.15 $
+ * $Revision: 1.17 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -522,6 +522,14 @@ typedef void* igd_driver_h;
 #define IGD_FB_FLAGS_MASK                       0xf0000000
 /* @} */
 
+/*
+ * Right now, these flags are only used by igd_alter_displays when calling into
+ * the 3rd party dc code to indicate which flip-chains to
+ * disable.
+ */
+#define IGD_DISPLAY_PRIMARY                     0x1
+#define IGD_DISPLAY_SECONDARY 					0x2
+#define IGD_DISPLAY_ALL                         (IGD_DISPLAY_PRIMARY | IGD_DISPLAY_SECONDARY)
 
 /*!
  * @brief Framebuffer related mode setting data.
@@ -891,6 +899,14 @@ typedef struct _igd_port_info {
 	char port_name[8];             /* Default port name (DVOA, sDVO-A, etc.) */
 	unsigned long flags;           /* Attribute flags, currently used for interlace */
 } igd_port_info_t;
+
+
+
+typedef struct _kdrm_driver_set_sync_refresh {
+        igd_display_h   display_handle;
+        unsigned int    start_line;
+        unsigned int    bottom_line;
+} emgd_drm_driver_set_sync_refresh_t;
 
 
 

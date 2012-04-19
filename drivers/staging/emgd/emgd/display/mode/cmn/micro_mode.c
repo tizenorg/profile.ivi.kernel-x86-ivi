@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: micro_mode.c
- * $Revision: 1.31 $
+ * $Revision: 1.32 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -1108,6 +1108,7 @@ int igd_alter_displays(
 	igd_display_context_t **secondary = (igd_display_context_t **)_secondary;
 	igd_framebuffer_info_t *fb_info = NULL;
 	igd_display_context_t *display = NULL,*tv_display=NULL;
+	drm_emgd_priv_t *priv = ((struct drm_device *)context->drm_dev)->dev_private;
 	int p;
 	int ret;
 	unsigned short tv_port_num=0;
@@ -1206,6 +1207,10 @@ int igd_alter_displays(
 		 * external clock needs to be on till the pipes and
 		 * DPLLs are off
 		 */
+				/* Invalidate flip-chains to avoid race conditions during the
+				 * mode-set */
+				priv->invalidate_flip_chains(IGD_DISPLAY_SECONDARY);
+
 				if(PORT(display,DC_PORT_NUMBER(current_dc, p))->pd_type ==
 					PD_DISPLAY_TVOUT) {
 					tv_display = display;
@@ -1235,6 +1240,10 @@ int igd_alter_displays(
 		 * external clock needs to be on till the pipes and
 		 * DPLLs are off
 		 */
+				/* Invalidate flip-chains to avoid race conditions during the
+				 * mode-set */
+				priv->invalidate_flip_chains(IGD_DISPLAY_PRIMARY);
+
 				if(PORT(display,DC_PORT_NUMBER(current_dc, p))->pd_type ==
 					PD_DISPLAY_TVOUT) {
 					tv_display = display;
@@ -1273,6 +1282,9 @@ int igd_alter_displays(
 	 * alter_displays at the same point with the same valid DC */
 	if (!dc) {
 		int i;
+
+		priv->invalidate_flip_chains(IGD_DISPLAY_ALL);
+
 		mode_context->dispatch->reset_plane_pipe_ports(mode_context->context);
 		/* Should de-allocate everything here */
 		dsp_alloc(driver_handle, dc, flags);

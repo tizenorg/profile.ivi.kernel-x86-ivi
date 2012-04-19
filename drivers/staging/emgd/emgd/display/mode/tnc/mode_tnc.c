@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: mode_tnc.c
- * $Revision: 1.33 $
+ * $Revision: 1.35 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -15,7 +15,6 @@
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
@@ -850,11 +849,16 @@ static int igd_set_surface_tnc(igd_display_h display_handle,
 			EMGD_ERROR("Display surface offset %lu is not 256kb aligned", surface->offset);
 		}
 
-		/* calculate the visible offset, taking panning into account */
-		visible_offset =
-			(PORT_OWNER(display)->pt_info->y_offset * surface->pitch) +
-			(PORT_OWNER(display)->pt_info->x_offset *
-				IGD_PF_BYPP(surface->pixel_format));
+		if (flags & IGD_BUFFER_NO_PAN) {
+			/* Do not pan. Set visible_offset to zero */
+			visible_offset = 0;
+		} else {
+			/* calculate the visible offset, taking panning into account */
+			visible_offset =
+				(PORT_OWNER(display)->pt_info->y_offset * surface->pitch) +
+				(PORT_OWNER(display)->pt_info->x_offset *
+					IGD_PF_BYPP(surface->pixel_format));
+		}
 		EMGD_DEBUG("visible surface_offset = 0x%08lx", visible_offset);
 
 		/* Save new fb_info */
@@ -1686,7 +1690,11 @@ int request_vblanks_tnc(unsigned long request_for, unsigned char *mmio)
 
 		}
 		vblank_interrupt_state |= request_for;
-		vblank_interrupt_ref_cnt_port2++;
+		/* Since there is only  one vblank interrupt per request for now,
+		   add counter have been remove for now and disable it when end request.
+		   The counter may required after there is more than one request in future.
+		*/
+		vblank_interrupt_ref_cnt_port2 = 1;
 	} else /* if (request_for & VBLANK_INT4_PORT4) */ {
 		if (!VBLANK_INTERRUPTS_ENABLED4_PORT4) {
 			/* 1. Change Pipe Display Status Register for this pipe: set the
@@ -1766,7 +1774,7 @@ int end_request_tnc(unsigned long request_for, unsigned char *mmio)
 	 */
 	if (request_for & VBLANK_INT4_PORT2) {
 		/* Decrement reference count */
-		vblank_interrupt_ref_cnt_port2--;
+		vblank_interrupt_ref_cnt_port2 = 0;
 		if (0 > vblank_interrupt_ref_cnt_port2) {
 			EMGD_DEBUG("WARNING:  Disabled vblank INT too many times.");
 			vblank_interrupt_ref_cnt_port2 = 0;

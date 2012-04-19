@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: igd_pd.h
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -262,6 +262,7 @@
 
 #define PD_ATTR_ID_LOAD_FIRMWARE		0x65
 #define PD_ATTR_ID_REFRESH			0x66
+#define PD_ATTR_ID_DWNSCAL_BYPASS		0x57 //1.2.5.pd: new pd attributes to handle the downscalling quality issue
 
 
 //************ end of ch7036 defined port driver attribute ********** //

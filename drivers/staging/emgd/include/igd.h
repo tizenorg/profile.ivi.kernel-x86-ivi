@@ -1,7 +1,7 @@
 /*
  *-----------------------------------------------------------------------------
  * Filename: igd.h
- * $Revision: 1.21 $
+ * $Revision: 1.22 $
  *-----------------------------------------------------------------------------
  * Copyright (c) 2002-2010, Intel Corporation.
  *
@@ -742,6 +742,17 @@ typedef struct _igd_dispatch {
 		unsigned long *size,
 		unsigned int type,
 		unsigned long *flags);
+
+
+	int (*gmm_map_ci)(unsigned long *gtt_offset,
+			unsigned long ci_param,	/*virtaddr or v4l2_offset*/
+			unsigned long *virt_addr,
+			unsigned int map_method,
+			unsigned long size);
+
+
+	int (*gmm_unmap_ci)(unsigned long virt_addr);
+
 
 	/*!
 	 * This function maps an existing list of pages into the GTT.

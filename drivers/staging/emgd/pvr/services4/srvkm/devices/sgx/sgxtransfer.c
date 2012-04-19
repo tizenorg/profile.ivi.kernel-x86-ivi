@@ -39,6 +39,8 @@
 #include "pvr_debug.h"
 #include "sgxutils.h"
 
+int do_wait_vblank(void *display, int headline, int footline);
+
 IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSFER_SGX_KICK *psKick)
 {
 	PVRSRV_KERNEL_MEM_INFO  *psCCBMemInfo = (PVRSRV_KERNEL_MEM_INFO *)psKick->hCCBMemInfo;
@@ -208,6 +210,8 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 
 	sCommand.ui32Data[1] = psKick->sHWTransferContextDevVAddr.uiAddr;
 
+	if (psKick->display)
+		do_wait_vblank(psKick->display, psKick->headline, psKick->footline);
 	eError = SGXScheduleCCBCommandKM(hDevHandle, SGXMKIF_CMD_TRANSFER, &sCommand, KERNEL_ID, psKick->ui32PDumpFlags);
 
 	if (eError == PVRSRV_ERROR_RETRY)

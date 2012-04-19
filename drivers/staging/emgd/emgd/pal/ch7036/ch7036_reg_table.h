@@ -21,7 +21,7 @@
 *
 *-----------------------------------------------------------------------------
 * @file  ch7036_reg_table.h
-* @version 1.1.4
+* @version 1.2
 *-----------------------------------------------------------------------------
 */
 
@@ -114,5 +114,12 @@ typedef struct{
 }MULTI_REG, *PMULTI_REG;
 
 extern MULTI_REG g_MultiRegTable[];
+
+//issue- 11/15/11- thua
+//Intel C compiler complained negative constant (-1) comparison to unsigned char for checked build verion
+//for free build, these warnings are treated as compiling error
+//solution:
+//define NOOP_REGINDEX as 2-complement of -1
+#define NOOP_INDEX 0xFF
 
 #endif

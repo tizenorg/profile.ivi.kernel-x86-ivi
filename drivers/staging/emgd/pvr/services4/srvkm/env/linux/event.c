@@ -211,6 +211,7 @@ PVRSRV_ERROR LinuxEventObjectSignal(IMG_HANDLE hOSEventObjectList)
 	struct list_head *psListEntry, *psListEntryTemp, *psList;
 	psList = &psLinuxEventObjectList->sList;
 
+	read_lock(&psLinuxEventObjectList->sLock);
 	list_for_each_safe(psListEntry, psListEntryTemp, psList)
 	{
 
@@ -219,6 +220,7 @@ PVRSRV_ERROR LinuxEventObjectSignal(IMG_HANDLE hOSEventObjectList)
 		atomic_inc(&psLinuxEventObject->sTimeStamp);
 	 	wake_up_interruptible(&psLinuxEventObject->sWait);
 	}
+	read_unlock(&psLinuxEventObjectList->sLock);
 
 	return 	PVRSRV_OK;
 
