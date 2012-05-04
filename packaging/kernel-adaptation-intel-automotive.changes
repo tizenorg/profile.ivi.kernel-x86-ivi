@@ -1,3 +1,6 @@
+* Fri May 04 2012 Lin Yang <lin.a.yang@intel.com>
+- test release infrastructure
+
 * Thu Apr 19 2012 Xinyun Liu <xinyun.liu@intel.com> - 3.0.8
 - Updated EMGD driver to 2443 build and enabled kms
 
