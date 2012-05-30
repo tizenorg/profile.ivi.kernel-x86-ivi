@@ -608,7 +608,7 @@ fi\
 /lib/modules/%{KVERREL}%{?2:-%{2}}/vdso\
 %endif\
 /lib/modules/%{KVERREL}%{?2:-%{2}}/modules.block\
-#/lib/modules/%{KVERREL}%{?2:-%{2}}/modules.devname\
+/lib/modules/%{KVERREL}%{?2:-%{2}}/modules.devname\
 /lib/modules/%{KVERREL}%{?2:-%{2}}/modules.softdep\
 /lib/modules/%{KVERREL}%{?2:-%{2}}/modules.dep.bin\
 /lib/modules/%{KVERREL}%{?2:-%{2}}/modules.alias.bin\
