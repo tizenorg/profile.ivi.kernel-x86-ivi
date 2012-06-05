@@ -141,12 +141,12 @@ Source100: config-generic
 Source104: config-adaptation-intel-automotive
 
 # For a stable release kernel
-%if 0%{?stable_update}
-Patch00: patch-3.%{base_sublevel}.%{stable_update}.bz2
-%endif
-%if 0%{?rcrev}
-Patch00: patch-3.%{upstream_sublevel}-rc%{rcrev}.bz2
-%endif
+#%if 0%{?stable_update}
+#Patch00: patch-3.%{base_sublevel}.%{stable_update}.bz2
+#%endif
+#%if 0%{?rcrev}
+#Patch00: patch-3.%{upstream_sublevel}-rc%{rcrev}.bz2
+#%endif
 
 # Reminder of the patch filename format:
 # linux-<version it is supposed to be upstream>-<description-separated-with-dashes>.patch
@@ -244,14 +244,14 @@ cd %{name}-%{version}
 #
 # The add an -rc patch if needed
 #
-%if 0%{?rcrev}
-# patch-2.6.%{upstream_sublevel}-rc%{rcrev}.bz2
-%patch00 -p1
-%endif
-%if 0%{?stable_update}
-# patch-2.6.%{base_sublevel}.%{stable_update}.bz2
-%patch00 -p1
-%endif
+#%if 0%{?rcrev}
+## patch-2.6.%{upstream_sublevel}-rc%{rcrev}.bz2
+#%patch00 -p1
+#%endif
+#%if 0%{?stable_update}
+## patch-2.6.%{base_sublevel}.%{stable_update}.bz2
+#%patch00 -p1
+#%endif
 
 
 #
