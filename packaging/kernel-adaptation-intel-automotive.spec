@@ -51,7 +51,7 @@ Summary: The Linux kernel (the core of the Linux operating system)
 %endif
 
 # The kernel tarball/base version
-%define kversion 3.%{base_sublevel}%{stablerev}
+%define kversion 3.%{base_sublevel}
 
 %define make_target bzImage
 
@@ -116,7 +116,7 @@ Name: kernel-adaptation-intel-automotive
 Group: System/Kernel
 License: GPLv2
 URL: http://www.kernel.org/
-Version: 3.0.8
+Version: %{rpmversion}
 Release: 1
 
 %kernel_reqprovconf
@@ -139,6 +139,14 @@ Source20: Makefile.config
 
 Source100: config-generic
 Source104: config-adaptation-intel-automotive
+
+# For a stable release kernel
+%if 0%{?stable_update}
+Patch00: patch-3.%{base_sublevel}.%{stable_update}.bz2
+%endif
+%if 0%{?rcrev}
+Patch00: patch-3.%{upstream_sublevel}-rc%{rcrev}.bz2
+%endif
 
 # Reminder of the patch filename format:
 # linux-<version it is supposed to be upstream>-<description-separated-with-dashes>.patch
@@ -197,21 +205,11 @@ Group: System/Kernel\
 %{nil}
 
 
-
-# First the auxiliary packages of the main kernel package.
-%kernel_devel_package
-
-# Now, each variant package.
-
-%ifarch %all_x86
-
-
 %define variant_summary Kernel for Intel-based automotive platforms
 %kernel_devel_package adaptation-intel-automotive
 %description -n kernel-adaptation-intel-automotive
 This package contains the kernel optimized for Intel-based automotive platforms
 
-%endif
 
 %prep
 
@@ -240,8 +238,20 @@ This package contains the kernel optimized for Intel-based automotive platforms
 # Unpack the kernel tarbal
 #
 %setup -q -c
-cd linux-%{kversion}
+cd %{name}-%{version}
 
+
+#
+# The add an -rc patch if needed
+#
+%if 0%{?rcrev}
+# patch-2.6.%{upstream_sublevel}-rc%{rcrev}.bz2
+%patch00 -p1
+%endif
+%if 0%{?stable_update}
+# patch-2.6.%{base_sublevel}.%{stable_update}.bz2
+%patch00 -p1
+%endif
 
 
 #
@@ -279,7 +289,6 @@ cp %{SOURCE20} .
 make -f %{SOURCE20} VERSION=%{version}.config configs
 
 # Any further pre-build tree manipulations happen here.
-
 chmod +x scripts/checkpatch.pl
 
 cp %{SOURCE10} Documentation/
@@ -499,7 +508,7 @@ BuildKernel() {
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/boot
 
-cd linux-%{kversion}
+cd %{name}-%{version}
 
 BuildKernel %make_target %kernel_image x86 adaptation-intel-automotive
 
@@ -513,7 +522,7 @@ BuildKernel %make_target %kernel_image x86 adaptation-intel-automotive
 
 %install
 
-cd linux-%{kversion}
+cd %{name}-%{version}
 
 rm -rf $RPM_BUILD_ROOT/lib/firmware
 
