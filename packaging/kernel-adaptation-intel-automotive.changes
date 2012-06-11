@@ -1,0 +1,287 @@
+* Tue Jun 12 - Artem Bityutskiy <artem.bityutskiy@linux.intel.con> - 3.0.8
+- Re-create the git history for the kernel. No functional changes.
+
+* Tue Jun 05 - Prajwal Mohan <prajwal.karur.mohan@intel.con> - 3.0.8
+- More cleanup to make gbs work
+
+* Wed May 30 - Prajwal Mohan <prajwal.karur.mohan@intel.con> - 3.0.8
+- Adding patches to packaging dir
+
+* Thu Apr 19 2012 Xinyun Liu <xinyun.liu@intel.com> - 3.0.8
+- Updated EMGD driver to 2443 build and enabled kms
+
+* Thu Apr 12 2012 Rusty Lynch <rusty.lynch@intel.com> - 3.0.8
+- Add support for a third emgd.configid for support of the 
+  NexCom VTC100 7inch display
+
+* Tue Apr 03 2012 Rusty Lynch <rusty.lynch@intel.com> - 3.0.8
+- Add fix-l2cap-conn-failures-for-ssp-devices.patch to fix bluetooth
+  pairing when using ssp
+
+* Tue Apr 03 2012 Geoffroy Van Cutsem <geoffroy.vancutsem@intel.com> - 3.0.8
+- Corrected the 'description' field in the spec file
+- Addresses bug TDIS-97
+
+* Mon Mar 27 2012 Xinyun Liu <xinyun.liu@intel.com> - 3.0.8
+- Fixed color distortion on Crownbay
+
+* Mon Mar 21 2012 Xinyun Liu <xinyun.liu@intel.com> - 3.0.8
+- Enabled mode choose via kernel config for EMGD
+- Fixed blur issue on Crossville
+
+* Tue Mar 20 2012 feng <feng.tang@intel.com> - 3.0.8
+- Enable SMACK in kernel configuration
+- Add the backporting SMACK patch from pc kernel
+
+* Mon Feb 24 2012 Xinyun Liu <xinyun.liu@intel.com> - 3.0.8
+- Updated EMGD driver to 2348 build
+
+* Mon Feb 22 2012 Xinyun Liu <xinyun.liu@intel.com> - 3.0.8
+- Updated EMGD driver to 2335 build
+
+* Wed Feb 22 2012 feng <feng.tang@intel.com> - 3.0.8
+- Remove the "new-kernel-pkg" use in spec file
+- Enable the EXT4 file system in config-generic
+
+* Mon Feb 20 2012 feng <feng.tang@intel.com> - 3.0.8
+- update the build depencies of kernel-adaptation-intel-automotive.spec
+  to pass the build
+
+* Wed Feb 01 2012 Feng Tang <feng.tang@intel.com> - 
+- Git Tag: 20120201.1
+  6f7aa8f: Integrate the camera controller and sensor drivers
+
+* Wed Feb 01 2012 Feng Tang <feng.tang@intel.com> - 
+- Git Tag: 20120201.0
+  b06b99b: Pull in latest kernel changes.
+
+* Mon Jan 30 2012 Feng Tang <feng.tang@intel.com> - 
+- Git Tag: 20120130.0
+  ada26dd: Enable touchscreen for Crossville platform
+
+* Thu Jan 12 2012 Feng Tang <feng.tang@intel.com> - 
+- Git Tag: 20120112.0
+  e3edf94: config-generic: fix some config issue, add MMC option
+
+* Dec 5 2011 Feng Tang <feng.tang@intel.com> - 3.0.8
+- Add the 0001-0004  patches for tsc2007 touchscreen enabling
+
+* Nov 21 2011 Tracy Graydon <tracy.graydon@intel.com> - 3.0.8
+- Xinyun's EMGD fixes.
+
+* Nov 21 2011 Xinyun Liu <xinyun.liu@intel.com> - 3.0.8
+- Import EMGD kernel driver 2032 build from MeeGo 1.2 update 4  
+
+* Fri Nov 18 2011 Tracy Graydon <tracy.graydon@intel.com> - 3.0.8
+- Updated kernel to 3.0.8. Changes to get IVI kernel working in Tizen with systemd.
+
+* Tue Jul 12 2011 Qi Wang <qi.wang@intel.com> - 2.6.37.6
+- Fixed BMC #14655 kernel-ivi can't be built from srpm.
+- Fixed BMC #20816 Add autofs and devtmpfs for Meego 1.3.
+
+* Wed Jul 06 2011 Qi Wang <qi.wang@intel.com> - 2.6.37.6
+- Fixed BMC #20233. Remove fastinit from kernel.spec.in.
+
+* Thu Jun 30 2011 Qi Wang <qi.wang@intel.com> - 2.6.37.6
+- BMC #17135 - ioh_video_in initialize failed
+
+* Fri Jun 10 2011 Richard Röjfors <richard.rojfors@pelagicore.com> - 2.6.37.6
+- BMC #16760 - Radio tuner and DSP were not found on I2C
+
+* Thu Jun 09 2011 Qi Wang <qi.wang@intel.com> - 2.6.37.6
+- BMC #15611 - Wrong driver is loading on CB EG20T serial port.
+- Add linux-2.6.37-ml7213-eg20t-0007-fix-dma-issue-for-ch8-11.patch to make dma ch8~11 work to support I2S.
+
+* Fri Jun 03 2011 Qi Wang <qi.wang@intel.com> - 2.6.37.6
+- BMC #15809 - CVE-2011-0463,1163 Two function's improperly data handling allows local user to obtain potentially sensitive information 
+
+* Fri May 27 2011 Qi Wang <qi.wang@intel.com> - 2.6.37.6
+- BMC #17042. Remove unnecessary debug information.
+
+* Wed May 17 2011 Andy Ross <andy.ross@windriver.com> - 2.6.37.6
+- BMC #17774 - Add include/xen tree to devel subpackage
+
+* Fri May 06 2011 Qi Wang <qi.wang@intel.com> - 2.6.37.6
+- BMC #16655.
+- Add linux-2.6.37-ml7213-eg20t-0005-gbe.patch to fix MAC address issue.
+
+* Tue May 03 2011 Qi Wang <qi.wang@intel.com> - 2.6.37.6
+- FEA 16194
+- Update the following patches
+	- linux-2.6.37-ml7213-0001-phub.patch
+	- linux-2.6.37-ml7213-0002-spi.patch
+	- linux-2.6.37-ml7213-0003-gpio.patch
+	- linux-2.6.37-ml7213-0006-snd.patch
+	- linux-2.6.37-ml7213-eg20t-0001-i2c.patch
+	- linux-2.6.37-ml7213-eg20t-0002-usbdev.patch
+	- linux-2.6.37-ml7213-eg20t-0003-uart.patch
+	- linux-2.6.37-ml7213-eg20t-0004-dma.patch
+	from http://sourceforge.net/projects/ml7213/files/Kernel%202.6.37/Release/Ver%201.0.0/
+* Thu Apr 21 2011 Richard Röjfors <richard.rojfors@pelagicore.com> - 2.6.37.6
+- Added Russellville support
+
+* Thu Apr 21 2011 Qi Wang <qi.wang@intel.com> - 2.6.37.6
+- FEA 16194
+- Update the following patches
+	- linux-2.6.37-ml7213-0004-i2s.patch
+	- linux-2.6.37-ml7213-0005-mlb.patch 
+		-from http://sourceforge.net/projects/ml7213/files/Kernel%202.6.37/Release/Ver%201.0.0/
+	- linux-2.6.37-ml7213-0006-snd.patch
+	- linux-2.6.37-ml7213-0007-video_in.patch
+		-from http://sourceforge.net/projects/ml7213/files/Kernel%202.6.37/Release/Ver%201.0.0/
+
+* Tue Apr 19 2011 Qi Wang <qi.wang@intel.com> - 2.6.37.6
+- FEA 16194.
+- Update the patches from kernel-adaptation-intel-automotive 2.6.25.10 to 2.6.37.6
+	- linux-2.6.38-btrfs-page-count.patch
+	- linux-2.6.38-btrfs-handle-no-mem.patch
+	- linux-2.6.38-btrfs-copy-from-user.patch
+	- linux-2.6.37-fatal-signals.patch
+	- linux-2.6.37-tsc2007.patch
+	- linux-2.6.37-mapper.patch
+* Mon Apr 18 2011 Qi Wang <qi.wang@intel.com> - 2.6.37.6
+- FEA 16194.
+- Update kernel-adaptation-intel-automotive to 2.6.37.6
+- Update EMGD drivers to 2.6.37.6
+- Without RV platform support.
+- linux-2.6.37-ml7213-0001-phub.patch.
+        - http://sourceforge.net/projects/ml7213/files/MeeGo1.1/Drivers/Packet HUB
+        - Upgrage to 2.6.37.6.
+        - Kernel 2.6.37.6 supports EG20T phub driver.
+- linux-2.6.37-ml7213-0002-spi.patch.
+        - Source from kernel-adaptation-intel-automotive 2.6.35.10
+        - Upgrade to 2.6.37.6
+        - Kernel 2.6.37.6 partially supports EG20T SPI driver.
+- linux-2.6.37-ml7213-0003-gpio.patch.
+        - Source from kernel-adaptation-intel-automotive 2.6.35.10
+        - Upgrade to 2.6.37.6
+        - Kernel 2.6.37.6 supports EG20T gpio driver.
+- linux-2.6.37-ml7213-eg20t-0001-i2c.patch.
+        - Source from kernel-adaptation-intel-automotive 2.6.35.10
+        - Upgrade to 2.6.37.6
+        - Including EG20T i2c patch.
+- linux-2.6.37-ml7213-eg20t-0002-usbdev.patch.
+        - git log -p f646cf94520e22cb11eb5d2e9a35b33bfe4bea1b
+        - Backport to 2.6.37.6
+        - Including EG20T usvdev driver.
+- linux-2.6.37-ml7213-eg20t-0003-uart.patch.
+        - Source from kernel-adaptation-intel-automotive 2.6.35.10
+        - Upgrade to 2.6.37.6
+        - Including EG20T uart driver.
+- linux-2.6.37-ml7213-eg20t-0004-dma.patch.
+        - http://sourceforge.net/projects/ml7213/files/MeeGo1.1/Drivers/DMA/
+        - Upgrade to 2.6.37.6
+        - Including EG20T dma driver.
+- linux-2.6.37-emgd-0001-add-makefile.patch
+        - Source from kernel-adaptation-intel-automotive 2.6.35.10
+        - Upgrade to 2.6.37.6
+- linux-2.6.37-emgd-0002-1893-build.patch
+        - Source from kernel-adaptation-intel-automotive 2.6.35.10
+        - Upgrade to 2.6.37.6
+- linux-2.6.37-emgd-0003-1922-build.patch
+        - Source from kernel-adaptation-intel-automotive 2.6.35.10
+        - Upgrade to 2.6.37.6
+
+* Fri Apr 15 2011 Liu,Xinyun <xinyun.liu@intel.com> - 2.6.35.10
+- Fixed BMC #15904. Updated EMGD to ECG 1922 build
+
+* Fri Apr 08 2011 Richard Röjfors <richard.rojfors@pelagicore.com> - 2.6.35.10
+- Added timb-radio patch to fix tuner and DSP detection issues.
+
+* Mon Mar 31 2011 Austin Zhang <austin.zhang@intel.com> - 2.6.35.10
+- Removed that workaround for touch event to make it work by new evdev
+  ATOM enable patch. (see BMC#15028)
+
+* Mon Mar 21 2011 Austin Zhang <austin.zhang@intel.com> - 2.6.35.10
+- Send of BTN_LEFT together with BTN_TOUCH to make tsc2007 work with new
+  xinput2.0 in MeeGO. Part of fixing of BMC#12777.
+
+* Fri Mar 18 2011 Liu Xinyun <xinyun.liu@intel.com> - 2.6.35.10
+- BMC #14512. Update to EMGD 1.6 EC3 (build 1893).
+- Revised patch series to one patch
+
+* Thu Mar 17 2011 Liu Xinyun <xinyun.liu@intel.com> - 2.6.35.10
+- BMC #14512. Update to EMGD 1.6 EC3 (build 1893).
+- Added STM SDVO support.
+
+* Tue Mar 15 2011 Qi Wang <qi.wang@intel.com> - 2.6.35.10
+- BMC #13796 14156 14085 13787 14068 13855
+- Fixed CVE bugs.
+
+* Thu Mar 03 2011 Qi Wang <qi.wang@intel.com> - 2.6.35.10
+- FEA #12050. Integrates ML7213 drivers to Stephenville.
+- Integrates PHUB, DMA, I2C, USBDEV, UART, SPI drivers.
+- Integrates IOH_GPIO drivers.
+
+* Sat Feb 26 2011 Liu,Xinyun <xinyun.liu@intel.com> - 2.6.35.10
+- BMC #12086. Update EMGD kernel driver to support 2.6.37.
+
+* Sat Feb 26 2011 Liu,Xinyun <xinyun.liu@intel.com> - 2.6.35.10
+- BMC #12086. Fixed wrong patch name. It's for ECG 1859 build.
+
+* Mon Feb 22 2011 Liu Xinyun <xinyun.liu@intel.com> - 2.6.35.10
+- BMC #12086. Update EMGD kernel driver for 1659 build.
+
+* Mon Feb 14 2011 Qi Wang <qi.wang@intel.com> - 2.6.35.10
+- Fixexd BMC #13027
+
+* Thu Jan 27 2011 Liu Xinyun <xinyun.liu@intel.com> - 2.6.35.10
+- Moved i915/EMGD from generic config to platform config
+
+* Tue Jan 25 2011 Qi Wang <qi.wang@intel.com> - 2.6.35.10
+- Fixed BMC #12736 12739
+- CVE bugs.
+
+* Mon Jan 17 2011 Qi Wang <qi.wang@intel.com> - 2.6.35.10
+- Fixed BMC #11982 11984 11979
+
+* Fri Jan 07 2011 Liu Xinyun <xinyun.liu@intel.com> - 2.6.35.10
+- Fixed BMC #12086. Integrate EMGD kernel driver, 1812 build.
+
+* Fri Jan 07 2011 Qi Wang <qi.wang@intel.com> - 2.6.35.10
+- Fixed BMC #9241 11912 11955 11964 11965 11966 11967 11968
+- Russellville regression
+
+* Thu Jan 06 2011 Liu Xinyun <xinyun.liu@intel.com> - 2.6.35.10
+- Fixed BMC #11985. Add intel KMS driver.
+
+* Tue Dec 28 2010 Qi Wang <qi.wang@intel.com> - 2.6.35.10
+- Remove compat-wireless-2010-10-19.tar.bz2
+- Modify kernel.spec.in to remove 'patch-2.6.35.10.bz2' from series file.
+
+* Tue Dec 28 2010 Qi Wang <qi.wang@intel.com> - 2.6.35.10
+- Add EG20T(Topcliff) patches. Master feature is BCM6862.
+- linux-2.6.35-EG20T-phub.patch
+- linux-2.6.35-EG20T-gbe.patch
+- linux-2.6.35-EG20T-i2c.patch
+- linux-2.6.35-EG20T-gpio.patch
+- linux-2.6.35-EG20T-spi.patch
+- linux-2.6.35-EG20T-usbdev.patch
+- linux-2.6.35-EG20T-can.patch
+- linux-2.6.35-EG20T-dma.patch
+- linux-2.6.35-EG20T-uart.patch
+
+* Thu Dec 23 2010 Qi Wang <qi.wang@intel.com> - 2.6.35.10
+- Remove config-notebook, config-mid, config-n900, config-arm-n900
+- Modify kernel.spec.in to rename kernel-ivi with kernel-adpatation-intel-automotive
+
+* Thu Dec 23 2010 Qi Wang <qi.wang@intel.com> - 2.6.35.10
+- Add Russellville Patches, fix BCM9210, BCM9241 and BCM9242.
+- linux-2.6.35-rv-update-timeb-radio.patch
+- linux-2.6.35-rv-update-ks8842.patch
+- linux-2.6.35-rv-add-timbi2s.patch
+- linux-2.6.35-rv-add-timblogiw.patch
+- linux-2.6.35-rv-define-timblogiw-timbi2c-ks8842.patch
+- linux-2.6.35-rv-fix-tx-cache-issue-ks8842.patch
+
+* Tue Dec 21 2010 Qi Wang <qi.wang@intel.com> - 2.6.35.10
+- Update the kernel ro 2.6.35.10
+- Clean up all the unncessary patches.
+	* Keep linux-2.6-build-nonintconfig.patch
+	* Remove Direct Backport section
+	* Remove Moorstown and Medfield architecture patches
+	* Remove Kangkai and Yong's patches.
+	* Keep all the boot time and power patches, update them to 2.6.35.10
+		- Remove linux-2.6.36-powertop-timer-tracing.patch. 2.6.35.10 integrates this patch.
+	* Remove multi-touch-input-driver-for-event-devices.patch. Need Ming He's confirmation.
+	* Remove enable-hid-dg-contact-count-stantum-and-cando-touch-drivers.patch. Need Priya's confirmation.
