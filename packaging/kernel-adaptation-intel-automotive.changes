@@ -1,3 +1,8 @@
+* Mon Jun 18 - Artem Bityutskiy <artem.bityutskiy@linux.intel.com> - 3.0.8
+- Packaging changes only, no functional changes: change the tarball name from
+  linux-3.0.8.tar.bz2 to kernel-adaptation-intel-automative.tar.bz2 in order
+  to silent the build system which warns me otherwise.
+
 * Fri Jun 15 - Artem Bityutskiy <artem.bityutskiy@linux.intel.com> - 3.0.8
 - No changes, dummy build to check if OBS submittion works. It did not work
   last time for me.

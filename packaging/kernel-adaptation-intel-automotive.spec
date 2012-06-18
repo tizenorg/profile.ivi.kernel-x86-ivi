@@ -32,7 +32,7 @@ Provides: k%{kernel_full_version}
 AutoReq: no
 AutoProv: yes
 
-Source0: ftp://ftp.kernel.org/pub/linux/kernel/v3.x/linux-%{upstream_version}.tar.bz2
+Source0: %{name}-%{version}.tar.bz2
 
 
 %description
