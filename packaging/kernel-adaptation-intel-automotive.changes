@@ -1,0 +1,37 @@
+* Mon Jun 25 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.3
+- Fix the changelog, now 'rpm -q --changelog' should work for the kernel
+
+* Mon Jun 25 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.3
+- Enable iwlwifi as a kernel module again - it was disabled during upgrade
+  to 3.4.3, so we are fixing a regression.
+
+* Thu Jun 21 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.3
+- Upgrade the kernel from 3.0.8 to 3.4.3
+- Dropped the emgd driver so far - we expect to have it back very soon
+- Tested that it boots to shell on VMT1000 device, but the output now goes
+  to VGA, not to LVDS - I think this is because the dropped emgd driver.
+
+* Mon Jun 18 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.0.8
+- Packaging changes only, no functional changes: change the tarball name from
+  linux-3.0.8.tar.bz2 to kernel-adaptation-intel-automative.tar.bz2 in order
+  to silent the build system which warns me otherwise.
+
+* Fri Jun 15 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.0.8
+- No changes, dummy build to check if OBS submittion works. It did not work
+  last time for me.
+
+* Thu Jun 14 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.0.8
+- Cleaned-up the packaging:
+  - the spec file is completely re-written (thanks to Markus Lehtonen)
+  - all the junk from the packaging directory was removed
+  - created ivi_gen_defconfig file for generic IVI configuration, so
+    we do not store the defconfig in the packaging anymore
+
+* Wed Jun 13 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.con> 3.0.8
+- Apply patches from the packaging sub-directory to the git tree
+- Remove all the applied patches from the packaging sub-directory
+- Amend the .spec file correspondingly
+- No functional changes
+
+* Tue Jun 12 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.con> 3.0.8
+- Re-create the git history for the kernel. No functional changes.
