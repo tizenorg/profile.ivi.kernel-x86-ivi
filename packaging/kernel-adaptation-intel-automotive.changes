@@ -1,4 +1,8 @@
 * Tue Jun 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+- Create the /boot/vmlinuz symlink when installing the kernel (instead of
+  /boot/kernel). This is an enabler for TZIVI-183.
+
+* Tue Jun 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Enable the raw CAN bus protocol support, the broadcast manager CAN bus
   protocol and the virtual local CAN bus interface, fixes TZIVI-79
 
