@@ -166,7 +166,7 @@ rm -rf %{buildroot}
 ###
 
 %post
-ln -sf vmlinuz-%{kernel_full_version} /boot/kernel
+ln -sf vmlinuz-%{kernel_full_version} /boot/vmlinuz
 
 %post devel
 if [ -x /usr/sbin/hardlink ]; then
