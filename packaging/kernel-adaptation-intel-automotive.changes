@@ -1,3 +1,7 @@
+* Thu Jun 28 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+- Enable the jack input notification which notifies user-space whenever the
+  something like a headset is plugged.
+
 * Tue Jun 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Create the /boot/vmlinuz symlink when installing the kernel (instead of
   /boot/kernel). This is an enabler for TZIVI-183.
