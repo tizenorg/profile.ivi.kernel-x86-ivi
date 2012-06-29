@@ -837,7 +837,7 @@ int emgd_get_drm_config(struct drm_device *dev, void *arg,
 	 * Return the igd_param_t parameter values used at module load time:
 	 */
 	if (drm_emgd_configid < 0) {
-		params = config_drm.hal_params[0];
+		params = config_drm.hal_params[2];
 	} else {
 		params = config_drm.hal_params[drm_emgd_configid-1];
 	}
@@ -1855,7 +1855,7 @@ int emgd_driver_pre_init(struct drm_device *dev, void *arg,
 	 * looked up and copied).
 	 */
 	if (drm_emgd_configid < 0) {
-		uc_params = config_drm.hal_params[0];
+		uc_params = config_drm.hal_params[2];
 	} else {
 		uc_params = config_drm.hal_params[drm_emgd_configid-1];
 	}

@@ -83,6 +83,7 @@ extern int msvdx_shutdown_plb(igd_context_t *context);
 extern emgd_drm_config_t config_drm;
 extern int context_count;
 
+extern void emgd_drm_override_user_config(int type);
 /* This must be defined whether debug or release build */
 igd_debug_t emgd_debug_flag = {
 	{
@@ -1197,9 +1198,10 @@ int emgd_driver_load(struct drm_device *dev, unsigned long flags)
 
 	/* Obtain the user-configurable set of parameter values: */
 	if (drm_emgd_configid < 0) {
-		params = config_drm.hal_params[0];
+		params = config_drm.hal_params[2];
 	} else {
 		params = config_drm.hal_params[drm_emgd_configid-1];
+		emgd_drm_override_user_config(drm_emgd_configid);
 	}
 
 
