@@ -72,6 +72,9 @@ typedef struct _emgd_drm_splash_video {
  * parameter ("portorder") that corresponds to the port_order member of the
  * igd_param_t structure.
  */
+
+#define USER_CONFIG_NUM 3
+
 typedef struct _emgd_drm_config {
 	/**
 	 * Whether the EMGD kernel/DRM module should initialize the display at
@@ -107,7 +110,7 @@ typedef struct _emgd_drm_config {
 	/** Array of other parameters (one per configid), used by the hardware
 	 * abstraction layer code.
 	 */
-	igd_param_t **hal_params;
+	igd_param_t *hal_params[USER_CONFIG_NUM];
 } emgd_drm_config_t;
 
 #endif
