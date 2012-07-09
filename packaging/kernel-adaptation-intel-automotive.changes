@@ -1,3 +1,7 @@
+* Mon Jul  9 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+- Enable the USB device controller driver for Nexcomm devices. Should
+  fix or at least partially fix TZIVI-95.
+
 * Fri Jun 29 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Add the emgd driver. We have dropped it when upgraded to 3.4.4 because
   it did not compile. Now we are adding back the latest experimental
