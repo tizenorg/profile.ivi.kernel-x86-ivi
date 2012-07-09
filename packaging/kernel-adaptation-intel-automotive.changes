@@ -1,4 +1,9 @@
 * Mon Jul  9 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+- Exclude Crossville BT firmware from being compiled into the kernel. This
+  makes it easier to compile the kernel manually. The firmware can be loaded
+  dynamically instead.
+
+* Mon Jul  9 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Enable the USB device controller driver for Nexcomm devices. Should
   fix or at least partially fix TZIVI-95.
 
