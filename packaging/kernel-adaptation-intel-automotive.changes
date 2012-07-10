@@ -1,3 +1,7 @@
+* Tue Jul 10 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+- Enable iwlwifi p2p support to make AP mode available, which is required
+  for tethering support. Fixes TZIVI-180.
+
 * Mon Jul  9 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Exclude Crossville BT firmware from being compiled into the kernel. This
   makes it easier to compile the kernel manually. The firmware can be loaded
