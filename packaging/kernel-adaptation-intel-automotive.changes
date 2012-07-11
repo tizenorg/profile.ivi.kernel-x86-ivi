@@ -1,3 +1,6 @@
+* Wed Jul 11 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+- Remove linux-firmware dependency, no functional changes.
+
 * Tue Jul 10 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Enable iwlwifi p2p support to make AP mode available, which is required
   for tethering support. Fixes TZIVI-180.

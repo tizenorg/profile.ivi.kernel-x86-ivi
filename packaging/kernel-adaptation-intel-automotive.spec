@@ -20,7 +20,6 @@ BuildRequires: findutils
 BuildRequires: elfutils-libelf-devel
 BuildRequires: binutils-devel
 BuildRequires: which
-BuildRequires: linux-firmware
 ExclusiveArch: %{ix86}
 
 Provides: kernel = %{version}-%{release}
