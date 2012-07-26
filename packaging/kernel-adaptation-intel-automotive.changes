@@ -1,4 +1,9 @@
 * Thu Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+- Rename ivi_gen_defconfig to ivi_tc_defconfig (tc stands for TunnelCreek).
+  I do this because we'll soon get another configuration for SandyBridge
+  (ivi_sb_defconfig).
+
+* Thu Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Remove the Crossville-only adv7180 driver - it does not compile with new
   kernel and we do not have incentive to fix this because Crossville support
   is going to be dropped soon.
