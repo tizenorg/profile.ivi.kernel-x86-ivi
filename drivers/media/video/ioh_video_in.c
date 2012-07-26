@@ -55,11 +55,10 @@
 	KERNEL_VERSION(IOH_VIN_MAJOR_VERSION, IOH_VIN_MINOR_VERSION, \
 							IOH_VIN_RELEASE)
 
-#define OV7620_ADDR	(0xff >> 1)	// temporary value (0x42 >> 1)
+#define OV7620_ADDR	(0x42 >> 1)
 #define OV9653_ADDR	(0x60 >> 1)
 #define ML86V76651_ADDR	(0x80 >> 1)
 #define NCM13J_ADDR	(0xBA >> 1)
-#define ADV7180_ADDR	(0x42 >> 1)
 
 #define ALLOC_NUMBER			(3)
 #define ALLOC_ORDER			(10)/* (9) */
@@ -3232,12 +3231,6 @@ static int ioh_video_in_setting_s_fmt(struct ioh_vin_dev *dev,
 		input_format.numerical_format = DONT_CARE_NUMERICAL_FORMAT;
 		device->frame_skip_num = 0;
 		break;
-	case ADV7180_ADDR:
-		ioh_info(dev->video_in_dev, "sensor is ADV7180");
-		input_format.format = NT_SQPX_ITU_R_BT_656_4_8BIT;
-		input_format.numerical_format = DONT_CARE_NUMERICAL_FORMAT;
-		device->frame_skip_num = 0;
-		break;
 	default:
 		ioh_err(dev->video_in_dev, "Not supported sensor detected");
 		return -ENODEV;
@@ -3704,11 +3697,10 @@ ioh_video_in_subdev_open(struct ioh_vin_dev *dev)
 		OV9653_ADDR,
 		ML86V76651_ADDR,
 		NCM13J_ADDR,
-		ADV7180_ADDR,
 		I2C_CLIENT_END
 	};
 
-	adap = i2c_get_adapter(1);
+	adap = i2c_get_adapter(0);
 	dev->sensor = v4l2_i2c_new_subdev(&dev->v4l2_dev, adap,
 						"ioh_i2c", 0, addrs);
 	if (!dev->sensor) {
@@ -3716,7 +3708,6 @@ ioh_video_in_subdev_open(struct ioh_vin_dev *dev)
 				"v4l2_i2c_new_subdev failed\n", __func__);
 		ret = -ENODEV;
 	}
-
 	return ret;
 }
 
