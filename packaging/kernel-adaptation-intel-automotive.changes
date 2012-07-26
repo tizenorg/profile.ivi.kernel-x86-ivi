@@ -1,3 +1,8 @@
+* Thu Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+- Remove the Crossville-only adv7180 driver - it does not compile with new
+  kernel and we do not have incentive to fix this because Crossville support
+  is going to be dropped soon.
+
 * Wed Jul 11 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Remove linux-firmware dependency, no functional changes.
 
