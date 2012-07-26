@@ -1,4 +1,7 @@
 * Thu Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+- Update to stable version 3.4.6
+
+* Thu Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Rename ivi_gen_defconfig to ivi_tc_defconfig (tc stands for TunnelCreek).
   I do this because we'll soon get another configuration for SandyBridge
   (ivi_sb_defconfig).

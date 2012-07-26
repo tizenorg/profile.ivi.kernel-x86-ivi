@@ -3,7 +3,7 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define upstream_version 3.4.4
+%define upstream_version 3.4.6
 %define variant adaptation-intel-automotive
 %define kernel_full_version %{version}-%{release}-%{variant}
 %define kernel_arch x86
@@ -14,7 +14,7 @@ Group: System/Kernel
 License: GPLv2
 URL: http://www.kernel.org/
 Version: %{upstream_version}
-Release: 11
+Release: 1
 BuildRequires: module-init-tools
 BuildRequires: findutils
 BuildRequires: elfutils-libelf-devel
