@@ -1,4 +1,8 @@
 * Fri Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.6
+- Revise kernel debugging options and enable a couple more (e.g., stack
+  overflow)
+
+* Fri Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.6
 - Lessen vmliuz size by 446KiB. I've made all file-systems except ext4 to
   be kernel modules rather than compiled-in. This should have a positive
   effect on boot time.
