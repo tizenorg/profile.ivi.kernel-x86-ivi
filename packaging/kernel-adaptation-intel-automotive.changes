@@ -1,4 +1,8 @@
 * Fri Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.6
+- Disable ISA bus support and make PCMCIA support to be a kernel module
+  instead of being compiled-in.
+
+* Fri Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.6
 - Revise kernel debugging options and enable a couple more (e.g., stack
   overflow)
 
