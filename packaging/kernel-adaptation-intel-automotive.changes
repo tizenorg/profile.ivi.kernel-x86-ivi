@@ -3,7 +3,7 @@
   be kernel modules rather than compiled-in. This should have a positive
   effect on boot time.
 
-* Thu Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+* Thu Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.6
 - Update to stable version 3.4.6
 
 * Thu Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
@@ -16,23 +16,23 @@
   kernel and we do not have incentive to fix this because Crossville support
   is going to be dropped soon.
 
-* Wed Jul 11 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+* Wed Jul 11 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Remove linux-firmware dependency, no functional changes.
 
-* Tue Jul 10 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+* Tue Jul 10 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Enable iwlwifi p2p support to make AP mode available, which is required
   for tethering support. Fixes TZIVI-180.
 
-* Mon Jul  9 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+* Mon Jul  9 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Exclude Crossville BT firmware from being compiled into the kernel. This
   makes it easier to compile the kernel manually. The firmware can be loaded
   dynamically instead.
 
-* Mon Jul  9 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+* Mon Jul  9 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Enable the USB device controller driver for Nexcomm devices. Should
   fix or at least partially fix TZIVI-95.
 
-* Fri Jun 29 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
+* Fri Jun 29 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.4
 - Add the emgd driver. We have dropped it when upgraded to 3.4.4 because
   it did not compile. Now we are adding back the latest experimental
   version (build 2667) of it. Credits to Quanxian Wang for the effort.
