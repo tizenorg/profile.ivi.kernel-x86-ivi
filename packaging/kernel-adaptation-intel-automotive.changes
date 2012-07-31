@@ -1,4 +1,9 @@
 * Tue Jul 31 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.7
+- Revise power management and ACPI options: make optional things to be kernel
+  modules, enable APEI (ACPI Platform Error Interface) support, enable the
+  intel_idle driver.
+
+* Tue Jul 31 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.7
 - Update to stable version 3.4.7.
 
 * Fri Jul 26 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.6
