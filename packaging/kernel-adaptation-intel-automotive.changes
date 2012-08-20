@@ -1,3 +1,6 @@
+* Mon Aug 20 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.9
+- Upgrade to 3.4.9.
+
 * Wed Aug  1 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.7
 - After upgrading to 3.4.7 we are unable to load any kernel module because
   of kernel version mismatch. Now it is fixed, along with TZIVI-280.
