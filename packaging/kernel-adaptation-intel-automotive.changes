@@ -1,7 +1,3 @@
-* Tue Aug 21 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.9
-- Previous submission did not go through because of broken infrastructure,
-  let's try again. This is just a dummy change.
-
 * Mon Aug 20 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.4.9
 - Remove the emgd driver, because it was moved to intel-emgd-kmod kernel
   package and will be maintained out-of-tree by
