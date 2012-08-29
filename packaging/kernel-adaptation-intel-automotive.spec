@@ -68,7 +68,7 @@ against the %{variant} kernel package.
 sed -i "s/^EXTRAVERSION.*/EXTRAVERSION = -%{release}-%{variant}/" Makefile
 
 # Build kernel and modules
-make -s ARCH=%{kernel_arch} ivi_tc_defconfig
+make -s ARCH=%{kernel_arch} ivi_defconfig
 make -s ARCH=%{kernel_arch} %{?_smp_mflags} bzImage
 make -s ARCH=%{kernel_arch} %{?_smp_mflags} modules
 
