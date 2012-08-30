@@ -1,5 +1,8 @@
 * Thu Aug 30 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
-- Revise the processor-related configuration options
+- Revise PM-specific configuration options.
+
+* Thu Aug 30 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
+- Revise the processor-related configuration options.
 
 * Wed Aug 29 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
 - Rename the defconfig to 'ivi_defconfig', because we now use the same kernel
