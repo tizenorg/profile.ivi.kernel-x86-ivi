@@ -1,3 +1,6 @@
+* Fri Aug 31 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
+- Revise networking options.
+
 * Thu Aug 30 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
 - Revise general configuration options.
 
