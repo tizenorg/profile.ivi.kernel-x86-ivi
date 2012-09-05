@@ -1,3 +1,7 @@
+* Wed Sep  5 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
+- 65 NFC patches back-ported from kernel 3.6-rc4 to bring the newest NFC
+  features to the Tizen kernel. Prepared and submitted by Samuel Ortiz.
+
 * Fri Aug 31 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
 - Revise networking options.
 
