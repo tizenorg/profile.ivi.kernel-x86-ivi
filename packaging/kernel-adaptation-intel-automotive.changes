@@ -1,4 +1,8 @@
 * Wed Sep  5 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
+- Enable drivers for all the HID devices as modules. This should also fix
+  TIVI-170.
+
+* Wed Sep  5 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
 - 65 NFC patches back-ported from kernel 3.6-rc4 to bring the newest NFC
   features to the Tizen kernel. Prepared and submitted by Samuel Ortiz.
 
