@@ -21,6 +21,8 @@ BuildRequires: findutils
 BuildRequires: elfutils-libelf-devel
 BuildRequires: binutils-devel
 BuildRequires: which
+# net-tools provides the 'hostname' utility which kernel build wants
+BuildRequires: net-tools
 # The below is required for building perf
 BuildRequires: flex
 BuildRequires: bison
