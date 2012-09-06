@@ -20,6 +20,11 @@ BuildRequires: findutils
 BuildRequires: elfutils-libelf-devel
 BuildRequires: binutils-devel
 BuildRequires: which
+# The below is required for building perf
+BuildRequires: flex
+BuildRequires: bison
+BuildRequires: elfutils-devel
+BuildRequires: python-devel
 ExclusiveArch: %{ix86}
 
 Provides: kernel = %{version}-%{release}
@@ -52,6 +57,18 @@ This package provides kernel headers and makefiles sufficient to build modules
 against the %{variant} kernel package.
 
 
+%package -n perf
+Summary: The 'perf' performance counter tool
+Group: System/Performance
+Provides: perf = %{kernel_full_version}
+Requires: %{name} = %{version}-%{release}
+
+%description -n perf
+This package provides the "perf" tool that can be used to monitor performance
+counter events as well as various kernel internal events.
+
+
+
 ###
 ### PREP
 ###
@@ -60,12 +77,16 @@ against the %{variant} kernel package.
 %setup -q -n %{name}-%{version}
 
 
+
 ###
 ### BUILD
 ###
 %build
 # Make sure EXTRAVERSION says what we want it to say
 sed -i "s/^EXTRAVERSION.*/EXTRAVERSION = -%{release}-%{variant}/" Makefile
+
+# Build perf
+make -s -C tools WERROR=0 ARCH=%{kernel_arch} %{?_smp_mflags} perf
 
 # Build kernel and modules
 make -s ARCH=%{kernel_arch} ivi_defconfig
@@ -149,6 +170,13 @@ mv %{buildroot}/lib/modules/%{kernel_full_version}/build %{buildroot}/usr/src/ke
 
 ln -sf ../../../usr/src/kernels/%{kernel_full_version} %{buildroot}/lib/modules/%{kernel_full_version}/build
 
+# Install perf
+install -d %{buildroot}
+make -s -C tools/perf DESTDIR=%{buildroot} install
+install -d  %{buildroot}/usr/bin
+install -d  %{buildroot}/usr/libexec
+mv %{buildroot}/bin/* %{buildroot}/usr/bin/
+mv %{buildroot}/libexec/* %{buildroot}/usr/libexec/
 
 
 ###
@@ -198,3 +226,8 @@ fi
 %defattr(-,root,root)
 %verify(not mtime) /usr/src/kernels/%{kernel_full_version}
 /lib/modules/%{kernel_full_version}/vmlinux
+
+
+%files -n perf
+/usr/bin/perf
+/usr/libexec/perf-core
