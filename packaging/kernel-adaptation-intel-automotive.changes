@@ -1,4 +1,8 @@
 * Thu Sep  6 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
+- More NFC back-ports by Samuel Ortiz, this time from the NFC subsystem
+  tree which is staged for upstream.
+
+* Thu Sep  6 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
 - Correct RPM pre- and post- install dependencies.
 
 * Thu Sep  6 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
