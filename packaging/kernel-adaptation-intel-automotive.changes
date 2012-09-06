@@ -1,3 +1,6 @@
+* Thu Sep  6 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
+- Add perf binary RPM. Fixes TIVI-137.
+
 * Wed Sep  5 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
 - Enable drivers for all the HID devices as modules. This should also fix
   TIVI-170.
