@@ -31,7 +31,9 @@ ExclusiveArch: %{ix86}
 Provides: kernel = %{version}-%{release}
 Provides: kernel-uname-r = %{kernel_full_version}
 Provides: k%{kernel_full_version}
-Requires: sed
+Requires(post): /bin/ln
+Requires(postun): /bin/ln
+Requires(postun): sed
 # We can't let RPM do the dependencies automatic because it'll then pick up
 # a correct but undesirable perl dependency from the module headers which
 # isn't required for the kernel proper to function
@@ -50,7 +52,7 @@ Summary: Development package for building kernel modules to match the %{variant}
 Group: System/Kernel
 Provides: kernel-devel = %{kernel_full_version}
 Provides: kernel-devel-uname-r = %{kernel_full_version}
-Requires(pre): /usr/bin/find
+Requires(post): /usr/bin/find
 Requires: %{name} = %{version}-%{release}
 AutoReqProv: no
 
