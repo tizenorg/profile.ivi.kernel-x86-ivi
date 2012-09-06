@@ -1,4 +1,8 @@
 * Thu Sep  6 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
+- Make sure the /boot/vmlinuz link point to the previously installed kernel
+  when removing the kernel RPM package. Fixes TIVI-97.
+
+* Thu Sep  6 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
 - Add perf binary RPM. Fixes TIVI-137.
 
 * Wed Sep  5 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
