@@ -5,6 +5,7 @@
 
 %define upstream_version 3.5.3
 %define variant adaptation-intel-automotive
+%define kernel_version %{version}-%{release}
 %define kernel_full_version %{version}-%{release}-%{variant}
 %define kernel_arch x86
 
@@ -30,6 +31,7 @@ ExclusiveArch: %{ix86}
 Provides: kernel = %{version}-%{release}
 Provides: kernel-uname-r = %{kernel_full_version}
 Provides: k%{kernel_full_version}
+Requires: sed
 # We can't let RPM do the dependencies automatic because it'll then pick up
 # a correct but undesirable perl dependency from the module headers which
 # isn't required for the kernel proper to function
@@ -179,6 +181,7 @@ mv %{buildroot}/bin/* %{buildroot}/usr/bin/
 mv %{buildroot}/libexec/* %{buildroot}/usr/libexec/
 
 
+
 ###
 ### CLEAN
 ###
@@ -201,6 +204,16 @@ if [ -x /usr/sbin/hardlink ]; then
 	/usr/bin/find . -type f | while read f; do
 		hardlink -c /usr/src/kernels/*/$f $f
 	done
+fi
+
+%postun
+if [ $1 -gt 1 ]; then
+	# There is another kernel, change the /boot/vmlinuz symlink to the
+	# previously installed kernel.
+	prev_ver="$(rpm -q --last kernel-%{variant} | sed -e "s/kernel-%{variant}-\([^ ]*\).*/\1/g" | sed -e "/^%{kernel_version}$/d" | sed -n -e "1p")"
+	ln -sf vmlinuz-$prev_ver-%{variant} /boot/vmlinuz
+else
+	rm /boot/vmlinuz
 fi
 
 
