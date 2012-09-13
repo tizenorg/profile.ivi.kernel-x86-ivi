@@ -1,3 +1,7 @@
+* Thu Sep 13 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
+- Make IPv6 to be built-in, rather than a module. We need IPv6 when we
+  boot-up, and having it as module only slows boot-up down.
+
 * Thu Sep  6 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
 - More NFC back-ports by Samuel Ortiz, this time from the NFC subsystem
   tree which is staged for upstream.
