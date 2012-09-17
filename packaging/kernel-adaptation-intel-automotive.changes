@@ -1,3 +1,10 @@
+* Mon Sep 17 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
+- Revert 2 kenrel patches which break tethering:
+    o 56138f5 iwlwifi: dont pull too much payload in skb head
+    o 3edaf3e mac80211: manage AP netdev carrier state
+  Not sure yet _why_ they break tethering, but they do, thus reverting
+  them. Fixes TIVI-164.
+
 * Thu Sep 13 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
 - Make IPv6 to be built-in, rather than a module. We need IPv6 when we
   boot-up, and having it as module only slows boot-up down.
