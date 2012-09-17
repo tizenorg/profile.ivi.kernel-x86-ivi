@@ -759,12 +759,7 @@ static void iwlagn_pass_packet_to_mac80211(struct iwl_priv *priv,
 		IWL_ERR(priv, "alloc_skb failed\n");
 		return;
 	}
-	/* If frame is small enough to fit in skb->head, pull it completely.
-	 * If not, only pull ieee80211_hdr so that splice() or TCP coalesce
-	 * are more efficient.
-	 */
-	hdrlen = (len <= skb_tailroom(skb)) ? len : sizeof(*hdr);
-
+	hdrlen = min_t(unsigned int, len, skb_tailroom(skb));
 	memcpy(skb_put(skb, hdrlen), hdr, hdrlen);
 	fraglen = len - hdrlen;
 
