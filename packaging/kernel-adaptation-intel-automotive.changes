@@ -1,3 +1,6 @@
+* Tue Sep 25 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.4
+- Update to the next stable kernel version - 3.5.4
+
 * Mon Sep 17 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
 - Revert 2 kenrel patches which break tethering:
     o 56138f5 iwlwifi: dont pull too much payload in skb head
