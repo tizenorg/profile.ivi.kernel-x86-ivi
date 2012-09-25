@@ -1,5 +1,9 @@
 * Tue Sep 25 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.4
-- Update to the next stable kernel version - 3.5.4
+- Back port a couple of patches from the bluetooth-next.git kernel tree
+  to fix TIVI-203 (system hang when shutdown with BT phone connected).
+
+* Tue Sep 25 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.4
+- Update to the next stable kernel version - 3.5.4.
 
 * Mon Sep 17 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.3
 - Revert 2 kenrel patches which break tethering:
