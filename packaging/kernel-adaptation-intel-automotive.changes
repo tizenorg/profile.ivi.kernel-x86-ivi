@@ -1,3 +1,6 @@
+* Tue Oct 02 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.4
+- Enable SMACK support (Simplified Mandatory Access Control).
+
 * Tue Sep 25 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.4
 - Back port a couple of patches from the bluetooth-next.git kernel tree
   to fix TIVI-203 (system hang when shutdown with BT phone connected).
