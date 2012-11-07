@@ -35,7 +35,7 @@ Provides: kernel-uname-r = %{kernel_full_version}
 Provides: k%{kernel_full_version}
 Requires(post): /bin/ln
 Requires(postun): /bin/ln
-Requires(postun): sed
+Requires(postun): /bin/sed
 # We can't let RPM do the dependencies automatic because it'll then pick up
 # a correct but undesirable perl dependency from the module headers which
 # isn't required for the kernel proper to function
