@@ -1,3 +1,7 @@
+* Wed Nov  7 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.5
+- Clean-up the repository after switchint to 2.0alpha. No functional
+  changes.
+
 * Wed Oct 03 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.5
 - Update to the latest stable kernel version - 3.5.5.
 - Make SMACK to be the default security module.
