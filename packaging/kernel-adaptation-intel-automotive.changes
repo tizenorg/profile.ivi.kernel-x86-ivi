@@ -1,3 +1,7 @@
+* Fri Nov 16 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.5
+- Fix groups list in /proc/pid/status - the kernel showed only the first 32
+  groups but not all of them. Fixes TIVI-318.
+
 * Wed Nov  7 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.5
 - Clean-up the repository after switchint to 2.0alpha. No functional
   changes.
