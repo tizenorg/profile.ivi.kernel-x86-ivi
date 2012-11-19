@@ -11,7 +11,7 @@
 
 Name: kernel-%{variant}
 Summary: The Linux kernel
-Group: System/Kernel
+Group: System Environment/Kernel
 License: GPLv2
 URL: http://www.kernel.org/
 Version: %{upstream_version}
@@ -51,7 +51,7 @@ This package contains the Tizen IVI Linux kernel
 
 %package devel
 Summary: Development package for building kernel modules to match the %{variant} kernel
-Group: System/Kernel
+Group: Development/System
 Provides: kernel-devel = %{kernel_full_version}
 Provides: kernel-devel-uname-r = %{kernel_full_version}
 Requires(post): /usr/bin/find
@@ -65,7 +65,7 @@ against the %{variant} kernel package.
 
 %package -n perf
 Summary: The 'perf' performance counter tool
-Group: System/Performance
+Group: System Environment/Kernel
 Provides: perf = %{kernel_full_version}
 Requires: %{name} = %{version}-%{release}
 
