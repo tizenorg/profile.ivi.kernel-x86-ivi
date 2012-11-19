@@ -32,7 +32,6 @@ ExclusiveArch: %{ix86}
 
 Provides: kernel = %{version}-%{release}
 Provides: kernel-uname-r = %{kernel_full_version}
-Provides: k%{kernel_full_version}
 Requires(post): /bin/ln
 Requires(postun): /bin/ln
 Requires(postun): /bin/sed
