@@ -91,7 +91,8 @@ counter events as well as various kernel internal events.
 sed -i "s/^EXTRAVERSION.*/EXTRAVERSION = -%{release}-%{variant}/" Makefile
 
 # Build perf
-make -s -C tools WERROR=0 ARCH=%{kernel_arch} %{?_smp_mflags} perf
+make -s -C tools/lib/traceevent ARCH=%{kernel_arch} %{?_smp_mflags}
+make -s -C tools/perf WERROR=0 ARCH=%{kernel_arch}
 
 # Build kernel and modules
 make -s ARCH=%{kernel_arch} ivi_defconfig
@@ -182,6 +183,7 @@ install -d  %{buildroot}/usr/bin
 install -d  %{buildroot}/usr/libexec
 mv %{buildroot}/bin/* %{buildroot}/usr/bin/
 mv %{buildroot}/libexec/* %{buildroot}/usr/libexec/
+rm %{buildroot}/etc/bash_completion.d/perf
 
 
 
