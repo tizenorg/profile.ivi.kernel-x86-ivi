@@ -1,3 +1,12 @@
+* Tue Dec 11 09:20:11 UTC 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.7.0
+- Upgrade the kernel to version 3.7. The previous version is saved in the
+  devel-3.5.5-last tag.
+
+* Mon Nov 19 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.5
+- Enable the PPS subsystem and the PTP driver, required by the Ethernet AVB
+  out-of-tree drivers.
+
+- Clean-up packaging stuff a little bit.
 * Mon Nov 19 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.5
 - Enable the PPS subsystem and the PTP driver, required by the Ethernet AVB
   out-of-tree drivers.
