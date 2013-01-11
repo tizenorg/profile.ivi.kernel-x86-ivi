@@ -1,7 +1,11 @@
-* Mon Jan  7 08:40:44 UTC 2013 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.7.1
+* Fri Jan 11 13:19:24 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.7.1
+- Disable various useless drivers and turn some drivers from being compiled-in
+  to be a module. Thie makes the vmlinuz size 3% smaller.
+
+* Mon Jan  7 08:40:44 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.7.1
 - Enable USB camera support, fixes TIVI-454.
 
-* Fri Dec 28 08:07:08 UTC 2012 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.7.1
+* Fri Dec 28 08:07:08 UTC 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.7.1
 - Upgrade to version 3.7.1.
 
 * Tue Dec 11 09:20:11 UTC 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.7.0
