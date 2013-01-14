@@ -1,3 +1,6 @@
+* Mon Jan 14 08:24:11 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.7.2
+- Upgrade to version 3.7.2.
+
 * Fri Jan 11 13:19:24 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.7.1
 - Disable various useless drivers and turn some drivers from being compiled-in
   to be a module. Thie makes the vmlinuz size 3% smaller.
