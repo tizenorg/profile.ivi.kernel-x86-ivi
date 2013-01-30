@@ -1,3 +1,6 @@
+* Mon Jan 30 08:24:20 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.7.5
+- Upgrade to version 3.7.5.
+
 * Wed Jan 30 08:12:09 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.7.2
 - Enable the Conexant CX23885 driver, turn the igb driver into a kernel module.
 
