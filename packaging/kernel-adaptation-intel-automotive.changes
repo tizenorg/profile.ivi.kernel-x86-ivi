@@ -1,3 +1,6 @@
+* Tue Feb 19 13:17:49 UTC 2013 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.7.8
+- Fix out-of-tree drivers compilation.
+
 * Tue Feb 19 07:52:25 UTC 2013 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.7.8
 - Upgrade to version 3.7.8.
 
