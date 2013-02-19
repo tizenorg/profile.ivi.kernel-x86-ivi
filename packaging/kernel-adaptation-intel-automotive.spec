@@ -157,10 +157,6 @@ cp -a --parents arch/%{kernel_arch}/include %{buildroot}/lib/modules/%{kernel_fu
 mkdir -p %{buildroot}/lib/modules/%{kernel_full_version}/build/include
 find include/ -mindepth 1 -maxdepth 1 -type d | xargs -I{} cp -a {} %{buildroot}/lib/modules/%{kernel_full_version}/build/include
 
-# Make sure the Makefile and version.h have a matching timestamp so that
-# external modules can be built
-touch -r %{buildroot}/lib/modules/%{kernel_full_version}/build/Makefile %{buildroot}/lib/modules/%{kernel_full_version}/build/include/linux/version.h
-touch -r %{buildroot}/lib/modules/%{kernel_full_version}/build/.config %{buildroot}/lib/modules/%{kernel_full_version}/build/include/linux/autoconf.h
 # Copy .config to include/config/auto.conf so "make prepare" is unnecessary.
 cp %{buildroot}/lib/modules/%{kernel_full_version}/build/.config %{buildroot}/lib/modules/%{kernel_full_version}/build/include/config/auto.conf
 
