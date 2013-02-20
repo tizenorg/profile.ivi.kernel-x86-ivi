@@ -1,4 +1,8 @@
-* Wed Feb 20 07:44:14 UTC 2013 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.8.0
+* Wed Feb 20 09:31:21 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.0
+- Enable USB3 support.
+- Disable a lot of custom USB device drivers which we will unlikely ever need.
+
+* Wed Feb 20 07:44:14 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.0
 - Update to version 3.8.
 
 * Tue Feb 19 13:17:49 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.7.8
