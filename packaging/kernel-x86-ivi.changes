@@ -1,3 +1,8 @@
+* Tue Mar 19 09:15:09 UTC 2013 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.8.3
+- Make the traditinal Unix DAC security model to be the default. It was SMACK
+  before this change. SMACK is not disabled, though, and can be enabled using
+  the 'security=smack' kernel boot option.
+
 * Mon Mar 18 10:51:00 UTC 2013 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.8.3
 - Rename the kernel RPM package from 'kernel-adaptation-intel-automotive' to
   'kernel-x86-ivi'.
