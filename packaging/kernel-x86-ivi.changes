@@ -1,3 +1,7 @@
+* Wed Apr  3 06:12:27 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.3
+- Revert the previous change and make SMACK to be the primary security module,
+  because reverting it apparently breaks some (bogus) apps.
+
 * Thu Mar 28 15:41:08 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.3
 - Fix TIVI-500 by stopping packaging the 'include/config' directory.
 
@@ -59,7 +63,6 @@
 - Enable the PPS subsystem and the PTP driver, required by the Ethernet AVB
   out-of-tree drivers.
 
-- Clean-up packaging stuff a little bit.
 * Mon Nov 19 2012 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.5.5
 - Enable the PPS subsystem and the PTP driver, required by the Ethernet AVB
   out-of-tree drivers.
