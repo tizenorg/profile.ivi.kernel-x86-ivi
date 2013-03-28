@@ -156,9 +156,8 @@ cp -a --parents arch/%{kernel_arch}/include %{buildroot}/lib/modules/%{kernel_fu
 # Copy include files
 mkdir -p %{buildroot}/lib/modules/%{kernel_full_version}/build/include
 find include/ -mindepth 1 -maxdepth 1 -type d | xargs -I{} cp -a {} %{buildroot}/lib/modules/%{kernel_full_version}/build/include
-
-# Copy .config to include/config/auto.conf so "make prepare" is unnecessary.
-cp %{buildroot}/lib/modules/%{kernel_full_version}/build/.config %{buildroot}/lib/modules/%{kernel_full_version}/build/include/config/auto.conf
+# However, the entire 'include/config' directory is not needed
+rm -rf %{buildroot}/lib/modules/%{kernel_full_version}/build/include/config
 
 # Save the vmlinux file for kernel debugging into the devel package
 cp vmlinux %{buildroot}/lib/modules/%{kernel_full_version}
