@@ -3,7 +3,7 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define upstream_version 3.8.3
+%define upstream_version 3.8.5
 %define variant x86-ivi
 %define kernel_version %{version}-%{release}
 %define kernel_full_version %{version}-%{release}-%{variant}
@@ -15,7 +15,7 @@ Group: System Environment/Kernel
 License: GPLv2
 URL: http://www.kernel.org/
 Version: %{upstream_version}
-Release: 11
+Release: 1
 BuildRequires: module-init-tools
 BuildRequires: findutils
 BuildRequires: elfutils-libelf-devel
