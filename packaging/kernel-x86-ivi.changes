@@ -1,3 +1,6 @@
+* Mon Apr 15 07:13:42 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.5
+- Enable the deadline I/O scheduler.
+
 * Tue Apr  9 07:29:12 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.5
 - Enable the VMWare Graphical acceleration driver (vmwgfx).
 
