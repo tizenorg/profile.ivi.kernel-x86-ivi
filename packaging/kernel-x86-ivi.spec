@@ -15,7 +15,7 @@ Group: System Environment/Kernel
 License: GPLv2
 URL: http://www.kernel.org/
 Version: %{upstream_version}
-Release: 4
+Release: 5
 BuildRequires: module-init-tools
 BuildRequires: findutils
 BuildRequires: elfutils-libelf-devel
@@ -207,15 +207,14 @@ if [ -x /usr/sbin/hardlink ]; then
 fi
 
 %postun
-if [ $1 -gt 1 ]; then
-	# There is another kernel, change the /boot/vmlinuz symlink to the
-	# previously installed kernel.
-	prev_ver="$(rpm -q --last kernel-%{variant} | sed -e "s/kernel-%{variant}-\([^ ]*\).*/\1/g" | sed -e "/^%{kernel_version}$/d" | sed -n -e "1p")"
-	ln -sf vmlinuz-$prev_ver-%{variant} /boot/vmlinuz
-else
-	rm /boot/vmlinuz
-fi
 
+last_installed_ver="$(rpm -q --last kernel-%{variant} | sed -e "s/kernel-%{variant}-\([^ ]*\).*/\1/g" | sed -e "/^%{kernel_version}$/d" | sed -n -e "1p")"
+echo "last_installed_ver is $last_installed_ver"
+if [ -n "$last_installed_ver" ]; then
+	ln -sf vmlinuz-$last_installed_ver-%{variant} /boot/vmlinuz
+else
+	rm -rf /boot/vmlinuz
+fi
 
 
 ###

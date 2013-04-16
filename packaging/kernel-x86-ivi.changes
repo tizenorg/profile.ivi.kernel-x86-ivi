@@ -1,3 +1,7 @@
+* Tue Apr 16 12:39:55 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.5
+- Fix the post-uninstall script and prevent it from deleting the /boot/vmlinuz
+  symlink when the kernel is updated with 'rpm -U'. Fixes TIVI-609.
+
 * Mon Apr 15 07:13:42 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.5
 - Enable the deadline I/O scheduler.
 
