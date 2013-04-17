@@ -1,3 +1,6 @@
+* Wed Apr 17 11:31:40 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.7
+- Upgrade to version 3.8.7.
+
 * Tue Apr 16 12:39:55 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.5
 - Fix the post-uninstall script and prevent it from deleting the /boot/vmlinuz
   symlink when the kernel is updated with 'rpm -U'. Fixes TIVI-609.
