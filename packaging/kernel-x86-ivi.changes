@@ -1,3 +1,6 @@
+* Thu Apr 18 15:25:24 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.7
+- Enable Android logger driver back, fix TIVI-719.
+
 * Thu Apr 18 05:10:34 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.8.7
 - Disable a bunch of seemingly useless HID drivers.
 
