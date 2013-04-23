@@ -7,7 +7,8 @@
 %define variant x86-ivi
 %define kernel_version %{version}-%{release}
 %define kernel_full_version %{version}-%{release}-%{variant}
-%define kernel_arch x86
+%define kernel_arch i386
+%define kernel_arch_subdir arch/x86
 
 Name: kernel-%{variant}
 Summary: The Linux kernel
@@ -110,7 +111,7 @@ install -d %{buildroot}/boot
 
 install -m 644 .config %{buildroot}/boot/config-%{kernel_full_version}
 install -m 644 System.map %{buildroot}/boot/System.map-%{kernel_full_version}
-install -m 755 arch/%{kernel_arch}/boot/bzImage %{buildroot}/boot/vmlinuz-%{kernel_full_version}
+install -m 755 %{kernel_arch_subdir}/boot/bzImage %{buildroot}/boot/vmlinuz-%{kernel_full_version}
 # Dummy initrd, will not be included in the actual package but needed for files
 touch %{buildroot}/boot/initrd-%{kernel_full_version}.img
 
@@ -144,15 +145,15 @@ rm -rf %{buildroot}/lib/modules/%{kernel_full_version}/build/include
 # Copy config and scripts
 install .config %{buildroot}/lib/modules/%{kernel_full_version}/build/
 cp -a scripts %{buildroot}/lib/modules/%{kernel_full_version}/build
-if [ -d arch/%{kernel_arch}/scripts ]; then
-    cp -a arch/%{kernel_arch}/scripts %{buildroot}/lib/modules/%{kernel_full_version}/build/arch/%{kernel_arch}/ || :
+if [ -d %{kernel_arch_subdir}/scripts ]; then
+    cp -a %{kernel_arch_subdir}/scripts %{buildroot}/lib/modules/%{kernel_full_version}/build/%{kernel_arch_subdir}/ || :
 fi
-if [ -f arch/%{kernel_arch}/*lds ]; then
-    cp -a arch/%{kernel_arch}/*lds %{buildroot}/lib/modules/%{kernel_full_version}/build/arch/%{kernel_arch}/ || :
+if [ -f %{kernel_arch_subdir}/*lds ]; then
+    cp -a %{kernel_arch_subdir}/*lds %{buildroot}/lib/modules/%{kernel_full_version}/build/%{kernel_arch_subdir}/ || :
 fi
 rm -f %{buildroot}/lib/modules/%{kernel_full_version}/build/scripts/*.o
 rm -f %{buildroot}/lib/modules/%{kernel_full_version}/build/scripts/*/*.o
-cp -a --parents arch/%{kernel_arch}/include %{buildroot}/lib/modules/%{kernel_full_version}/build
+cp -a --parents %{kernel_arch_subdir}/include %{buildroot}/lib/modules/%{kernel_full_version}/build
 
 # Copy include files
 mkdir -p %{buildroot}/lib/modules/%{kernel_full_version}/build/include
