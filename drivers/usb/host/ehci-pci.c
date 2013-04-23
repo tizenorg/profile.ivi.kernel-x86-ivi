@@ -322,7 +322,8 @@ static bool usb_is_intel_switchable_ehci(struct pci_dev *pdev)
 		(pdev->device == 0x1E26 ||
 		 pdev->device == 0x8C2D ||
 		 pdev->device == 0x8C26 ||
-		 pdev->device == 0x9C26);
+		 pdev->device == 0x9C26 ||
+		 pdev->device == 0x0F34);
 }
 
 static void ehci_enable_xhci_companion(void)
