@@ -1,5 +1,5 @@
 /*
- * Intel Lynxpoint LPSS clocks.
+ * Intel Low Power Subsystem clocks.
  *
  * Copyright (C) 2013, Intel Corporation
  * Authors: Mika Westerberg <mika.westerberg@linux.intel.com>
@@ -18,9 +18,7 @@
 #include <linux/platform_data/clk-lpss.h>
 #include <linux/platform_device.h>
 
-#define PRV_CLOCK_PARAMS 0x800
-
-static int lpt_clk_probe(struct platform_device *pdev)
+static int lpss_clk_probe(struct platform_device *pdev)
 {
 	struct lpss_clk_data *drvdata;
 	struct clk *clk;
@@ -41,15 +39,15 @@ static int lpt_clk_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver lpt_clk_driver = {
+static struct platform_driver lpss_clk_driver = {
 	.driver = {
-		.name = "clk-lpt",
+		.name = "clk-lpss",
 		.owner = THIS_MODULE,
 	},
-	.probe = lpt_clk_probe,
+	.probe = lpss_clk_probe,
 };
 
-int __init lpt_clk_init(void)
+int __init lpss_clk_init(void)
 {
-	return platform_driver_register(&lpt_clk_driver);
+	return platform_driver_register(&lpss_clk_driver);
 }
