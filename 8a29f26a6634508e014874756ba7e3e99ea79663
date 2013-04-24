@@ -1,0 +1,8 @@
+Change-Id: I8a29f26a6634508e014874756ba7e3e99ea79663
+Code-Review+2: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Verified+1: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Submitted-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Submitted-at: Wed, 24 Apr 2013 05:35:04 -0700
+Reviewed-on: https://review.tizen.org/gerrit/3399
+Project: profile/ivi/kernel-x86-ivi
+Branch: refs/heads/2.0-next
