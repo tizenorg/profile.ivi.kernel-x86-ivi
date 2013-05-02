@@ -19,7 +19,7 @@ Version: %{upstream_version}
 Release: 1
 BuildRequires: module-init-tools
 BuildRequires: findutils
-BuildRequires: elfutils-libelf-devel
+BuildRequires: libelf-devel
 BuildRequires: binutils-devel
 BuildRequires: which
 BuildRequires: bc
@@ -28,15 +28,15 @@ BuildRequires: net-tools
 # The below is required for building perf
 BuildRequires: flex
 BuildRequires: bison
-BuildRequires: elfutils-devel
+BuildRequires: libdw-devel
 BuildRequires: python-devel
 ExclusiveArch: %{ix86}
 
 Provides: kernel = %{version}-%{release}
 Provides: kernel-uname-r = %{kernel_full_version}
-Requires(post): /bin/ln
-Requires(postun): /bin/ln
-Requires(postun): /bin/sed
+Requires(post): /usr/bin/ln
+Requires(postun): /usr/bin/ln
+Requires(postun): /usr/bin/sed
 # We can't let RPM do the dependencies automatic because it'll then pick up
 # a correct but undesirable perl dependency from the module headers which
 # isn't required for the kernel proper to function
