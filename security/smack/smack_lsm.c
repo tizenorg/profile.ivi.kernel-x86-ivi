@@ -69,7 +69,8 @@ static struct smack_known *smk_fetch(const char *name, struct inode *ip,
 	char *buffer;
 	struct smack_known *skp = NULL;
 
-	if (ip->i_op->getxattr == NULL)
+	if (ip->i_op->getxattr == NULL || dp->d_inode == NULL ||
+	    dp->d_fsdata == NULL)
 		return NULL;
 
 	buffer = kzalloc(SMK_LONGLABEL, GFP_KERNEL);
