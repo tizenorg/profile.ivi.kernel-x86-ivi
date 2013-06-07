@@ -1,3 +1,7 @@
+* Fri Jun  7 12:08:13 UTC 2013 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.9.4
+- Ignore errors symlink creation errors (when /boot is FAT file-system, we
+  cannot create the /boot/vmlinuz symlinks)
+
 * Thu Jun  6 09:38:07 UTC 2013 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.9.4
 - Adapt the spec file to Tizen 3.0
 - Add a temporary work-around which fixes an oops in SMACK LSM, see
