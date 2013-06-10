@@ -16,7 +16,7 @@ Group: System Environment/Kernel
 License: GPLv2
 URL: http://www.kernel.org/
 Version: %{upstream_version}
-Release: 4
+Release: 5
 BuildRequires: module-init-tools
 BuildRequires: findutils
 BuildRequires: libelf-devel

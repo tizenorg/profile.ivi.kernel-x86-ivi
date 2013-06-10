@@ -1,13 +1,16 @@
-* Fri Jun  7 12:08:13 UTC 2013 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.9.4
+* Mon Jun 10 07:46:06 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.9.4
+- Fix BayTrail boot issues.
+
+* Fri Jun  7 12:08:13 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.9.4
 - Ignore errors symlink creation errors (when /boot is FAT file-system, we
   cannot create the /boot/vmlinuz symlinks)
 
-* Thu Jun  6 09:38:07 UTC 2013 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.9.4
+* Thu Jun  6 09:38:07 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.9.4
 - Adapt the spec file to Tizen 3.0
 - Add a temporary work-around which fixes an oops in SMACK LSM, see
   https://bugzilla.kernel.org/show_bug.cgi?id=57791
 
-* Thu Jun  6 06:38:07 UTC 2013 Artem Bityutskiy * <artem.bityutskiy@linux.intel.com> 3.9.4
+* Thu Jun  6 06:38:07 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.9.4
 - Upgrade to version 3.9.4
 
 * Wed May  8 07:05:27 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.9.1
