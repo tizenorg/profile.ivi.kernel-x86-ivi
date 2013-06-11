@@ -1,3 +1,6 @@
+* Wed Jun 12 10:14:40 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.9.4
+- Do not print warning messages when unable to create the vmlinuz symlink.
+
 * Mon Jun 10 07:46:06 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.9.4
 - Fix BayTrail boot issues.
 

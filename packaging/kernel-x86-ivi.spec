@@ -16,7 +16,7 @@ Group: System Environment/Kernel
 License: GPLv2
 URL: http://www.kernel.org/
 Version: %{upstream_version}
-Release: 5
+Release: 6
 BuildRequires: module-init-tools
 BuildRequires: findutils
 BuildRequires: libelf-devel
@@ -200,7 +200,7 @@ rm -rf %{buildroot}
 %post
 # If the /boot file-system is FAT, softlings are not supported, and we have to
 # create full copy instead
-ln -sf vmlinuz-%{kernel_full_version} /boot/vmlinuz ||:
+ln -sf vmlinuz-%{kernel_full_version} /boot/vmlinuz > /dev/null 2>&1 ||:
 
 %post devel
 if [ -x /usr/sbin/hardlink ]; then
@@ -214,7 +214,7 @@ fi
 
 last_installed_ver="$(rpm -q --last kernel-%{variant} | sed -e "s/kernel-%{variant}-\([^ ]*\).*/\1/g" | sed -e "/^%{kernel_version}$/d" | sed -n -e "1p")"
 if [ -n "$last_installed_ver" ]; then
-	ln -sf vmlinuz-$last_installed_ver-%{variant} /boot/vmlinuz ||:
+	ln -sf vmlinuz-$last_installed_ver-%{variant} /boot/vmlinuz > /dev/null 2>&1 ||:
 else
 	rm -rf /boot/vmlinuz
 fi
