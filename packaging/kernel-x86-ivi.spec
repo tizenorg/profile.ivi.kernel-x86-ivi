@@ -3,7 +3,7 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define upstream_version 3.9.4
+%define upstream_version 3.10.0
 %define variant x86-ivi
 %define kernel_version %{version}-%{release}
 %define kernel_full_version %{version}-%{release}-%{variant}
@@ -16,7 +16,16 @@ Group: System Environment/Kernel
 License: GPLv2
 URL: http://www.kernel.org/
 Version: %{upstream_version}
-Release: 6
+
+%define rc_num 5
+%define release_ver 1
+%define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
+%if 0%{?opensuse_bs}
+Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
+%else
+Release: %{rc_str}.%{release_ver}.0.0
+%endif
+
 BuildRequires: module-init-tools
 BuildRequires: findutils
 BuildRequires: libelf-devel
