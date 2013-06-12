@@ -44,6 +44,7 @@ ExclusiveArch: %{ix86}
 Provides: kernel = %{version}-%{release}
 Provides: kernel-uname-r = %{kernel_full_version}
 Requires(post): /usr/bin/ln
+Requires(post): /usr/bin/sort
 Requires(postun): /usr/bin/ln
 Requires(postun): /usr/bin/sed
 # We can't let RPM do the dependencies automatic because it'll then pick up
@@ -221,7 +222,7 @@ fi
 
 %postun
 
-last_installed_ver="$(rpm -q --last kernel-%{variant} | sed -e "s/kernel-%{variant}-\([^ ]*\).*/\1/g" | sed -e "/^%{kernel_version}$/d" | sed -n -e "1p")"
+last_installed_ver="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant} | sort -r | sed -e 's/[^:]*: \(.*\)/\1/g' | sed -n -e "1p")"
 if [ -n "$last_installed_ver" ]; then
 	ln -sf vmlinuz-$last_installed_ver-%{variant} /boot/vmlinuz > /dev/null 2>&1 ||:
 else
