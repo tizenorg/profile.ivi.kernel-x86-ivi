@@ -161,6 +161,13 @@ static int byt_gpio_request(struct gpio_chip *chip, unsigned offset)
 static void byt_gpio_free(struct gpio_chip *chip, unsigned offset)
 {
 	struct byt_gpio *vg = container_of(chip, struct byt_gpio, chip);
+	void __iomem *reg = byt_gpio_reg(&vg->chip, offset, BYT_CONF0_REG);
+	u32 value;
+
+	/* clear interrupt triggering */
+	value = readl(reg);
+	value &= ~(BYT_TRIG_POS | BYT_TRIG_NEG | BYT_TRIG_LVL);
+	writel(value, reg);
 
 	pm_runtime_put(&vg->pdev->dev);
 }
@@ -179,16 +186,26 @@ static int byt_irq_type(struct irq_data *d, unsigned type)
 	spin_lock_irqsave(&vg->lock, flags);
 	value = readl(reg);
 
-	if (type & IRQ_TYPE_EDGE_RISING)
+	/* For level trigges the BYT_TRIG_POS and BYT_TRIG_NEG bits
+	 * are used to indicate high and low level triggering
+	 */
+	value &= ~(BYT_TRIG_POS | BYT_TRIG_NEG | BYT_TRIG_LVL);
+
+	switch (type) {
+	case IRQ_TYPE_LEVEL_HIGH:
+		value |= BYT_TRIG_LVL;
+	case IRQ_TYPE_EDGE_RISING:
 		value |= BYT_TRIG_POS;
-	else
-		value &= ~BYT_TRIG_POS;
-
-	if (type & IRQ_TYPE_EDGE_FALLING)
+		break;
+	case IRQ_TYPE_LEVEL_LOW:
+		value |= BYT_TRIG_LVL;
+	case IRQ_TYPE_EDGE_FALLING:
 		value |= BYT_TRIG_NEG;
-	else
-		value &= ~BYT_TRIG_NEG;
-
+		break;
+	case IRQ_TYPE_EDGE_BOTH:
+		value |= (BYT_TRIG_NEG | BYT_TRIG_POS);
+		break;
+	}
 	writel(value, reg);
 
 	spin_unlock_irqrestore(&vg->lock, flags);
@@ -303,6 +320,7 @@ static void byt_gpio_irq_handler(unsigned irq, struct irq_desc *desc)
 	void __iomem *reg;
 	u32 pending;
 	unsigned virq;
+	int looplimit = 0;
 
 	/* check from GPIO controller which pin triggered the interrupt */
 	for (base = 0; base < vg->chip.ngpio; base += 32) {
@@ -317,6 +335,24 @@ static void byt_gpio_irq_handler(unsigned irq, struct irq_desc *desc)
 
 			virq = irq_find_mapping(vg->domain, base + pin);
 			generic_handle_irq(virq);
+
+			/* In case bios or user sets triggering incorretly a pin
+			 * might remain in "interrupt triggered" state.
+			 */
+			if (looplimit++ > 32) {
+				dev_err(&vg->pdev->dev,
+					"Gpio %d interrupt flood, disabling\n",
+					base + pin);
+
+				reg = byt_gpio_reg(&vg->chip, base + pin,
+						   BYT_CONF0_REG);
+				mask = readl(reg);
+				mask &= ~(BYT_TRIG_NEG | BYT_TRIG_POS |
+					  BYT_TRIG_LVL);
+				writel(mask, reg);
+				mask = readl(reg); /* flush */
+				break;
+			}
 		}
 	}
 	chip->irq_eoi(data);
@@ -340,12 +376,18 @@ static struct irq_chip byt_irqchip = {
 static void byt_gpio_irq_init_hw(struct byt_gpio *vg)
 {
 	void __iomem *reg;
-	u32 base;
+	u32 base, value;
 
 	/* clear interrupt status trigger registers */
 	for (base = 0; base < vg->chip.ngpio; base += 32) {
 		reg = byt_gpio_reg(&vg->chip, base, BYT_INT_STAT_REG);
 		writel(0xffffffff, reg);
+		/* make sure trigger bits are cleared, if not then a pin
+		   might be misconfigured in bios */
+		value = readl(reg);
+		if (value)
+			dev_err(&vg->pdev->dev,
+				"GPIO interrupt flood, pins misconfigured\n");
 	}
 }
 
