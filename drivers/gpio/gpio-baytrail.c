@@ -58,7 +58,7 @@
 
 #define BYT_NGPIO_SCORE		102
 #define BYT_NGPIO_NCORE		28
-#define BYT_NGPIO_SUS		43
+#define BYT_NGPIO_SUS		44
 
 /*
  * Baytrail gpio controller consist of three separate sub-controllers called
@@ -92,10 +92,10 @@ static unsigned ncore_gpio_to_pad[BYT_NGPIO_NCORE] = {
 
 static unsigned sus_gpio_to_pad[BYT_NGPIO_SUS] = {
 	29, 33, 30, 31, 32, 34, 36, 35, 38, 37,
-	18, 11, 20, 17, 1, 8, 10, 19, 12, 0,
-	2, 23, 39, 28, 27, 22, 21, 24, 25, 26,
-	51, 56, 54, 49, 55, 48, 57, 50, 58, 52,
-	53, 59, 40,
+	18, 7, 11, 20, 17, 1, 8, 10, 19, 12,
+	0, 2, 23, 39, 28, 27, 22, 21, 24, 25,
+	26, 51, 56, 54, 49, 55, 48, 57, 50, 58,
+	52, 53, 59, 40,
 };
 
 struct gpio_bank {
