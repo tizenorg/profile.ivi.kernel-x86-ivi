@@ -40,7 +40,7 @@
 #define BYT_CONF1_REG		0x004
 #define BYT_VAL_REG		0x008
 #define BYT_DFT_REG		0x00c
-#define BYT_INT_STAT_REG		0x800
+#define BYT_INT_STAT_REG	0x800
 
 /* BYT_CONF0_REG register bits */
 #define BYT_TRIG_NEG		BIT(26)
@@ -153,29 +153,6 @@ static int byt_gpio_request(struct gpio_chip *chip, unsigned offset)
 {
 	struct byt_gpio *vg = container_of(chip, struct byt_gpio, chip);
 
-/* Policy about what should be done when requesting a gpio is unclear.
- * In most cases PIN MUX 000 means gpio function, with the exception of SUS
- * core pins 11-21 where gpio is mux 001.
- *
- * Some pins are set by bios to a non-gpio mux, but still marked as gpio
- * resource in acpi tables, and they work just as they should when not touching
- * the pin muxing. (For example mmc card detect switch)
- *
- * option 1, check pin mux is "gpio", else fail (FIXME gpio SUS pins 11-21):
- *	void __iomem *reg = byt_gpio_reg(chip, offset, BYT_CONF0_REG);
- *	u32 value;
- *	value =	readl(reg) & BYT_PIN_MUX;
- *	if (value)
- *		return -EINVAL;
- *
- * option 2, force pin mux to gpio mode (FIXME gpio SUS pins 11-21):
- *	void __iomem *reg = byt_gpio_reg(chip, offset, BYT_CONF0_REG);
- *	u32 value;
- *	value =	readl(reg) & BYT_PIN_MUX;
- *	writel(value & ~BYT_PIN_MUX, reg);
- *
- * option 3: don't touch the pinmuxing at all, let BIOS handle it
- */
 	pm_runtime_get(&vg->pdev->dev);
 
 	return 0;
@@ -286,12 +263,11 @@ static void byt_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 	struct byt_gpio *vg = container_of(chip, struct byt_gpio, chip);
 	int i;
 	unsigned long flags;
-	u32 conf0,  val, offs;
+	u32 conf0, val, offs;
 
 	spin_lock_irqsave(&vg->lock, flags);
 
 	for (i = 0; i < vg->chip.ngpio; i++) {
-
 		offs = vg->gpio_to_pad[i] * 16;
 		conf0 = readl(vg->reg_base + offs + BYT_CONF0_REG);
 		val = readl(vg->reg_base + offs + BYT_VAL_REG);
@@ -426,19 +402,9 @@ static int byt_gpio_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, vg);
 
 	mem_rc = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	irq_rc = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-
-	if (!mem_rc) {
-		dev_err(&pdev->dev, "missing MEM resource\n");
-		return -EINVAL;
-	}
-
 	vg->reg_base = devm_ioremap_resource(dev, mem_rc);
-
-	if (IS_ERR(vg->reg_base)) {
-		dev_err(&pdev->dev, "error mapping resource\n");
+	if (IS_ERR(vg->reg_base))
 		return PTR_ERR(vg->reg_base);
-	}
 
 	spin_lock_init(&vg->lock);
 
@@ -463,6 +429,7 @@ static int byt_gpio_probe(struct platform_device *pdev)
 	}
 
 	/* set up interrupts  */
+	irq_rc = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (irq_rc && irq_rc->start) {
 		hwirq = irq_rc->start;
 		gc->to_irq = byt_gpio_to_irq;
@@ -476,10 +443,10 @@ static int byt_gpio_probe(struct platform_device *pdev)
 
 		irq_set_handler_data(hwirq, vg);
 		irq_set_chained_handler(hwirq, byt_gpio_irq_handler);
-	}
 
-	/* Register interrupt handlers for gpio signaled acpi events */
-	acpi_gpiochip_request_interrupts(gc);
+		/* Register interrupt handlers for gpio signaled acpi events */
+		acpi_gpiochip_request_interrupts(gc);
+	}
 
 	pm_runtime_enable(dev);
 
@@ -516,7 +483,6 @@ static int byt_gpio_remove(struct platform_device *pdev)
 	if (err)
 		dev_warn(&pdev->dev, "failed to remove gpio_chip.\n");
 
-	platform_set_drvdata(pdev, NULL);
 	return 0;
 }
 
