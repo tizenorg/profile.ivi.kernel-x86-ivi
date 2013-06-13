@@ -1,3 +1,7 @@
+* Thu Jun 13 16:44:11 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0-rc5
+- Pull the latest i915 (gen graphics) patches from
+  git://people.freedesktop.org/~danvet/drm-intel / drm-intel-next
+
 * Wed Jun 12 16:13:45 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0-rc5
 - Fix '/boot/vmlinuz' symlink creation, fixes TIVI-1038.
 
