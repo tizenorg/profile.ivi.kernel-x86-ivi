@@ -1886,17 +1886,8 @@ static void intel_sdvo_get_lvds_modes(struct drm_connector *connector)
 	struct drm_display_mode *newmode;
 
 	/*
-	 * Attempt to get the mode list from DDC.
-	 * Assume that the preferred modes are
-	 * arranged in priority order.
-	 */
-	intel_ddc_get_modes(connector, &intel_sdvo->ddc);
-
-	/*
 	 * Fetch modes from VBT. For SDVO prefer the VBT mode since some
-	 * SDVO->LVDS transcoders can't cope with the EDID mode. Since
-	 * drm_mode_probed_add adds the mode at the head of the list we add it
-	 * last.
+	 * SDVO->LVDS transcoders can't cope with the EDID mode.
 	 */
 	if (dev_priv->sdvo_lvds_vbt_mode != NULL) {
 		newmode = drm_mode_duplicate(connector->dev,
@@ -1908,6 +1899,13 @@ static void intel_sdvo_get_lvds_modes(struct drm_connector *connector)
 			drm_mode_probed_add(connector, newmode);
 		}
 	}
+
+	/*
+	 * Attempt to get the mode list from DDC.
+	 * Assume that the preferred modes are
+	 * arranged in priority order.
+	 */
+	intel_ddc_get_modes(connector, &intel_sdvo->ddc);
 
 	list_for_each_entry(newmode, &connector->probed_modes, head) {
 		if (newmode->type & DRM_MODE_TYPE_PREFERRED) {
