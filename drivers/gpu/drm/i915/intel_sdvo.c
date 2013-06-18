@@ -1890,12 +1890,15 @@ static void intel_sdvo_get_lvds_modes(struct drm_connector *connector)
 	 * Assume that the preferred modes are
 	 * arranged in priority order.
 	 */
-	intel_ddc_get_modes(connector, intel_sdvo->i2c);
-	if (list_empty(&connector->probed_modes) == false)
-		goto end;
+	intel_ddc_get_modes(connector, &intel_sdvo->ddc);
 
-	/* Fetch modes from VBT */
-	if (dev_priv->vbt.sdvo_lvds_vbt_mode != NULL) {
+	/*
+	 * Fetch modes from VBT. For SDVO prefer the VBT mode since some
+	 * SDVO->LVDS transcoders can't cope with the EDID mode. Since
+	 * drm_mode_probed_add adds the mode at the head of the list we add it
+	 * last.
+	 */
+	if (dev_priv->sdvo_lvds_vbt_mode != NULL) {
 		newmode = drm_mode_duplicate(connector->dev,
 					     dev_priv->vbt.sdvo_lvds_vbt_mode);
 		if (newmode != NULL) {
@@ -1906,7 +1909,6 @@ static void intel_sdvo_get_lvds_modes(struct drm_connector *connector)
 		}
 	}
 
-end:
 	list_for_each_entry(newmode, &connector->probed_modes, head) {
 		if (newmode->type & DRM_MODE_TYPE_PREFERRED) {
 			intel_sdvo->sdvo_lvds_fixed_mode =
@@ -2912,6 +2914,14 @@ bool intel_sdvo_init(struct drm_device *dev, uint32_t sdvo_reg, bool is_sdvob)
 			      SDVO_NAME(intel_sdvo));
 		/* Output_setup can leave behind connectors! */
 		goto err_output;
+	}
+
+	/* Only enable the hotplug irq if we need it, to work around noisy
+	 * hotplug lines.
+	 */
+	if (intel_sdvo->hotplug_active) {
+		intel_encoder->hpd_pin =
+			intel_sdvo->is_sdvob ?  HPD_SDVO_B : HPD_SDVO_C;
 	}
 
 	/*
