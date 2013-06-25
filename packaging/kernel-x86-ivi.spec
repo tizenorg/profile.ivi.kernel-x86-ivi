@@ -17,8 +17,8 @@ License: GPLv2
 URL: http://www.kernel.org/
 Version: %{upstream_version}
 
-%define rc_num 5
-%define release_ver 4
+%define rc_num 7
+%define release_ver 0
 %define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
 %if 0%{?opensuse_bs}
 Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>

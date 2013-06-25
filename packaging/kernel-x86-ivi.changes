@@ -1,3 +1,6 @@
+* Tue Jun 25 04:21:12 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0-rc7
+- Rebase to 3.10.0-rc7. Pull the drm-intel-testing branch from the drm tree.
+
 * Fri Jun 21 03:41:55 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0-rc5
 - Add BayTrail eMMC HW reset support plus a new PCI ID.
 
