@@ -1,3 +1,8 @@
+* Wed Jun 26 12:15:36 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0-rc7
+- Call 'setup-gummiboot-conf' script to update gummiboot configuration when a
+  new kernel is installed or removed. This only changing the packaging, not the
+  kernel functionality.
+
 * Tue Jun 25 11:36:37 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0-rc7
 - Fix the kernel build symlink, which was pointing to a non-existing directory.
 

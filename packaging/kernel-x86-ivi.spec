@@ -18,7 +18,7 @@ URL: http://www.kernel.org/
 Version: %{upstream_version}
 
 %define rc_num 7
-%define release_ver 1
+%define release_ver 2
 %define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
 %if 0%{?opensuse_bs}
 Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
@@ -47,6 +47,9 @@ Requires(post): /usr/bin/ln
 Requires(post): /usr/bin/sort
 Requires(postun): /usr/bin/ln
 Requires(postun): /usr/bin/sed
+
+Requires: setup-efi-ivi
+
 # We can't let RPM do the dependencies automatic because it'll then pick up
 # a correct but undesirable perl dependency from the module headers which
 # isn't required for the kernel proper to function
@@ -208,9 +211,14 @@ rm -rf %{buildroot}
 ###
 
 %post
-# If the /boot file-system is FAT, softlings are not supported, and we have to
-# create full copy instead
-ln -sf vmlinuz-%{kernel_full_version} /boot/vmlinuz > /dev/null 2>&1 ||:
+if [ -f "/boot/loader/loader.conf" ]; then
+	# EFI boot with gummiboot
+	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-gummiboot-conf
+else
+	# Legacy boot
+	last_installed_ver="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant} | sort -r | sed -e 's/[^:]*: \(.*\)/\1/g' | sed -n -e "1p")"
+	ln -sf vmlinuz-$last_installed_ver-%{variant} /boot/vmlinuz
+fi
 
 %post devel
 if [ -x /usr/sbin/hardlink ]; then
@@ -221,13 +229,18 @@ if [ -x /usr/sbin/hardlink ]; then
 fi
 
 %postun
-
-last_installed_ver="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant} | sort -r | sed -e 's/[^:]*: \(.*\)/\1/g' | sed -n -e "1p")"
-if [ -n "$last_installed_ver" ]; then
-	ln -sf vmlinuz-$last_installed_ver-%{variant} /boot/vmlinuz > /dev/null 2>&1 ||:
+if [ -f "/boot/loader/loader.conf" ]; then
+	# EFI boot with gummiboot
+	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-gummiboot-conf
 else
-	rm -rf /boot/vmlinuz
+	last_installed_ver="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant} | sort -r | sed -e 's/[^:]*: \(.*\)/\1/g' | sed -n -e "1p")"
+	if [ -n "$last_installed_ver" ]; then
+		ln -sf vmlinuz-$last_installed_ver-%{variant} /boot/vmlinuz
+	else
+		rm -rf /boot/vmlinuz
+	fi
 fi
+
 
 
 ###
