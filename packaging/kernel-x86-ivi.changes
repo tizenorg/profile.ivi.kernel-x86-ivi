@@ -1,3 +1,7 @@
+* Thu Jun 27 13:25:41 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0-rc7
+- Enable the SMSC75XX USB<->ethernet adapter driver, enable the FTDI_SIO USB->serial
+  adapter driver, massage the kernel configuration a little bit.
+
 * Wed Jun 26 12:15:36 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0-rc7
 - Call 'setup-gummiboot-conf' script to update gummiboot configuration when a
   new kernel is installed or removed. This only changing the packaging, not the
