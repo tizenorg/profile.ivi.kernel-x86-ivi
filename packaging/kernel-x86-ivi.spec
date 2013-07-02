@@ -18,7 +18,7 @@ URL: http://www.kernel.org/
 Version: %{upstream_version}
 
 #%define rc_num 7
-%define release_ver 0
+%define release_ver 1
 %define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
 %if 0%{?opensuse_bs}
 Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
@@ -184,7 +184,7 @@ find %{buildroot}/lib/modules/%{kernel_full_version} -name "*.ko" -type f | xarg
 install -d %{buildroot}/usr/src/kernels
 mv %{buildroot}/lib/modules/%{kernel_full_version}/build %{buildroot}/usr/src/kernels/%{kernel_full_version}
 
-ln -sf usr/src/kernels/%{kernel_full_version} %{buildroot}/lib/modules/%{kernel_full_version}/build
+ln -sf /usr/src/kernels/%{kernel_full_version} %{buildroot}/lib/modules/%{kernel_full_version}/build
 
 # Install perf
 install -d %{buildroot}
