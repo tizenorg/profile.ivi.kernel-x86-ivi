@@ -1,4 +1,8 @@
-* Tue Jul  2 13:15:57 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0-rc7
+* Tue Jul  2 14:10:02 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0
+- Provide the 'include/config' files in the 'kernel-x86-ivi-devel.rpm' package because
+  out-of-tree modules require it for compilation.
+
+* Tue Jul  2 13:15:57 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0
 - Fix the kernel build symlink again, because it was lacking the leading "/".
 
 * Mon Jul  1 07:51:43 EEST 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0

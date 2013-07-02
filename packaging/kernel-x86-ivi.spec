@@ -18,7 +18,7 @@ URL: http://www.kernel.org/
 Version: %{upstream_version}
 
 #%define rc_num 7
-%define release_ver 1
+%define release_ver 2
 %define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
 %if 0%{?opensuse_bs}
 Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
@@ -171,8 +171,6 @@ cp -a --parents %{kernel_arch_subdir}/include %{buildroot}/lib/modules/%{kernel_
 # Copy include files
 mkdir -p %{buildroot}/lib/modules/%{kernel_full_version}/build/include
 find include/ -mindepth 1 -maxdepth 1 -type d | xargs -I{} cp -a {} %{buildroot}/lib/modules/%{kernel_full_version}/build/include
-# However, the entire 'include/config' directory is not needed
-rm -rf %{buildroot}/lib/modules/%{kernel_full_version}/build/include/config
 
 # Save the vmlinux file for kernel debugging into the devel package
 cp vmlinux %{buildroot}/lib/modules/%{kernel_full_version}
