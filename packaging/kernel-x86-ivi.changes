@@ -1,3 +1,7 @@
+* Thu Jul  4 06:15:45 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0
+- Enable the Ensoniq ENS1371 driver, which is convenient to have in VMWare
+  environement since VMWare emulates this audio card.
+
 * Tue Jul  2 14:34:25 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0
 - Actually upgrade for kernel release version 3.10.0. The previous upgrade had an issuee
   and the kernel actually stayed to be 3.10.0-0.rc7.

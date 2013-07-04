@@ -18,7 +18,7 @@ URL: http://www.kernel.org/
 Version: %{upstream_version}
 
 # (percent)define rc_num 7
-%define release_ver 3
+%define release_ver 4
 %define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
 %if 0%{?opensuse_bs}
 Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
