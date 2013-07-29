@@ -914,9 +914,6 @@ intel_tv_compute_config(struct intel_encoder *encoder,
 	if (!tv_mode)
 		return false;
 
-	if (intel_encoder_check_is_cloned(&intel_tv->base))
-		return false;
-
 	pipe_config->adjusted_mode.clock = tv_mode->clock;
 	DRM_DEBUG_KMS("forcing bpc to 8 for TV\n");
 	pipe_config->pipe_bpp = 8*3;
@@ -1308,6 +1305,10 @@ intel_tv_detect(struct drm_connector *connector, bool force)
 	struct intel_tv *intel_tv = intel_attached_tv(connector);
 	int type;
 
+	DRM_DEBUG_KMS("[CONNECTOR:%d:%s] force=%d\n",
+		      connector->base.id, drm_get_connector_name(connector),
+		      force);
+
 	mode = reported_modes[0];
 
 	if (force) {
@@ -1521,12 +1522,12 @@ static int tv_is_present_in_vbt(struct drm_device *dev)
 	struct child_device_config *p_child;
 	int i, ret;
 
-	if (!dev_priv->child_dev_num)
+	if (!dev_priv->vbt.child_dev_num)
 		return 1;
 
 	ret = 0;
-	for (i = 0; i < dev_priv->child_dev_num; i++) {
-		p_child = dev_priv->child_dev + i;
+	for (i = 0; i < dev_priv->vbt.child_dev_num; i++) {
+		p_child = dev_priv->vbt.child_dev + i;
 		/*
 		 * If the device type is not TV, continue.
 		 */
@@ -1564,7 +1565,7 @@ intel_tv_init(struct drm_device *dev)
 		return;
 	}
 	/* Even if we have an encoder we may not have a connector */
-	if (!dev_priv->int_tv_support)
+	if (!dev_priv->vbt.int_tv_support)
 		return;
 
 	/*
