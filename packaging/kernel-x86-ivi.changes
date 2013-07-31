@@ -1,3 +1,6 @@
+* Thu Aug  1 09:22:34 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.4
+- Upgrade to stable version 3.10.4.
+
 * Thu Aug  1 09:19:16 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0
 - Fix a USB-related regression - USB hubs were not detected.
 
