@@ -12,8 +12,8 @@
 
 Name: kernel-%{variant}
 Summary: The Linux kernel
-Group: System Environment/Kernel
-License: GPLv2
+Group: System/Kernel
+License: GPL-2.0
 URL: http://www.kernel.org/
 Version: %{upstream_version}
 
@@ -196,15 +196,6 @@ rm %{buildroot}/etc/bash_completion.d/perf
 
 
 ###
-### CLEAN
-###
-
-%clean
-rm -rf %{buildroot}
-
-
-
-###
 ### SCRIPTS
 ###
 
@@ -245,7 +236,7 @@ fi
 ### FILES
 ###
 %files
-%defattr(-,root,root)
+%license COPYING
 /boot/vmlinuz-%{kernel_full_version}
 /boot/System.map-%{kernel_full_version}
 /boot/config-%{kernel_full_version}
@@ -259,11 +250,12 @@ fi
 
 
 %files devel
-%defattr(-,root,root)
+%license COPYING
 %verify(not mtime) /usr/src/kernels/%{kernel_full_version}
 /lib/modules/%{kernel_full_version}/vmlinux
 
 
 %files -n perf
+%license COPYING
 /usr/bin/perf
 /usr/libexec/perf-core
