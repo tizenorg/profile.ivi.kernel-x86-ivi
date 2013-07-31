@@ -1,3 +1,6 @@
+* Wed Jul 31 11:49:48 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0
+- Disable USB gadget mode support.
+
 * Tue Jul 30 13:09:47 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0
 - Enable USB OTG support.
 
