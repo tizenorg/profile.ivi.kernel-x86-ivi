@@ -1,3 +1,6 @@
+* Wed Jul 31 17:41:12 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0
+- Disable a couple of useless gfx features.
+
 * Wed Jul 31 11:49:48 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0
 - Disable USB gadget mode support.
 
