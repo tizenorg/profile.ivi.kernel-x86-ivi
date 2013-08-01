@@ -1,3 +1,6 @@
+* Thu Aug  1 09:19:16 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0
+- Fix a USB-related regression - USB hubs were not detected.
+
 * Wed Jul 31 17:41:12 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.0
 - Disable a couple of useless gfx features.
 
