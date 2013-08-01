@@ -232,18 +232,6 @@ config GPIO_TS5500
 	  blocks of the TS-5500: DIO1, DIO2 and the LCD port, and the TS-5600
 	  LCD port.
 
-config GPIO_BAYTRAIL
-	bool "Intel Baytrail GPIO support"
-	depends on ACPI && X86
-	select IRQ_DOMAIN
-	help
-	  driver for memory mapped GPIO functionality on Intel Baytrail
-	  platforms. Supports 3 banks with 102, 28 and 43 gpios.
-	  Most pins are usually muxed to some other functionality by firmware,
-	  so only a small amount is available for gpio use.
-
-	  Requires ACPI device enumeration code to set up a platform device.
-
 config GPIO_XILINX
 	bool "Xilinx GPIO support"
 	depends on PPC_OF || MICROBLAZE
