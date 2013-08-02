@@ -1,3 +1,7 @@
+* Fri Aug  2 11:09:22 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.4
+- Enable several networking features which are required for WiFi tethering with
+  connman to work. Should fix TIVI-1449, but I did not verify this.
+
 * Thu Aug  1 09:22:34 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.4
 - Upgrade to stable version 3.10.4.
 

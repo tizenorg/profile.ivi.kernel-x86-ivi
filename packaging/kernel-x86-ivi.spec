@@ -26,7 +26,7 @@ Version: %{upstream_version}
 #%else
 #Release: %{rc_str}.%{release_ver}.0.0
 #%endif
-Release: 0
+Release: 2
 
 BuildRequires: module-init-tools
 BuildRequires: findutils
