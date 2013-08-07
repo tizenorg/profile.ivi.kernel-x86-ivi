@@ -1,4 +1,8 @@
 * Tue Aug  6 03:18:36 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.4
+- Enable the efivars file-system support in order to be able to access the EFI
+  variables from user-space. This time should really fix TIVI-1521.
+
+* Tue Aug  6 03:18:36 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.4
 - Make EFI variables support to be compiled-in, rather than a module, fixes
   TIVI-1521.
 
