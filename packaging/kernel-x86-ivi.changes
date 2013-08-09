@@ -1,3 +1,8 @@
+* Fri Aug  9 13:56:47 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.4
+- Make SDHC controller drivers to be compiled-in in order to let people boot
+  the system off eMMC.
+- Replace the old GPIO driver with the upstream version of it.
+
 * Tue Aug  6 03:18:36 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.4
 - Enable the efivars file-system support in order to be able to access the EFI
   variables from user-space. This time should really fix TIVI-1521.
