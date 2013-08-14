@@ -1,3 +1,6 @@
+* Wed Aug 14 14:15:25 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.4
+- Disable OTG support, addresses TIVI-1138.
+
 * Fri Aug  9 13:56:47 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.10.4
 - Make SDHC controller drivers to be compiled-in in order to let people boot
   the system off eMMC.
