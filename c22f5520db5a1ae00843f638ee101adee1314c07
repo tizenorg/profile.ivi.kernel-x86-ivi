@@ -1,0 +1,8 @@
+Code-Review+2: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Verified+1: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Verified+1: Aiaiai <aiaiai@intel.com>
+Submitted-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Submitted-at: Fri, 16 Aug 2013 05:51:55 -0700
+Reviewed-on: https://review.tizen.org/gerrit/8334
+Project: profile/ivi/kernel-x86-ivi
+Branch: refs/heads/tizen
