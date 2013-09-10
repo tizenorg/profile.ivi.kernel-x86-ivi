@@ -21,10 +21,10 @@ Version: %{upstream_version}
 #%#define rc_num 6
 %define release_ver 0
 %define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
-%if 0%{?opensuse_bs}
-Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
-%else
+%if ! 0%{?opensuse_bs}
 Release: %{rc_str}.%{release_ver}.0.0
+%else
+Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
 %endif
 
 BuildRequires: module-init-tools
