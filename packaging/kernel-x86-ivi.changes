@@ -1,8 +1,8 @@
-* Mon Aug 19 13:03:36 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.0
+* Mon Sep 9 12:00:02 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.0
 - Pick up Bluetooth Wideband speech support patches from the linux-next tree,
   fixes TIVI-1203.
 
-* Mon Aug 19 13:03:36 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.0
+* Mon Sep 9 12:00:00 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.0
 - Upgrade to version 3.11.0.
 
 * Mon Aug 19 13:03:36 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.0-rc6
