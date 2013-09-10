@@ -49,8 +49,6 @@ Requires(post): /usr/bin/sort
 Requires(postun): /usr/bin/ln
 Requires(postun): /usr/bin/sed
 
-Requires: setup-efi-ivi
-
 # We can't let RPM do the dependencies automatic because it'll then pick up
 # a correct but undesirable perl dependency from the module headers which
 # isn't required for the kernel proper to function
