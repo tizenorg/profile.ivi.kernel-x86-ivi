@@ -208,6 +208,15 @@ else
 	# Legacy boot
 	last_installed_ver="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant} | sort -r | sed -e 's/[^:]*: \(.*\)/\1/g' | sed -n -e "1p")"
 	ln -sf vmlinuz-$last_installed_ver-%{variant} /boot/vmlinuz
+
+	if [ -z "$last_installed_ver" ]; then
+		# Something went wrong, print some diagnostics
+		printf "%s\n" "Error: cannot find kernel version" 1>&2
+		printf "%s\n" "The command was: rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant} | sort -r | sed -e 's/[^:]*: \(.*\)/\1/g' | sed -n -e \"1p\"" 1>&2
+		printf "%s\n" "Output of the \"rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant}\" is:" 1>&2
+		result="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant})"
+		printf "%s\n" "$result" 1>&2
+	fi
 fi
 
 %post devel
