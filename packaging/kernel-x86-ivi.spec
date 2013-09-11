@@ -46,8 +46,10 @@ Provides: kernel = %{version}-%{release}
 Provides: kernel-uname-r = %{kernel_full_version}
 Requires(post): /usr/bin/ln
 Requires(post): /usr/bin/sort
+Requires(post): rpm
 Requires(postun): /usr/bin/ln
 Requires(postun): /usr/bin/sed
+Requires(postun): rpm
 
 # We can't let RPM do the dependencies automatic because it'll then pick up
 # a correct but undesirable perl dependency from the module headers which
