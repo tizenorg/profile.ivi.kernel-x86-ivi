@@ -1,3 +1,7 @@
+* Thu Sep 12 13:09:49 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.0
+- Add a temporary workaround for the Intel i210 NVM error problem that we see
+  on some of our devices.
+
 * Wed Sep 11 07:08:41 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.0
 - Add a dependency on the 'rpm' tool, which fixes TIVI-1735. Also remove the
   'setup-efi-ivi' dependency.
