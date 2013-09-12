@@ -2169,7 +2169,7 @@ static int igb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	/* make sure the NVM is good , i211 parts have special NVM that
 	 * doesn't contain a checksum
 	 */
-	if (hw->mac.type != e1000_i211) {
+	if (hw->mac.type != e1000_i211 && hw->mac.type != e1000_i210) {
 		if (hw->nvm.ops.validate(hw) < 0) {
 			dev_err(&pdev->dev, "The NVM Checksum Is Not Valid\n");
 			err = -EIO;
