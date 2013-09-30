@@ -1,3 +1,6 @@
+* Mon Sep 30 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> v3.11.2
+- Upgrade to version 3.11.2.
+
 * Mon Sep 30 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.0
 - Turn many drivers to be modules, rather than compiled-in. We do not need
   these drivers to boot to UI.
