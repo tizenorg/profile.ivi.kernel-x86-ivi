@@ -1,3 +1,7 @@
+* Mon Sep 30 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.0
+- Turn many drivers to be modules, rather than compiled-in. We do not need
+  these drivers to boot to UI.
+
 * Thu Sep 12 13:09:49 UTC 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.0
 - Add a temporary workaround for the Intel i210 NVM error problem that we see
   on some of our devices.
