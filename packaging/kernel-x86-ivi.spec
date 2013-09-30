@@ -3,7 +3,7 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define upstream_version 3.11.0
+%define upstream_version 3.11.2
 %define variant x86-ivi
 %define kernel_version %{version}-%{release}
 %define kernel_full_version %{version}-%{release}-%{variant}
@@ -19,13 +19,14 @@ Version: %{upstream_version}
 
 # The below is used when we are on an -rc version
 #%#define rc_num 6
-%define release_ver 0
-%define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
-%if ! 0%{?opensuse_bs}
-Release: %{rc_str}.%{release_ver}.0.0
-%else
-Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
-%endif
+#%#define release_ver 0
+#%#define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
+#%if ! 0%{?opensuse_bs}
+#Release: %{rc_str}.%{release_ver}.0.0
+#%else
+#Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
+#%endif
+Release: 0
 
 BuildRequires: module-init-tools
 BuildRequires: findutils
