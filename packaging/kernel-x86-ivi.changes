@@ -1,3 +1,8 @@
+* Mon Oct 07 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.4
+- Upgrade to version 3.11.4.
+- Back-port an upstrem kernel patch which fixes an OOPs when the mmc module is
+  being unloaded. There is not tizen.org JIRA ticket for this one.
+
 * Thu Oct 03 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.3
 - Back port a patch from the drm-intel tree that enables the second HDMI port
   on BayTrail boards.
