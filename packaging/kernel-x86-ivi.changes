@@ -1,3 +1,7 @@
+* Wed Oct 09 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.4
+- Disable Serial I/O an all the related drivers (AT and PS/2 keyboard, serial
+  mouse, etc). This improves boot speed.
+
 * Mon Oct 07 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.4
 - Upgrade to version 3.11.4.
 - Back-port an upstrem kernel patch which fixes an OOPs when the mmc module is
