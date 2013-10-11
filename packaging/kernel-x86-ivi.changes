@@ -1,3 +1,8 @@
+* Fri Oct 11 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.4
+- Revert the patch which enables the second HDMI port for now. It causes
+  regressions in user-space components. This is because the side-effect of this
+  patch is that HDMI-1 becomes HDMI-2.
+
 * Wed Oct 09 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.4
 - Disable Serial I/O an all the related drivers (AT and PS/2 keyboard, serial
   mouse, etc). This improves boot speed.
