@@ -1,3 +1,6 @@
+* Thu Oct 17 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.5
+- Upgrade to version 3.11.5.
+
 * Thu Oct 17 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.4
 - Revise ivi_defconfig and make many of the compiled-in drivers to be loadable
   modules. This is mostly for the sake of reaching the init proces as quickly

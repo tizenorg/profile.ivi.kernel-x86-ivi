@@ -3,7 +3,7 @@
 # from MeeGo/Moblin/Fedora
 #
 
-%define upstream_version 3.11.4
+%define upstream_version 3.11.5
 %define variant x86-ivi
 %define kernel_version %{version}-%{release}
 %define kernel_full_version %{version}-%{release}-%{variant}
@@ -26,7 +26,7 @@ Version: %{upstream_version}
 #%else
 #Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
 #%endif
-Release: 8
+Release: 0
 
 BuildRequires: module-init-tools
 BuildRequires: findutils
