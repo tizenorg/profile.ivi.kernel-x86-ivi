@@ -1,3 +1,8 @@
+* Thu Oct 17 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.4
+- Revise ivi_defconfig and make many of the compiled-in drivers to be loadable
+  modules. This is mostly for the sake of reaching the init proces as quickly
+  as possible.
+
 * Fri Oct 11 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.4
 - Revert the patch which enables the second HDMI port for now. It causes
   regressions in user-space components. This is because the side-effect of this
