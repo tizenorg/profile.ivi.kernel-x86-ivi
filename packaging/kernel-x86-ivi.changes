@@ -1,4 +1,8 @@
-* Tue Oct 29 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> v3.11.6
+* Thu Oct 31 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.6
+- Enable legacy AT keyboard and PS2 mouse drivers as modules - these are needed
+  for VMWare. This change is required for fixing TIVI-2051.
+
+* Tue Oct 29 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.6
 - Upgrade to version 3.11.6.
 
 * Thu Oct 17 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.5
