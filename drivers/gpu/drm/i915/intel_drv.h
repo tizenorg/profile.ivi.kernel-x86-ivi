@@ -113,6 +113,8 @@ struct intel_fbdev {
 	struct intel_framebuffer ifb;
 	struct list_head fbdev_list;
 	struct drm_display_mode *our_mode;
+	bool stolen;
+	int preferred_bpp;
 };
 
 struct intel_encoder {
@@ -331,6 +333,7 @@ struct intel_crtc {
 	enum pipe pipe;
 	enum plane plane;
 	u8 lut_r[256], lut_g[256], lut_b[256];
+	bool mode_valid;
 	/*
 	 * Whether the crtc and the connected output pipeline is active. Implies
 	 * that crtc->enabled is set, i.e. the current mode configuration has
@@ -664,6 +667,7 @@ int intel_framebuffer_init(struct drm_device *dev,
 			   struct intel_framebuffer *ifb,
 			   struct drm_mode_fb_cmd2 *mode_cmd,
 			   struct drm_i915_gem_object *obj);
+void intel_fbdev_init_bios(struct drm_device *dev);
 void intel_framebuffer_fini(struct intel_framebuffer *fb);
 void intel_prepare_page_flip(struct drm_device *dev, int plane);
 void intel_finish_page_flip(struct drm_device *dev, int pipe);

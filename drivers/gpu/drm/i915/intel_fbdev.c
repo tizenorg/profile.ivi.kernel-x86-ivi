@@ -170,9 +170,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		      fb->width, fb->height,
 		      i915_gem_obj_ggtt_offset(obj), obj);
 
-
 	mutex_unlock(&dev->struct_mutex);
-	vga_switcheroo_client_fb_set(dev->pdev, info);
 	return 0;
 
 out_unpin:
@@ -205,6 +203,69 @@ static void intel_crtc_fb_gamma_get(struct drm_crtc *crtc, u16 *red, u16 *green,
 	*blue = intel_crtc->lut_b[regno] << 8;
 }
 
+static struct drm_fb_helper_crtc *
+intel_fb_helper_crtc(struct drm_fb_helper *fb_helper, struct drm_crtc *crtc)
+{
+	int i;
+
+	for (i = 0; i < fb_helper->crtc_count; i++)
+		if (fb_helper->crtc_info[i].mode_set.crtc == crtc)
+			return &fb_helper->crtc_info[i];
+
+	return NULL;
+}
+
+static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
+				    struct drm_fb_helper_crtc **crtcs,
+				    struct drm_display_mode **modes,
+				    bool *enabled, int width, int height)
+{
+	int i;
+
+	for (i = 0; i < fb_helper->connector_count; i++) {
+		struct drm_connector *connector;
+		struct drm_encoder *encoder;
+
+		connector = fb_helper->connector_info[i]->connector;
+		if (!enabled[i]) {
+			DRM_DEBUG_KMS("connector %d not enabled, skipping\n",
+				      connector->base.id);
+			continue;
+		}
+
+		encoder = connector->encoder;
+		if (!encoder || !encoder->crtc) {
+			DRM_DEBUG_KMS("connector %d has no encoder or crtc, skipping\n",
+				      connector->base.id);
+			continue;
+		}
+
+		if (WARN_ON(!encoder->crtc->enabled)) {
+			DRM_DEBUG_KMS("connector %s on crtc %d has inconsistent state, aborting\n",
+				      drm_get_connector_name(connector),
+				      encoder->crtc->base.id);
+			return false;
+		}
+
+		if (!to_intel_crtc(encoder->crtc)->mode_valid) {
+			DRM_DEBUG_KMS("connector %s on crtc %d has an invalid mode, aborting\n",
+				      drm_get_connector_name(connector),
+				      encoder->crtc->base.id);
+			return false;
+		}
+
+		modes[i] = &encoder->crtc->mode;
+		crtcs[i] = intel_fb_helper_crtc(fb_helper, encoder->crtc);
+
+		DRM_DEBUG_KMS("connector %s on crtc %d: %s\n",
+			      drm_get_connector_name(connector),
+			      encoder->crtc->base.id,
+			      modes[i]->name);
+	}
+
+	return true;
+}
+
 static struct drm_fb_helper_funcs intel_fb_helper_funcs = {
 	.gamma_set = intel_crtc_fb_gamma_set,
 	.gamma_get = intel_crtc_fb_gamma_get,
@@ -219,8 +280,7 @@ static void intel_fbdev_destroy(struct drm_device *dev,
 
 		unregister_framebuffer(info);
 		iounmap(info->screen_base);
-		if (info->cmap.len)
-			fb_dealloc_cmap(&info->cmap);
+		fb_dealloc_cmap(&info->cmap);
 
 		framebuffer_release(info);
 	}
@@ -231,23 +291,236 @@ static void intel_fbdev_destroy(struct drm_device *dev,
 	intel_framebuffer_fini(&ifbdev->ifb);
 }
 
+static bool pipe_enabled(struct drm_i915_private *dev_priv, enum pipe pipe)
+{
+	enum transcoder cpu_transcoder =
+		intel_pipe_to_cpu_transcoder(dev_priv, pipe);
+	return !!(I915_READ(PIPECONF(cpu_transcoder)) & PIPECONF_ENABLE);
+}
+
+static u32
+intel_framebuffer_pitch_for_width(int width, int bpp)
+{
+	u32 pitch = DIV_ROUND_UP(width * bpp, 8);
+	return ALIGN(pitch, 64);
+}
+
+/*
+ * Try to read the BIOS display configuration and use it for the initial
+ * fb configuration.
+ *
+ * The BIOS or boot loader will generally create an initial display
+ * configuration for us that includes some set of active pipes and displays.
+ * This routine tries to figure out which pipes are active, what resolutions
+ * are being displayed, and then allocates a framebuffer and initial fb
+ * config based on that data.
+ *
+ * If the BIOS or boot loader leaves the display in VGA mode, there's not
+ * much we can do; switching out of that mode involves allocating a new,
+ * high res buffer, and also recalculating bandwidth requirements for the
+ * new bpp configuration.
+ *
+ * However, if we're loaded into an existing, high res mode, we should
+ * be able to allocate a buffer big enough to handle the largest active
+ * mode, create a mode_set for it, and pass it to the fb helper to create
+ * the configuration.
+ */
+void intel_fbdev_init_bios(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_fbdev *ifbdev;
+	struct drm_crtc *crtc;
+	struct drm_mode_fb_cmd2 mode_cmd = { 0 };
+	struct drm_i915_gem_object *obj;
+	u32 obj_offset = 0;
+	int mode_bpp = 0;
+	u32 active = 0;
+
+	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
+		struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
+		int pipe = intel_crtc->pipe, plane = intel_crtc->plane;
+		u32 val, bpp, offset, format;
+		int pitch, width, height;
+
+		if (!pipe_enabled(dev_priv, pipe)) {
+			DRM_DEBUG_KMS("pipe %c not active, skipping\n",
+				      pipe_name(pipe));
+			continue;
+		}
+
+		val = I915_READ(DSPCNTR(plane));
+
+		if (INTEL_INFO(dev)->gen >= 4) {
+			if (val & DISPPLANE_TILED) {
+				DRM_DEBUG_KMS("tiled BIOS fb?\n");
+				continue; /* unexpected! */
+			}
+		}
+
+		switch (val & DISPPLANE_PIXFORMAT_MASK) {
+		case DISPPLANE_YUV422:
+		default:
+			DRM_DEBUG_KMS("pipe %c unsupported pixel format %x, skipping\n",
+				      pipe_name(pipe), (val & DISPPLANE_PIXFORMAT_MASK) >> 26);
+			continue;
+		case DISPPLANE_8BPP:
+			format = DRM_FORMAT_C8;
+			bpp = 8;
+			break;
+		case DISPPLANE_BGRX555:
+			format = DRM_FORMAT_XRGB1555;
+			bpp = 16;
+			break;
+		case DISPPLANE_BGRX565:
+			format = DRM_FORMAT_RGB565;
+			bpp = 16;
+			break;
+		case DISPPLANE_BGRX888:
+			format = DRM_FORMAT_XRGB8888;
+			bpp = 32;
+			break;
+		}
+
+		if (mode_cmd.pixel_format == 0) {
+			mode_bpp = bpp;
+			mode_cmd.pixel_format = format;
+		}
+
+		if (mode_cmd.pixel_format != format) {
+			DRM_DEBUG_KMS("pipe %c has format/bpp (%d, %d) mismatch: skipping\n",
+				      pipe_name(pipe), format, bpp);
+			continue;
+		}
+
+		if (INTEL_INFO(dev)->gen >= 4) {
+			if (I915_READ(DSPTILEOFF(plane))) {
+				DRM_DEBUG_KMS("pipe %c is offset: skipping\n",
+					      pipe_name(pipe));
+				continue;
+			}
+
+			offset = I915_READ(DSPSURF(plane)) & 0xfffff000;
+		} else {
+			offset = I915_READ(DSPADDR(plane));
+		}
+		if (!obj_offset)
+			obj_offset = offset;
+
+		if (offset != obj_offset) {
+			DRM_DEBUG_KMS("multiple pipe setup not in clone mode, skipping\n");
+			continue;
+		}
+
+		val = I915_READ(PIPESRC(pipe));
+		width = ((val >> 16) & 0xfff) + 1;
+		height = ((val >> 0) & 0xfff) + 1;
+
+		/* Adjust fitted modes */
+		val = I915_READ(HTOTAL(pipe));
+		if (((val & 0xffff) + 1) != width) {
+			DRM_DEBUG_DRIVER("BIOS fb not native width (%d vs %d), overriding\n", width, (val & 0xffff) + 1);
+			width = (val & 0xffff) + 1;
+		}
+		val = I915_READ(VTOTAL(pipe));
+		if (((val & 0xffff) + 1) != height) {
+			DRM_DEBUG_DRIVER("BIOS fb not native height (%d vs %d), overriding\n", height, (val & 0xffff) + 1);
+			height = (val & 0xffff) + 1;
+		}
+
+		DRM_DEBUG_KMS("Found active pipe [%d/%d]: size=%dx%d@%d, offset=%x\n",
+			      pipe, plane, width, height, bpp, offset);
+
+		if (width > mode_cmd.width)
+			mode_cmd.width = width;
+
+		if (height > mode_cmd.height)
+			mode_cmd.height = height;
+
+		pitch = intel_framebuffer_pitch_for_width(width, bpp);
+		if (pitch > mode_cmd.pitches[0])
+			mode_cmd.pitches[0] = pitch;
+
+		active |= 1 << pipe;
+	}
+
+	if (active == 0) {
+		DRM_DEBUG_KMS("no active pipes found, not using BIOS config\n");
+		return;
+	}
+
+	ifbdev = kzalloc(sizeof(struct intel_fbdev), GFP_KERNEL);
+	if (ifbdev == NULL) {
+		DRM_DEBUG_KMS("failed to alloc intel fbdev\n");
+		return;
+	}
+
+	ifbdev->stolen = true;
+	ifbdev->preferred_bpp = mode_bpp;
+	ifbdev->helper.funcs = &intel_fb_helper_funcs;
+	ifbdev->helper.funcs->initial_config = intel_fb_initial_config;
+
+	/* assume a 1:1 linear mapping between stolen and GTT */
+	obj = i915_gem_object_create_stolen_for_preallocated(dev,
+							     obj_offset,
+							     obj_offset,
+							     ALIGN(mode_cmd.pitches[0] * mode_cmd.height, PAGE_SIZE));
+	if (obj == NULL) {
+		DRM_DEBUG_KMS("failed to create stolen fb\n");
+		goto out_free_ifbdev;
+	}
+
+	mutex_lock(&dev->struct_mutex);
+
+	if (intel_framebuffer_init(dev, &ifbdev->ifb, &mode_cmd, obj)) {
+		DRM_DEBUG_KMS("intel fb init failed\n");
+		goto out_unref_obj;
+	}
+
+	/* Assuming a single fb across all pipes here */
+	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
+		if ((active & (1 << to_intel_crtc(crtc)->pipe)) == 0)
+			continue;
+
+		crtc->fb = &ifbdev->ifb.base;
+	}
+
+	dev_priv->fbdev = ifbdev;
+
+	DRM_DEBUG_KMS("using BIOS fb for initial console\n");
+	mutex_unlock(&dev->struct_mutex);
+	return;
+
+out_unref_obj:
+	mutex_unlock(&dev->struct_mutex);
+	drm_gem_object_unreference_unlocked(&obj->base);
+out_free_ifbdev:
+	kfree(ifbdev);
+}
+
 int intel_fbdev_init(struct drm_device *dev)
 {
 	struct intel_fbdev *ifbdev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret;
 
-	ifbdev = kzalloc(sizeof(*ifbdev), GFP_KERNEL);
-	if (!ifbdev)
-		return -ENOMEM;
+	if ((ifbdev = dev_priv->fbdev) == NULL) {
+		ifbdev = kzalloc(sizeof(struct intel_fbdev), GFP_KERNEL);
+		if (ifbdev == NULL)
+			return -ENOMEM;
 
-	dev_priv->fbdev = ifbdev;
+		ifbdev->helper.funcs = &intel_fb_helper_funcs;
+		ifbdev->preferred_bpp = 32;
+
+		dev_priv->fbdev = ifbdev;
+	}
+
 	ifbdev->helper.funcs = &intel_fb_helper_funcs;
 
 	ret = drm_fb_helper_init(dev, &ifbdev->helper,
 				 INTEL_INFO(dev)->num_pipes,
 				 4);
 	if (ret) {
+		dev_priv->fbdev = NULL;
 		kfree(ifbdev);
 		return ret;
 	}
@@ -260,9 +533,10 @@ int intel_fbdev_init(struct drm_device *dev)
 void intel_fbdev_initial_config(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_fbdev *ifbdev = dev_priv->fbdev;
 
 	/* Due to peculiar init order wrt to hpd handling this is separate. */
-	drm_fb_helper_initial_config(&dev_priv->fbdev->helper, 32);
+	drm_fb_helper_initial_config(&ifbdev->helper, ifbdev->preferred_bpp);
 }
 
 void intel_fbdev_fini(struct drm_device *dev)
@@ -302,7 +576,8 @@ MODULE_LICENSE("GPL and additional rights");
 void intel_fbdev_output_poll_changed(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	drm_fb_helper_hotplug_event(&dev_priv->fbdev->helper);
+	if (dev_priv->fbdev)
+		drm_fb_helper_hotplug_event(&dev_priv->fbdev->helper);
 }
 
 void intel_fbdev_restore_mode(struct drm_device *dev)

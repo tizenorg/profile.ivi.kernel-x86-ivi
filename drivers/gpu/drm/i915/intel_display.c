@@ -10733,11 +10733,16 @@ static void intel_init_quirks(struct drm_device *dev)
 }
 
 /* Disable the VGA plane that we never use */
-static void i915_disable_vga(struct drm_device *dev)
+static bool i915_disable_vga(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	bool was_enabled;
 	u8 sr1;
 	u32 vga_reg = i915_vgacntrl_reg(dev);
+
+	was_enabled = !(I915_READ(vga_reg) & VGA_DISP_DISABLE);
+	DRM_DEBUG_KMS("VGA output is currently %s\n",
+		      was_enabled ? "enabled" : "disabled");
 
 	vga_get_uninterruptible(dev->pdev, VGA_RSRC_LEGACY_IO);
 	outb(SR01, VGA_SR_INDEX);
@@ -10748,6 +10753,8 @@ static void i915_disable_vga(struct drm_device *dev)
 
 	I915_WRITE(vga_reg, VGA_DISP_DISABLE);
 	POSTING_READ(vga_reg);
+
+	return was_enabled;
 }
 
 void intel_modeset_init_hw(struct drm_device *dev)
@@ -10775,7 +10782,8 @@ void intel_modeset_suspend_hw(struct drm_device *dev)
 	intel_suspend_hw(dev);
 }
 
-void intel_modeset_init(struct drm_device *dev)
+void intel_modeset_init(struct drm_device *dev,
+			bool *was_vga_enabled)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int i, j, ret;
@@ -10829,7 +10837,7 @@ void intel_modeset_init(struct drm_device *dev)
 	intel_shared_dpll_init(dev);
 
 	/* Just disable it once at startup */
-	i915_disable_vga(dev);
+	*was_vga_enabled = i915_disable_vga(dev);
 	intel_setup_outputs(dev);
 
 	/* Just in case the BIOS is doing something questionable. */
