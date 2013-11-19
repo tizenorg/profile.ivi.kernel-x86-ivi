@@ -1447,6 +1447,9 @@
 # define I965_FT_CLOCK_GATE_DISABLE		(1 << 1)
 # define I965_DM_CLOCK_GATE_DISABLE		(1 << 0)
 
+#define DPPSR_CGDIS_VLV                (dev_priv->info->display_mmio_offset + 0x6204)
+# define DPIOUNIT_PSR_CLOCK_GATING_DISABLE     (1 << 6)
+
 #define RENCLK_GATE_D2		0x6208
 #define VF_UNIT_CLOCK_GATE_DISABLE		(1 << 9)
 #define GS_UNIT_CLOCK_GATE_DISABLE		(1 << 7)

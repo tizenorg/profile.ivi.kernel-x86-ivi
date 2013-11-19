@@ -5430,6 +5430,11 @@ static void valleyview_init_clock_gating(struct drm_device *dev)
 
 	I915_WRITE(DSPCLK_GATE_D, VRHUNIT_CLOCK_GATE_DISABLE);
 
+	/* W/a to make VGA hotplug detection work. */
+	val = I915_READ(DPPSR_CGDIS_VLV);
+	val |= DPIOUNIT_PSR_CLOCK_GATING_DISABLE;
+	I915_WRITE(DPIOUNIT_PSR_CLOCK_GATING_DISABLE, val);
+
 	/* WaDisableEarlyCull:vlv */
 	I915_WRITE(_3D_CHICKEN3,
 		   _MASKED_BIT_ENABLE(_3D_CHICKEN_SF_DISABLE_OBJEND_CULL));
