@@ -1,3 +1,6 @@
+* Thu Nov 21 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.6
+- Add a missing smack patch from Casey Schaufler.
+
 * Tue Nov 19 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.11.6
 - Back-port a couple of SMACK patches from linux-next: add a "lock" access
   mode and improve ptrace access checks.

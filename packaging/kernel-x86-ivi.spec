@@ -26,7 +26,7 @@ Version: %{upstream_version}
 #%else
 #Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
 #%endif
-Release: 19
+Release: 20
 
 BuildRequires: module-init-tools
 BuildRequires: findutils
