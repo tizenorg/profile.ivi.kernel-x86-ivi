@@ -1,4 +1,7 @@
 * Fri Dec 06 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.12.3
+- Enable the PEAK USB CAN driver, fixes TIVI-1818.
+
+* Fri Dec 06 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.12.3
 - Upgrade to 3.12.3
 
 * Fri Nov 20 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.12.0
