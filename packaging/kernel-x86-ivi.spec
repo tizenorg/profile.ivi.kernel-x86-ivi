@@ -26,7 +26,7 @@ Version: %{upstream_version}
 #%else
 #Release: %{rc_str}.%{release_ver}.<CI_CNT>.<B_CNT>
 #%endif
-Release: 1
+Release: 2
 
 BuildRequires: module-init-tools
 BuildRequires: findutils
@@ -45,12 +45,17 @@ ExclusiveArch: %{ix86}
 
 Provides: kernel = %{version}-%{release}
 Provides: kernel-uname-r = %{kernel_full_version}
-Requires(post): /usr/bin/ln
-Requires(post): /usr/bin/sort
-Requires(post): rpm
-Requires(postun): /usr/bin/ln
-Requires(postun): /usr/bin/sed
-Requires(postun): rpm
+
+# We use 'setup-ivi-bootloader-conf' in post and postun, so ideally we need to
+# have the below here, but this causes gbs/obs build failures like this:
+#    "have choice for virtual-setup-ivi-bootloader needed by kernel-x86-ivi: setup-extlinux setup-gummiboot"
+# The reason is that it will try to install the kernel to the build root, and
+# fail with the above error. To fix it one would need to add 'setup-extlinux'
+# or 'setup-gummiboot' to 'review.tizen.org/gerrit/scm/meta/build-config'. But
+# it is probably not worth the trouble, so I commented out the below two lines.
+# -- Artem
+#Requires(post): virtual-setup-ivi-bootloader
+#Requires(postun): virtual-setup-ivi-bootloader
 
 # We can't let RPM do the dependencies automatic because it'll then pick up
 # a correct but undesirable perl dependency from the module headers which
@@ -202,7 +207,12 @@ rm %{buildroot}/etc/bash_completion.d/perf
 ###
 
 %post
-if [ -f "/boot/loader/loader.conf" ]; then
+if [ -x "/usr/sbin/setup-ivi-bootloader-conf" ]; then
+	/usr/sbin/setup-ivi-bootloader-conf add -f vmlinuz-%{kernel_full_version}
+	/usr/sbin/setup-ivi-bootloader-conf default -f vmlinuz-%{kernel_full_version}
+# The below stuff is preserved for the transition perion. It will be removed
+# soon.
+elif [ -f "/boot/loader/loader.conf" ]; then
 	# EFI boot with gummiboot
 	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-gummiboot-conf
 else
@@ -229,7 +239,9 @@ if [ -x /usr/sbin/hardlink ]; then
 fi
 
 %postun
-if [ -f "/boot/loader/loader.conf" ]; then
+if [ -x "/usr/sbin/setup-ivi-bootloader-conf" ]; then
+	/usr/sbin/setup-ivi-bootloader-conf remove -f vmlinuz-%{kernel_full_version}
+elif [ -f "/boot/loader/loader.conf" ]; then
 	# EFI boot with gummiboot
 	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-gummiboot-conf
 else
@@ -240,7 +252,6 @@ else
 		rm -rf /boot/vmlinuz
 	fi
 fi
-
 
 
 ###

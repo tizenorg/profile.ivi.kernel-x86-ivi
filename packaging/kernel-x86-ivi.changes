@@ -1,3 +1,7 @@
+* Mon Jan 13 2014 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.12.4
+- Start using the 'setup-ivi' project:
+  https://wiki.tizen.org/wiki/IVI/artem-setup-ivi
+
 * Thu Dec 19 2013 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.12.4
 - Enable the Wacom touchscreen driver as a module in order to enable people
   using Tizen IVI on the Lenovo X230 laptop (related to TIVI-2396).
