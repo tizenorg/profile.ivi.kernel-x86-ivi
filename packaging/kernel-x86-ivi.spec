@@ -207,27 +207,12 @@ rm %{buildroot}/etc/bash_completion.d/perf
 ###
 
 %post
-if [ -x "/usr/sbin/setup-ivi-bootloader-conf" ]; then
+# "/etc/installerfw-environment" does not exist in MIC environment, when it
+# builds the image. MIC will add boot-loader entries later using the
+# 'setup-ivi-boot' script.
+if [ -f "/etc/installerfw-environment" ]; then
 	/usr/sbin/setup-ivi-bootloader-conf add -f vmlinuz-%{kernel_full_version}
 	/usr/sbin/setup-ivi-bootloader-conf default -f vmlinuz-%{kernel_full_version}
-# The below stuff is preserved for the transition perion. It will be removed
-# soon.
-elif [ -f "/boot/loader/loader.conf" ]; then
-	# EFI boot with gummiboot
-	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-gummiboot-conf
-else
-	# Legacy boot
-	last_installed_ver="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant} | sort -r | sed -e 's/[^:]*: \(.*\)/\1/g' | sed -n -e "1p")"
-	ln -sf vmlinuz-$last_installed_ver-%{variant} /boot/vmlinuz
-
-	if [ -z "$last_installed_ver" ]; then
-		# Something went wrong, print some diagnostics
-		printf "%s\n" "Error: cannot find kernel version" 1>&2
-		printf "%s\n" "The command was: rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant} | sort -r | sed -e 's/[^:]*: \(.*\)/\1/g' | sed -n -e \"1p\"" 1>&2
-		printf "%s\n" "Output of the \"rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant}\" is:" 1>&2
-		result="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant})"
-		printf "%s\n" "$result" 1>&2
-	fi
 fi
 
 %post devel
@@ -239,18 +224,8 @@ if [ -x /usr/sbin/hardlink ]; then
 fi
 
 %postun
-if [ -x "/usr/sbin/setup-ivi-bootloader-conf" ]; then
+if [ -f "/etc/installerfw-environment" ]; then
 	/usr/sbin/setup-ivi-bootloader-conf remove -f vmlinuz-%{kernel_full_version}
-elif [ -f "/boot/loader/loader.conf" ]; then
-	# EFI boot with gummiboot
-	INSTALLERFW_MOUNT_PREFIX="/" /usr/sbin/setup-gummiboot-conf
-else
-	last_installed_ver="$(rpm -q --qf '%{INSTALLTIME}: %{VERSION}-%{RELEASE}\n' kernel-%{variant} | sort -r | sed -e 's/[^:]*: \(.*\)/\1/g' | sed -n -e "1p")"
-	if [ -n "$last_installed_ver" ]; then
-		ln -sf vmlinuz-$last_installed_ver-%{variant} /boot/vmlinuz
-	else
-		rm -rf /boot/vmlinuz
-	fi
 fi
 
 
