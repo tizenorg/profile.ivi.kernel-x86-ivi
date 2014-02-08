@@ -1,3 +1,6 @@
+* Mon Feb 07 2014 Jin Song <jin.kyu.song@linux.intel.com> 3.13.2
+- Upgrade to version 3.13.2.
+
 * Mon Jan 13 2014 Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.12.4
 - Start using the 'setup-ivi' project:
   https://wiki.tizen.org/wiki/IVI/artem-setup-ivi
