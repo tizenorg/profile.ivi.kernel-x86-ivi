@@ -257,4 +257,5 @@ fi
 %files -n perf
 %license COPYING
 /usr/bin/perf
+/usr/bin/trace
 /usr/libexec/perf-core
