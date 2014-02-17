@@ -53,6 +53,7 @@ struct msg_queue;
 struct xattr;
 struct xfrm_sec_ctx;
 struct mm_struct;
+struct kdbus_conn;
 
 /* Maximum number of letters for an LSM name string */
 #define SECURITY_NAME_MAX	10
@@ -1634,6 +1635,11 @@ struct security_operations {
 	int (*inode_setsecctx)(struct dentry *dentry, void *ctx, u32 ctxlen);
 	int (*inode_getsecctx)(struct inode *inode, void **ctx, u32 *ctxlen);
 
+	int (*kdbus_alloc_security)(struct kdbus_conn *conn);
+	void (*kdbus_free_security)(struct kdbus_conn *conn);
+	int (*kdbus_may_send)(struct kdbus_conn *src, struct kdbus_conn *dst);
+	int (*kdbus_may_recv)(struct kdbus_conn *src, struct kdbus_conn *dst);
+
 #ifdef CONFIG_SECURITY_NETWORK
 	int (*unix_stream_connect) (struct sock *sock, struct sock *other, struct sock *newsk);
 	int (*unix_may_send) (struct socket *sock, struct socket *other);
@@ -2611,6 +2617,11 @@ static inline int security_inode_getsecctx(struct inode *inode, void **ctx, u32 
 	return -EOPNOTSUPP;
 }
 #endif	/* CONFIG_SECURITY */
+
+int security_kdbus_alloc_security(struct kdbus_conn *conn);
+void security_kdbus_free_security(struct kdbus_conn *conn);
+int security_kdbus_may_send(struct kdbus_conn *src, struct kdbus_conn *dst);
+int security_kdbus_may_recv(struct kdbus_conn *src, struct kdbus_conn *dst);
 
 #ifdef CONFIG_SECURITY_NETWORK
 

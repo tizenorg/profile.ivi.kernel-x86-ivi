@@ -1101,6 +1101,30 @@ int security_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
 }
 EXPORT_SYMBOL(security_inode_getsecctx);
 
+int security_kdbus_alloc_security(struct kdbus_conn *conn)
+{
+	return security_ops->kdbus_alloc_security(conn);
+}
+EXPORT_SYMBOL(security_kdbus_alloc_security);
+
+void security_kdbus_free_security(struct kdbus_conn *conn)
+{
+	security_ops->kdbus_free_security(conn);
+}
+EXPORT_SYMBOL(security_kdbus_free_security);
+
+int security_kdbus_may_send(struct kdbus_conn *src, struct kdbus_conn *dst)
+{
+	return security_ops->kdbus_may_send(src, dst);
+}
+EXPORT_SYMBOL(security_kdbus_may_send);
+
+int security_kdbus_may_recv(struct kdbus_conn *src, struct kdbus_conn *dst)
+{
+	return security_ops->kdbus_may_recv(src, dst);
+}
+EXPORT_SYMBOL(security_kdbus_may_recv);
+
 #ifdef CONFIG_SECURITY_NETWORK
 
 int security_unix_stream_connect(struct sock *sock, struct sock *other, struct sock *newsk)
