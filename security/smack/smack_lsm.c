@@ -41,6 +41,7 @@
 #include <linux/msg.h>
 #include <linux/shm.h>
 #include <linux/binfmts.h>
+#include <linux/kdbus/connection.h>
 #include "smack.h"
 
 #define task_security(task)	(task_cred_xxx((task), security))
@@ -2955,6 +2956,82 @@ static int smack_setprocattr(struct task_struct *p, char *name,
 }
 
 /**
+ * smack_kdbus_alloc_security - Set the security blob for KDBus
+ * @conn: the connection
+ *
+ * Returns 0
+ */
+static int smack_kdbus_alloc_security(struct kdbus_conn *conn)
+{
+	struct smack_known *skp = smk_of_current();
+
+	conn->kdbus_security = skp;
+
+	return 0;
+}
+
+/**
+ * smack_kdbus_free_security - Clear the security blob for KDBus
+ * @conn: the connection
+ *
+ * Clears the blob pointer
+ */
+static void smack_kdbus_free_security(struct kdbus_conn *conn)
+{
+	conn->kdbus_security = NULL;
+}
+
+/**
+ * smack_kdbus_may_send - Smack access on KDBus
+ * @src: source kdbus connection
+ * @dst: destination kdbus connection
+ *
+ * Return 0 if a subject with the smack of sock could access
+ * an object with the smack of other, otherwise an error code
+ */
+static int smack_kdbus_may_send(struct kdbus_conn *src, struct kdbus_conn *dst)
+{
+	struct smk_audit_info ad;
+	struct smack_known *sskp = src->kdbus_security;
+	struct smack_known *dskp = dst->kdbus_security;
+
+	BUG_ON(sskp == NULL);
+	BUG_ON(dskp == NULL);
+
+	if (smack_privileged(CAP_MAC_OVERRIDE))
+		return 0;
+
+	smk_ad_init(&ad, __func__, LSM_AUDIT_DATA_NONE);
+
+	return smk_access(sskp, dskp->smk_known, MAY_WRITE, &ad);
+}
+
+/**
+ * smack_kdbus_may_recv - Smack access on KDBus
+ * @src: source kdbus connection
+ * @dst: destination kdbus connection
+ *
+ * Return 0 if a subject with the smack of sock could access
+ * an object with the smack of other, otherwise an error code
+ */
+static int smack_kdbus_may_recv(struct kdbus_conn *src, struct kdbus_conn *dst)
+{
+	struct smk_audit_info ad;
+	struct smack_known *sskp = src->kdbus_security;
+	struct smack_known *dskp = dst->kdbus_security;
+
+	BUG_ON(sskp == NULL);
+	BUG_ON(dskp == NULL);
+
+	if (smack_privileged(CAP_MAC_OVERRIDE))
+		return 0;
+
+	smk_ad_init(&ad, __func__, LSM_AUDIT_DATA_NONE);
+
+	return smk_access(dskp, sskp->smk_known, MAY_READ, &ad);
+}
+
+/**
  * smack_unix_stream_connect - Smack access on UDS
  * @sock: one sock
  * @other: the other sock
@@ -3836,6 +3913,11 @@ struct security_operations smack_ops = {
 
 	.getprocattr = 			smack_getprocattr,
 	.setprocattr = 			smack_setprocattr,
+
+	.kdbus_alloc_security =         smack_kdbus_alloc_security,
+	.kdbus_free_security =          smack_kdbus_free_security,
+	.kdbus_may_send =               smack_kdbus_may_send,
+	.kdbus_may_recv =               smack_kdbus_may_recv,
 
 	.unix_stream_connect = 		smack_unix_stream_connect,
 	.unix_may_send = 		smack_unix_may_send,
