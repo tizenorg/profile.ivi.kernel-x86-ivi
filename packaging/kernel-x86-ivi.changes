@@ -1,3 +1,10 @@
+* Mon Feb 18 2014 Jin Song <jin.kyu.song@linux.intel.com> 3.13.3
+- Upgrade to version 3.13.3.
+- TIVI-2676 : enable Fusion MTP device since Tizen IVI does not boot in VMware
+              Fusion
+- Back-port two NFC patches from sameo/nfc-next.git to enable NFC
+- Back-port DisplayPort fix
+
 * Mon Feb 07 2014 Jin Song <jin.kyu.song@linux.intel.com> 3.13.2
 - Upgrade to version 3.13.2.
 
