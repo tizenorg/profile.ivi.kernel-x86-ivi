@@ -2965,7 +2965,7 @@ static int smack_kdbus_alloc_security(struct kdbus_conn *conn)
 {
 	struct smack_known *skp = smk_of_current();
 
-	conn->kdbus_security = skp;
+	conn->security = skp;
 
 	return 0;
 }
@@ -2978,7 +2978,7 @@ static int smack_kdbus_alloc_security(struct kdbus_conn *conn)
  */
 static void smack_kdbus_free_security(struct kdbus_conn *conn)
 {
-	conn->kdbus_security = NULL;
+	conn->security = NULL;
 }
 
 /**
@@ -2992,8 +2992,8 @@ static void smack_kdbus_free_security(struct kdbus_conn *conn)
 static int smack_kdbus_may_send(struct kdbus_conn *src, struct kdbus_conn *dst)
 {
 	struct smk_audit_info ad;
-	struct smack_known *sskp = src->kdbus_security;
-	struct smack_known *dskp = dst->kdbus_security;
+	struct smack_known *sskp = src->security;
+	struct smack_known *dskp = dst->security;
 
 	BUG_ON(sskp == NULL);
 	BUG_ON(dskp == NULL);
@@ -3017,8 +3017,8 @@ static int smack_kdbus_may_send(struct kdbus_conn *src, struct kdbus_conn *dst)
 static int smack_kdbus_may_recv(struct kdbus_conn *src, struct kdbus_conn *dst)
 {
 	struct smk_audit_info ad;
-	struct smack_known *sskp = src->kdbus_security;
-	struct smack_known *dskp = dst->kdbus_security;
+	struct smack_known *sskp = src->security;
+	struct smack_known *dskp = dst->security;
 
 	BUG_ON(sskp == NULL);
 	BUG_ON(dskp == NULL);
