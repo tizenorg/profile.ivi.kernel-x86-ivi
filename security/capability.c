@@ -576,12 +576,12 @@ static void cap_kdbus_free_security(struct kdbus_conn *conn)
 {
 }
 
-static int cap_kdbus_may_send(struct kdbus_conn *src, struct kdbus_conn *dst)
+static int cap_kdbus_send(struct kdbus_conn *src, struct kdbus_conn *dst)
 {
 	return 0;
 }
 
-static int cap_kdbus_may_recv(struct kdbus_conn *src, struct kdbus_conn *dst)
+static int cap_kdbus_recv(struct kdbus_conn *src, struct kdbus_conn *dst)
 {
 	return 0;
 }
@@ -1084,8 +1084,8 @@ void __init security_fixup_ops(struct security_operations *ops)
 	set_to_cap_if_null(ops, inode_getsecctx);
 	set_to_cap_if_null(ops, kdbus_alloc_security);
 	set_to_cap_if_null(ops, kdbus_free_security);
-	set_to_cap_if_null(ops, kdbus_may_send);
-	set_to_cap_if_null(ops, kdbus_may_recv);
+	set_to_cap_if_null(ops, kdbus_send);
+	set_to_cap_if_null(ops, kdbus_recv);
 #ifdef CONFIG_SECURITY_NETWORK
 	set_to_cap_if_null(ops, unix_stream_connect);
 	set_to_cap_if_null(ops, unix_may_send);

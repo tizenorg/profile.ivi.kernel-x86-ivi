@@ -1114,17 +1114,17 @@ void security_kdbus_free_security(struct kdbus_conn *conn)
 }
 EXPORT_SYMBOL(security_kdbus_free_security);
 
-int security_kdbus_may_send(struct kdbus_conn *src, struct kdbus_conn *dst)
+int security_kdbus_send(struct kdbus_conn *src, struct kdbus_conn *dst)
 {
-	return security_ops->kdbus_may_send(src, dst);
+	return security_ops->kdbus_send(src, dst);
 }
-EXPORT_SYMBOL(security_kdbus_may_send);
+EXPORT_SYMBOL(security_kdbus_send);
 
-int security_kdbus_may_recv(struct kdbus_conn *src, struct kdbus_conn *dst)
+int security_kdbus_recv(struct kdbus_conn *src, struct kdbus_conn *dst)
 {
-	return security_ops->kdbus_may_recv(src, dst);
+	return security_ops->kdbus_recv(src, dst);
 }
-EXPORT_SYMBOL(security_kdbus_may_recv);
+EXPORT_SYMBOL(security_kdbus_recv);
 
 #ifdef CONFIG_SECURITY_NETWORK
 

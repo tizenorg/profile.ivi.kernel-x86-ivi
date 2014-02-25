@@ -2982,14 +2982,14 @@ static void smack_kdbus_free_security(struct kdbus_conn *conn)
 }
 
 /**
- * smack_kdbus_may_send - Smack access on KDBus
+ * smack_kdbus_send - Smack access on KDBus
  * @src: source kdbus connection
  * @dst: destination kdbus connection
  *
  * Return 0 if a subject with the smack of sock could access
  * an object with the smack of other, otherwise an error code
  */
-static int smack_kdbus_may_send(struct kdbus_conn *src, struct kdbus_conn *dst)
+static int smack_kdbus_send(struct kdbus_conn *src, struct kdbus_conn *dst)
 {
 	struct smk_audit_info ad;
 	struct smack_known *sskp = src->security;
@@ -3007,14 +3007,14 @@ static int smack_kdbus_may_send(struct kdbus_conn *src, struct kdbus_conn *dst)
 }
 
 /**
- * smack_kdbus_may_recv - Smack access on KDBus
+ * smack_kdbus_recv - Smack access on KDBus
  * @src: source kdbus connection
  * @dst: destination kdbus connection
  *
  * Return 0 if a subject with the smack of sock could access
  * an object with the smack of other, otherwise an error code
  */
-static int smack_kdbus_may_recv(struct kdbus_conn *src, struct kdbus_conn *dst)
+static int smack_kdbus_recv(struct kdbus_conn *src, struct kdbus_conn *dst)
 {
 	struct smk_audit_info ad;
 	struct smack_known *sskp = src->security;
@@ -3916,8 +3916,8 @@ struct security_operations smack_ops = {
 
 	.kdbus_alloc_security =         smack_kdbus_alloc_security,
 	.kdbus_free_security =          smack_kdbus_free_security,
-	.kdbus_may_send =               smack_kdbus_may_send,
-	.kdbus_may_recv =               smack_kdbus_may_recv,
+	.kdbus_send =                   smack_kdbus_send,
+	.kdbus_recv =                   smack_kdbus_recv,
 
 	.unix_stream_connect = 		smack_unix_stream_connect,
 	.unix_may_send = 		smack_unix_may_send,

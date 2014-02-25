@@ -1637,8 +1637,8 @@ struct security_operations {
 
 	int (*kdbus_alloc_security)(struct kdbus_conn *conn);
 	void (*kdbus_free_security)(struct kdbus_conn *conn);
-	int (*kdbus_may_send)(struct kdbus_conn *src, struct kdbus_conn *dst);
-	int (*kdbus_may_recv)(struct kdbus_conn *src, struct kdbus_conn *dst);
+	int (*kdbus_send)(struct kdbus_conn *src, struct kdbus_conn *dst);
+	int (*kdbus_recv)(struct kdbus_conn *src, struct kdbus_conn *dst);
 
 #ifdef CONFIG_SECURITY_NETWORK
 	int (*unix_stream_connect) (struct sock *sock, struct sock *other, struct sock *newsk);
@@ -2620,8 +2620,8 @@ static inline int security_inode_getsecctx(struct inode *inode, void **ctx, u32 
 
 int security_kdbus_alloc_security(struct kdbus_conn *conn);
 void security_kdbus_free_security(struct kdbus_conn *conn);
-int security_kdbus_may_send(struct kdbus_conn *src, struct kdbus_conn *dst);
-int security_kdbus_may_recv(struct kdbus_conn *src, struct kdbus_conn *dst);
+int security_kdbus_send(struct kdbus_conn *src, struct kdbus_conn *dst);
+int security_kdbus_recv(struct kdbus_conn *src, struct kdbus_conn *dst);
 
 #ifdef CONFIG_SECURITY_NETWORK
 
