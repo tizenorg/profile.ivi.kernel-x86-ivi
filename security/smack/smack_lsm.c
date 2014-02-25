@@ -2956,12 +2956,12 @@ static int smack_setprocattr(struct task_struct *p, char *name,
 }
 
 /**
- * smack_kdbus_alloc_security - Set the security blob for KDBus
+ * smack_kdbus_alloc - Set the security blob for KDBus
  * @conn: the connection
  *
  * Returns 0
  */
-static int smack_kdbus_alloc_security(struct kdbus_conn *conn)
+static int smack_kdbus_alloc(struct kdbus_conn *conn)
 {
 	struct smack_known *skp = smk_of_current();
 
@@ -2971,12 +2971,12 @@ static int smack_kdbus_alloc_security(struct kdbus_conn *conn)
 }
 
 /**
- * smack_kdbus_free_security - Clear the security blob for KDBus
+ * smack_kdbus_free - Clear the security blob for KDBus
  * @conn: the connection
  *
  * Clears the blob pointer
  */
-static void smack_kdbus_free_security(struct kdbus_conn *conn)
+static void smack_kdbus_free(struct kdbus_conn *conn)
 {
 	conn->security = NULL;
 }
@@ -3914,8 +3914,8 @@ struct security_operations smack_ops = {
 	.getprocattr = 			smack_getprocattr,
 	.setprocattr = 			smack_setprocattr,
 
-	.kdbus_alloc_security =         smack_kdbus_alloc_security,
-	.kdbus_free_security =          smack_kdbus_free_security,
+	.kdbus_alloc =                  smack_kdbus_alloc,
+	.kdbus_free =                   smack_kdbus_free,
 	.kdbus_send =                   smack_kdbus_send,
 	.kdbus_recv =                   smack_kdbus_recv,
 

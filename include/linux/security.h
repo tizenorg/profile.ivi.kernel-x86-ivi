@@ -1635,8 +1635,8 @@ struct security_operations {
 	int (*inode_setsecctx)(struct dentry *dentry, void *ctx, u32 ctxlen);
 	int (*inode_getsecctx)(struct inode *inode, void **ctx, u32 *ctxlen);
 
-	int (*kdbus_alloc_security)(struct kdbus_conn *conn);
-	void (*kdbus_free_security)(struct kdbus_conn *conn);
+	int (*kdbus_alloc)(struct kdbus_conn *conn);
+	void (*kdbus_free)(struct kdbus_conn *conn);
 	int (*kdbus_send)(struct kdbus_conn *src, struct kdbus_conn *dst);
 	int (*kdbus_recv)(struct kdbus_conn *src, struct kdbus_conn *dst);
 
@@ -2618,8 +2618,8 @@ static inline int security_inode_getsecctx(struct inode *inode, void **ctx, u32 
 }
 #endif	/* CONFIG_SECURITY */
 
-int security_kdbus_alloc_security(struct kdbus_conn *conn);
-void security_kdbus_free_security(struct kdbus_conn *conn);
+int security_kdbus_alloc(struct kdbus_conn *conn);
+void security_kdbus_free(struct kdbus_conn *conn);
 int security_kdbus_send(struct kdbus_conn *src, struct kdbus_conn *dst);
 int security_kdbus_recv(struct kdbus_conn *src, struct kdbus_conn *dst);
 

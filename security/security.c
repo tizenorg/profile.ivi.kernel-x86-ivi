@@ -1102,17 +1102,17 @@ int security_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
 }
 EXPORT_SYMBOL(security_inode_getsecctx);
 
-int security_kdbus_alloc_security(struct kdbus_conn *conn)
+int security_kdbus_alloc(struct kdbus_conn *conn)
 {
-	return security_ops->kdbus_alloc_security(conn);
+	return security_ops->kdbus_alloc(conn);
 }
-EXPORT_SYMBOL(security_kdbus_alloc_security);
+EXPORT_SYMBOL(security_kdbus_alloc);
 
-void security_kdbus_free_security(struct kdbus_conn *conn)
+void security_kdbus_free(struct kdbus_conn *conn)
 {
-	security_ops->kdbus_free_security(conn);
+	security_ops->kdbus_free(conn);
 }
-EXPORT_SYMBOL(security_kdbus_free_security);
+EXPORT_SYMBOL(security_kdbus_free);
 
 int security_kdbus_send(struct kdbus_conn *src, struct kdbus_conn *dst)
 {

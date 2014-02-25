@@ -567,12 +567,12 @@ static int cap_sem_semop(struct sem_array *sma, struct sembuf *sops,
 	return 0;
 }
 
-static int cap_kdbus_alloc_security(struct kdbus_conn *conn)
+static int cap_kdbus_alloc(struct kdbus_conn *conn)
 {
 	return 0;
 }
 
-static void cap_kdbus_free_security(struct kdbus_conn *conn)
+static void cap_kdbus_free(struct kdbus_conn *conn)
 {
 }
 
@@ -1082,8 +1082,8 @@ void __init security_fixup_ops(struct security_operations *ops)
 	set_to_cap_if_null(ops, inode_notifysecctx);
 	set_to_cap_if_null(ops, inode_setsecctx);
 	set_to_cap_if_null(ops, inode_getsecctx);
-	set_to_cap_if_null(ops, kdbus_alloc_security);
-	set_to_cap_if_null(ops, kdbus_free_security);
+	set_to_cap_if_null(ops, kdbus_alloc);
+	set_to_cap_if_null(ops, kdbus_free);
 	set_to_cap_if_null(ops, kdbus_send);
 	set_to_cap_if_null(ops, kdbus_recv);
 #ifdef CONFIG_SECURITY_NETWORK
