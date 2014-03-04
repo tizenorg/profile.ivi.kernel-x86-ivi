@@ -1639,6 +1639,7 @@ struct security_operations {
 	void (*kdbus_free)(struct kdbus_conn *conn);
 	int (*kdbus_send)(struct kdbus_conn *src, struct kdbus_conn *dst);
 	int (*kdbus_recv)(struct kdbus_conn *src, struct kdbus_conn *dst);
+	int (*kdbus_name_acquire)(struct kdbus_conn *conn, const char *name);
 
 #ifdef CONFIG_SECURITY_NETWORK
 	int (*unix_stream_connect) (struct sock *sock, struct sock *other, struct sock *newsk);
@@ -2622,6 +2623,7 @@ int security_kdbus_alloc(struct kdbus_conn *conn);
 void security_kdbus_free(struct kdbus_conn *conn);
 int security_kdbus_send(struct kdbus_conn *src, struct kdbus_conn *dst);
 int security_kdbus_recv(struct kdbus_conn *src, struct kdbus_conn *dst);
+int security_kdbus_name_acquire(struct kdbus_conn *conn, const char *name);
 
 #ifdef CONFIG_SECURITY_NETWORK
 

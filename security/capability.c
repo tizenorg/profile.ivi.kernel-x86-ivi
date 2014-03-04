@@ -586,6 +586,11 @@ static int cap_kdbus_recv(struct kdbus_conn *src, struct kdbus_conn *dst)
 	return 0;
 }
 
+static int cap_kdbus_name_acquire(struct kdbus_conn *conn, const char *name)
+{
+	return 0;
+}
+
 #ifdef CONFIG_SECURITY_NETWORK
 static int cap_unix_stream_connect(struct sock *sock, struct sock *other,
 				   struct sock *newsk)
@@ -1086,6 +1091,7 @@ void __init security_fixup_ops(struct security_operations *ops)
 	set_to_cap_if_null(ops, kdbus_free);
 	set_to_cap_if_null(ops, kdbus_send);
 	set_to_cap_if_null(ops, kdbus_recv);
+	set_to_cap_if_null(ops, kdbus_name_acquire);
 #ifdef CONFIG_SECURITY_NETWORK
 	set_to_cap_if_null(ops, unix_stream_connect);
 	set_to_cap_if_null(ops, unix_may_send);

@@ -1126,6 +1126,12 @@ int security_kdbus_recv(struct kdbus_conn *src, struct kdbus_conn *dst)
 }
 EXPORT_SYMBOL(security_kdbus_recv);
 
+int security_kdbus_name_acquire(struct kdbus_conn *conn, const char *name)
+{
+	return security_ops->kdbus_name_acquire(conn, name);
+}
+EXPORT_SYMBOL(security_kdbus_name_acquire);
+
 #ifdef CONFIG_SECURITY_NETWORK
 
 int security_unix_stream_connect(struct sock *sock, struct sock *other, struct sock *newsk)
