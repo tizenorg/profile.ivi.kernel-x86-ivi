@@ -1,0 +1,9 @@
+Code-Review+1: Ulf Hofemeier <ulf.hofemeier@linux.intel.com>
+Verified+1: Ulf Hofemeier <ulf.hofemeier@linux.intel.com>
+Code-Review+2: Jin Song <jin.kyu.song@linux.intel.com>
+Verified+1: Jin Song <jin.kyu.song@linux.intel.com>
+Submitted-by: Jin Song <jin.kyu.song@linux.intel.com>
+Submitted-at: Wed, 26 Mar 2014 10:46:24 -0700
+Reviewed-on: https://review.tizen.org/gerrit/18548
+Project: profile/ivi/kernel-x86-ivi
+Branch: refs/heads/tizen
