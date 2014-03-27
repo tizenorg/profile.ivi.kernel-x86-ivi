@@ -1,3 +1,8 @@
+* Wed Mar 26 2014 Jin Song <jin.kyu.song@linux.intel.com> 3.13.3
+- TIVI-2790 : Change vmwgfx to built-in to enable Vmware
+- TIVI-713  : Change CONFIG_PROC_EVENTS to built-in
+- TIVI-2798 : Disable i915 hotplug detection for Valleyview
+
 * Mon Feb 18 2014 Jin Song <jin.kyu.song@linux.intel.com> 3.13.3
 - Upgrade to version 3.13.3.
 - TIVI-2676 : enable Fusion MTP device since Tizen IVI does not boot in VMware
