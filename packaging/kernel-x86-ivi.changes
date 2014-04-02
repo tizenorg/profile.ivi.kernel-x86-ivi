@@ -1,3 +1,6 @@
+* Wed Apr 02 2014 Jin Song <jin.kyu.song@linux.intel.com> 3.13.3
+- Reverted - TIVI-2798 : Disable i915 hotplug detection for Valleyview
+
 * Wed Mar 26 2014 Jin Song <jin.kyu.song@linux.intel.com> 3.13.3
 - TIVI-2790 : Change vmwgfx to built-in to enable Vmware
 - TIVI-713  : Change CONFIG_PROC_EVENTS to built-in
