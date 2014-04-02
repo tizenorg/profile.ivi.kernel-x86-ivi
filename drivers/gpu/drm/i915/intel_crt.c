@@ -637,7 +637,7 @@ intel_crt_detect(struct drm_connector *connector, bool force)
 		      connector->base.id, drm_get_connector_name(connector),
 		      force);
 
-	if (I915_HAS_HOTPLUG(dev) && !IS_VALLEYVIEW(dev)) {
+	if (I915_HAS_HOTPLUG(dev)) {
 		/* We can not rely on the HPD pin always being correctly wired
 		 * up, for example many KVM do not pass it through, and so
 		 * only trust an assertion that the monitor is connected.
@@ -656,7 +656,7 @@ intel_crt_detect(struct drm_connector *connector, bool force)
 	 * broken monitor (without edid) to work behind a broken kvm (that fails
 	 * to have the right resistors for HP detection) needs to fix this up.
 	 * For now just bail out. */
-	if (I915_HAS_HOTPLUG(dev) && !IS_VALLEYVIEW(dev))
+	if (I915_HAS_HOTPLUG(dev))
 		return connector_status_disconnected;
 
 	if (!force)
@@ -822,7 +822,7 @@ void intel_crt_init(struct drm_device *dev)
 	crt->base.mode_set = intel_crt_mode_set;
 	crt->base.disable = intel_disable_crt;
 	crt->base.enable = intel_enable_crt;
-	if (I915_HAS_HOTPLUG(dev) && !IS_VALLEYVIEW(dev))
+	if (I915_HAS_HOTPLUG(dev))
 		crt->base.hpd_pin = HPD_CRT;
 	if (HAS_DDI(dev)) {
 		crt->base.get_config = hsw_crt_get_config;
@@ -837,7 +837,7 @@ void intel_crt_init(struct drm_device *dev)
 
 	drm_sysfs_connector_add(connector);
 
-	if (!I915_HAS_HOTPLUG(dev) || IS_VALLEYVIEW(dev))
+	if (!I915_HAS_HOTPLUG(dev))
 		intel_connector->polled = DRM_CONNECTOR_POLL_CONNECT;
 
 	/*
