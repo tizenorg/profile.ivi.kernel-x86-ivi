@@ -458,6 +458,7 @@ struct intel_hdmi {
 				const void *frame, ssize_t len);
 	void (*set_infoframes)(struct drm_encoder *encoder,
 			       struct drm_display_mode *adjusted_mode);
+	struct edid *edid;
 };
 
 #define DP_MAX_DOWNSTREAM_PORTS		0x10
