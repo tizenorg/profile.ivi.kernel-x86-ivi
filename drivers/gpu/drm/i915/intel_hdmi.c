@@ -933,7 +933,7 @@ intel_hdmi_detect(struct drm_connector *connector, bool force)
 		hdmi_to_dig_port(intel_hdmi);
 	struct intel_encoder *intel_encoder = &intel_dig_port->base;
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct edid *edid;
+	struct edid *edid = NULL;
 	enum drm_connector_status status = connector_status_disconnected;
 
 	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
@@ -942,10 +942,19 @@ intel_hdmi_detect(struct drm_connector *connector, bool force)
 	intel_hdmi->has_hdmi_sink = false;
 	intel_hdmi->has_audio = false;
 	intel_hdmi->rgb_quant_range_selectable = false;
+
+	/*
+	 * Read edid again whatever preivous status or not and
+	 * cache it.
+	 */
 	edid = drm_get_edid(connector,
 			    intel_gmbus_get_adapter(dev_priv,
 						    intel_hdmi->ddc_bus));
+	if (intel_hdmi->edid) {
+		kfree(intel_hdmi->edid);
+	}
 
+	intel_hdmi->edid = edid;
 	if (edid) {
 		if (edid->input & DRM_EDID_INPUT_DIGITAL) {
 			status = connector_status_connected;
@@ -953,17 +962,21 @@ intel_hdmi_detect(struct drm_connector *connector, bool force)
 				intel_hdmi->has_hdmi_sink =
 						drm_detect_hdmi_monitor(edid);
 			intel_hdmi->has_audio = drm_detect_monitor_audio(edid);
+			if (intel_hdmi->force_audio != HDMI_AUDIO_AUTO)
+				intel_hdmi->has_audio =
+					(intel_hdmi->force_audio == HDMI_AUDIO_ON);
+			intel_encoder->type = INTEL_OUTPUT_HDMI;
+
 			intel_hdmi->rgb_quant_range_selectable =
 				drm_rgb_quant_range_selectable(edid);
-		}
-		kfree(edid);
-	}
 
-	if (status == connector_status_connected) {
-		if (intel_hdmi->force_audio != HDMI_AUDIO_AUTO)
-			intel_hdmi->has_audio =
-				(intel_hdmi->force_audio == HDMI_AUDIO_ON);
-		intel_encoder->type = INTEL_OUTPUT_HDMI;
+			DRM_DEBUG_KMS("HDMI Connected\n");
+		}
+	} else {
+		/* Connector disconnected, free cached EDID
+		 * kfree is NULL protected, so will work for < gen 6 also.
+		 */
+		DRM_DEBUG_KMS("HDMI Disconnected\n");
 	}
 
 	return status;
@@ -973,14 +986,27 @@ static int intel_hdmi_get_modes(struct drm_connector *connector)
 {
 	struct intel_hdmi *intel_hdmi = intel_attached_hdmi(connector);
 	struct drm_i915_private *dev_priv = connector->dev->dev_private;
+	struct edid *edid = intel_hdmi->edid;
+	struct drm_display_mode *mode = NULL;
+	int count = 0;
 
-	/* We should parse the EDID data and find out if it's an HDMI sink so
-	 * we can send audio to it.
-	 */
+	/* No need to read modes if panel is not connected */
+	if (connector->status != connector_status_connected)
+		return 0;
 
-	return intel_ddc_get_modes(connector,
+	/* EDID was saved in detect, re-use that if available, avoid
+	   reading EDID everytime */
+	if (edid) {
+		drm_mode_connector_update_edid_property(connector, edid);
+		count = drm_add_edid_modes(connector, edid);
+		drm_edid_to_eld(connector, edid);
+	} else {
+		count = intel_ddc_get_modes(connector,
 				   intel_gmbus_get_adapter(dev_priv,
 							   intel_hdmi->ddc_bus));
+	}
+
+	return count;
 }
 
 static bool
@@ -988,16 +1014,22 @@ intel_hdmi_detect_audio(struct drm_connector *connector)
 {
 	struct intel_hdmi *intel_hdmi = intel_attached_hdmi(connector);
 	struct drm_i915_private *dev_priv = connector->dev->dev_private;
-	struct edid *edid;
+	struct edid *edid = intel_hdmi->edid;
 	bool has_audio = false;
 
-	edid = drm_get_edid(connector,
-			    intel_gmbus_get_adapter(dev_priv,
-						    intel_hdmi->ddc_bus));
+	if (connector->status != connector_status_connected)
+		return 0;
+
+	if (!edid) {
+		edid = drm_get_edid(connector,
+				    intel_gmbus_get_adapter(dev_priv,
+							    intel_hdmi->ddc_bus));
+		intel_hdmi->edid = edid;
+	}
+
 	if (edid) {
 		if (edid->input & DRM_EDID_INPUT_DIGITAL)
 			has_audio = drm_detect_monitor_audio(edid);
-		kfree(edid);
 	}
 
 	return has_audio;
@@ -1318,6 +1350,7 @@ void intel_hdmi_init(struct drm_device *dev, int hdmi_reg, enum port port)
 
 	intel_dig_port->port = port;
 	intel_dig_port->hdmi.hdmi_reg = hdmi_reg;
+	intel_dig_port->hdmi.edid = NULL;
 	intel_dig_port->dp.output_reg = 0;
 
 	intel_hdmi_init_connector(intel_dig_port, intel_connector);
