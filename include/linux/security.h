@@ -58,6 +58,8 @@ struct kdbus_bus;
 struct kdbus_conn;
 struct kdbus_domain;
 
+#define HAVE_LSM_KDBUS_HOOKS 4
+
 /* Maximum number of letters for an LSM name string */
 #define SECURITY_NAME_MAX	10
 
