@@ -582,6 +582,7 @@ int drm_prime_handle_to_fd_ioctl(struct drm_device *dev, void *data,
 	return dev->driver->prime_handle_to_fd(dev, file_priv,
 			args->handle, flags, &args->fd);
 }
+EXPORT_SYMBOL(drm_prime_handle_to_fd_ioctl);
 
 int drm_prime_fd_to_handle_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv)

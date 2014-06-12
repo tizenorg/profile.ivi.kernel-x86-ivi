@@ -1551,6 +1551,162 @@ out:
 	return ret;
 }
 
+int drm_mode_getresources_kernel(struct drm_device *dev, void *data,
+			  struct drm_file *file_priv)
+{
+	struct drm_mode_card_res *card_res = data;
+	struct list_head *lh;
+	struct drm_framebuffer *fb;
+	struct drm_crtc *crtc;
+	int ret = 0;
+	int connector_count = 0;
+	int crtc_count = 0;
+	int fb_count = 0;
+	int encoder_count = 0;
+	int copied = 0;
+	uint32_t *fb_id;
+	uint32_t *crtc_id;
+
+	if (!drm_core_check_feature(dev, DRIVER_MODESET))
+		return -EINVAL;
+
+
+	mutex_lock(&file_priv->fbs_lock);
+	/*
+	 * For the non-control nodes we need to limit the list of resources
+	 * by IDs in the group list for this node
+	 */
+	list_for_each(lh, &file_priv->fbs)
+		fb_count++;
+
+	/* handle this in 4 parts */
+	/* FBs */
+	if (card_res->count_fbs >= fb_count) {
+		copied = 0;
+		fb_id = (uint32_t __user *)(unsigned long)card_res->fb_id_ptr;
+		list_for_each_entry(fb, &file_priv->fbs, filp_head) {
+			if (put_user(fb->base.id, fb_id + copied)) {
+				mutex_unlock(&file_priv->fbs_lock);
+				return -EFAULT;
+			}
+			copied++;
+		}
+	}
+	card_res->count_fbs = fb_count;
+	mutex_unlock(&file_priv->fbs_lock);
+
+	drm_modeset_lock_all(dev);
+
+	list_for_each(lh, &dev->mode_config.crtc_list)
+		crtc_count++;
+
+	list_for_each(lh, &dev->mode_config.connector_list)
+			connector_count++;
+
+	list_for_each(lh, &dev->mode_config.encoder_list)
+			encoder_count++;
+
+	card_res->max_height = dev->mode_config.max_height;
+	card_res->min_height = dev->mode_config.min_height;
+	card_res->max_width = dev->mode_config.max_width;
+	card_res->min_width = dev->mode_config.min_width;
+
+	/* CRTCs */
+	if (card_res->count_crtcs >= crtc_count) {
+		copied = 0;
+		crtc_id = (uint32_t __user *)(unsigned long)card_res->crtc_id_ptr;
+
+		list_for_each_entry(crtc, &dev->mode_config.crtc_list,
+					    head) {
+				DRM_DEBUG_KMS("[CRTC:%d]\n", crtc->base.id);
+				if (put_user(crtc->base.id, crtc_id + copied)) {
+					ret = -EFAULT;
+					goto out;
+				}
+				copied++;
+		}
+	}
+	card_res->count_crtcs = crtc_count;
+
+	/* Encoders */
+	/*
+	if (card_res->count_encoders >= encoder_count) {
+		copied = 0;
+		encoder_id = (uint32_t __user *)(unsigned long)card_res->encoder_id_ptr;
+		if (file_priv->master->minor->type == DRM_MINOR_CONTROL) {
+			list_for_each_entry(encoder,
+					    &dev->mode_config.encoder_list,
+					    head) {
+				DRM_DEBUG_KMS("[ENCODER:%d:%s]\n", encoder->base.id,
+						drm_get_encoder_name(encoder));
+				if (put_user(encoder->base.id, encoder_id +
+					     copied)) {
+					ret = -EFAULT;
+					goto out;
+				}
+				copied++;
+			}
+		} else {
+			for (i = mode_group->num_crtcs; i < mode_group->num_crtcs + mode_group->num_encoders; i++) {
+				if (put_user(mode_group->id_list[i],
+					     encoder_id + copied)) {
+					ret = -EFAULT;
+					goto out;
+				}
+				copied++;
+			}
+
+		}
+	}
+	card_res->count_encoders = encoder_count;
+
+	printk("drm_mode_getresources 4\n");
+	*/
+
+	/* Connectors */
+	/*
+	if (card_res->count_connectors >= connector_count) {
+		copied = 0;
+		connector_id = (uint32_t __user *)(unsigned long)card_res->connector_id_ptr;
+		if (file_priv->master->minor->type == DRM_MINOR_CONTROL) {
+			list_for_each_entry(connector,
+					    &dev->mode_config.connector_list,
+					    head) {
+				DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
+					connector->base.id,
+					drm_get_connector_name(connector));
+				if (put_user(connector->base.id,
+					     connector_id + copied)) {
+					ret = -EFAULT;
+					goto out;
+				}
+				copied++;
+			}
+		} else {
+			int start = mode_group->num_crtcs +
+				mode_group->num_encoders;
+			for (i = start; i < start + mode_group->num_connectors; i++) {
+				if (put_user(mode_group->id_list[i],
+					     connector_id + copied)) {
+					ret = -EFAULT;
+					goto out;
+				}
+				copied++;
+			}
+		}
+	}
+	card_res->count_connectors = connector_count;
+	*/
+
+	DRM_DEBUG_KMS("CRTC[%d] CONNECTORS[%d] ENCODERS[%d]\n", card_res->count_crtcs,
+		  card_res->count_connectors, card_res->count_encoders);
+
+out:
+	drm_modeset_unlock_all(dev);
+	return ret;
+}
+EXPORT_SYMBOL(drm_mode_getresources_kernel);
+
 /**
  * drm_mode_getcrtc - get CRTC configuration
  * @dev: drm device for the ioctl
@@ -1606,6 +1762,7 @@ out:
 	drm_modeset_unlock_all(dev);
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_getcrtc);
 
 static bool drm_mode_expose_to_userspace(const struct drm_display_mode *mode,
 					 const struct drm_file *file_priv)
@@ -1764,6 +1921,7 @@ out:
 
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_getconnector);
 
 int drm_mode_getencoder(struct drm_device *dev, void *data,
 			struct drm_file *file_priv)
@@ -1844,6 +2002,7 @@ out:
 	drm_modeset_unlock_all(dev);
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_getplane_res);
 
 /**
  * drm_mode_getplane - get plane info
@@ -1909,6 +2068,7 @@ out:
 	drm_modeset_unlock_all(dev);
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_getplane);
 
 /**
  * drm_mode_setplane - set up or tear down an plane
@@ -2043,6 +2203,7 @@ out:
 
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_setplane);
 
 /**
  * drm_mode_set_config_internal - helper to call ->set_config
@@ -2285,6 +2446,7 @@ out:
 	drm_modeset_unlock_all(dev);
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_setcrtc);
 
 static int drm_mode_cursor_common(struct drm_device *dev,
 				  struct drm_mode_cursor2 *req,
@@ -2627,6 +2789,7 @@ int drm_mode_addfb2(struct drm_device *dev,
 
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_addfb2);
 
 /**
  * drm_mode_rmfb - remove an FB from the configuration
@@ -2681,6 +2844,7 @@ fail_lookup:
 
 	return -ENOENT;
 }
+EXPORT_SYMBOL(drm_mode_rmfb);
 
 /**
  * drm_mode_getfb - get FB info
@@ -2836,6 +3000,7 @@ void drm_fb_release(struct drm_file *priv)
 	}
 	mutex_unlock(&priv->fbs_lock);
 }
+EXPORT_SYMBOL(drm_fb_release);
 
 struct drm_property *drm_property_create(struct drm_device *dev, int flags,
 					 const char *name, int num_values)
@@ -3766,6 +3931,7 @@ int drm_mode_create_dumb_ioctl(struct drm_device *dev,
 		return -ENOSYS;
 	return dev->driver->dumb_create(file_priv, dev, args);
 }
+EXPORT_SYMBOL(drm_mode_create_dumb_ioctl);
 
 int drm_mode_mmap_dumb_ioctl(struct drm_device *dev,
 			     void *data, struct drm_file *file_priv)

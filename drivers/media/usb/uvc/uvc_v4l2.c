@@ -1113,6 +1113,13 @@ static long uvc_v4l2_ioctl(struct file *file,
 	return video_usercopy(file, cmd, arg, uvc_v4l2_do_ioctl);
 }
 
+long uvc_v4l2_ioctl_kernel(struct file *file, unsigned int cmd, void *arg)
+{
+    return uvc_v4l2_do_ioctl(file, cmd, arg);
+}
+EXPORT_SYMBOL(uvc_v4l2_ioctl_kernel);
+
+
 #ifdef CONFIG_COMPAT
 struct uvc_xu_control_mapping32 {
 	__u32 id;

@@ -27,12 +27,16 @@
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 
+#include <linux/completion.h>
+
 #include <media/v4l2-common.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 
 #define VIDEO_NUM_DEVICES	256
 #define VIDEO_NAME              "video4linux"
+
+DECLARE_COMPLETION(video_device_completion);
 
 /*
  *	sysfs stuff
@@ -431,6 +435,47 @@ static int v4l2_mmap(struct file *filp, struct vm_area_struct *vm)
 	return ret;
 }
 
+int v4l2_enumerate_camera(unsigned int *camera_minor_lst,
+                          int *camera_id_lst, int *cnt)
+{
+		int i = 0;
+		struct video_device *dev = NULL;
+		int count = 0;
+
+		if (NULL == cnt || NULL == camera_minor_lst || NULL == camera_id_lst) {
+				printk(KERN_ERR "Invalid parameter\n");
+				return 1;
+		}
+		if (0 >= *cnt) {
+				printk(KERN_ERR "Invalid parameter\n");
+				return 1;
+		}
+
+		wait_for_completion(&video_device_completion);
+		for (i = 0; i < VIDEO_NUM_DEVICES; ) {
+				dev = video_device[i];
+				if (NULL != dev) {
+						if (dev->vfl_type == VFL_TYPE_GRABBER) {
+								camera_minor_lst[count] = dev->minor;
+								camera_id_lst[count] = dev->num;
+								count++;
+								if (count == *cnt) {
+										break;
+								}
+						}
+				}
+				i++;
+		}
+		*cnt = count;
+		if (0 == count) {
+				printk(KERN_INFO "Find no video dev.\n");
+		}
+
+		return 0;
+}
+
+EXPORT_SYMBOL(v4l2_enumerate_camera);
+
 /* Override for the open function */
 static int v4l2_open(struct inode *inode, struct file *filp)
 {
@@ -481,6 +526,18 @@ static int v4l2_release(struct inode *inode, struct file *filp)
 	video_put(vdev);
 	return ret;
 }
+
+int v4l2_open_kernel(struct inode *inode, struct file *filp)
+{
+		return v4l2_open(inode, filp);
+}
+EXPORT_SYMBOL(v4l2_open_kernel);
+
+int v4l2_release_kernel(struct inode *inode, struct file *filp)
+{
+        return v4l2_release(inode, filp);
+}
+EXPORT_SYMBOL(v4l2_release_kernel);
 
 static const struct file_operations v4l2_fops = {
 	.owner = THIS_MODULE,
@@ -935,6 +992,8 @@ int __video_register_device(struct video_device *vdev, int type, int nr,
 #endif
 	/* Part 6: Activate this minor. The char device can now be used. */
 	set_bit(V4L2_FL_REGISTERED, &vdev->flags);
+
+	complete(&video_device_completion);
 
 	return 0;
 

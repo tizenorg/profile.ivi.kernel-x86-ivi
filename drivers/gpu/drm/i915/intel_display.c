@@ -10480,6 +10480,7 @@ int intel_get_pipe_from_crtc_id(struct drm_device *dev, void *data,
 
 	return 0;
 }
+EXPORT_SYMBOL(intel_get_pipe_from_crtc_id);
 
 static int intel_encoder_clones(struct intel_encoder *encoder)
 {

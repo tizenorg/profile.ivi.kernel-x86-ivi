@@ -1,0 +1,26 @@
+config 	V2G_BRIDGE 
+        tristate "Intel V2G_BRIDGE Kernel Module Driver"
+	depends on DRM && PCI && MEDIA_USB_SUPPORT
+	default y
+	help
+        Choose this option if you have a Tunnel Creak platform.
+        If M is selected the module will be called v2g_bridge.
+
+choice
+	prompt "Build V2G_BRIDGE kernel driver as "
+	depends on V2G_BRIDGE
+	default V2G_BRIDGE_RELEASE
+
+config 	V2G_BRIDGE_RELEASE
+	bool "Release"
+	depends on V2G_BRIDGE
+	help
+	  Build V2G_Bridge driver as release
+
+config 	V2G_BRIDGE_DEBUG
+	bool "Debug"
+	depends on V2G_BRIDGE
+	help
+	  Build V2G_BRIDGE driver as debug
+
+endchoice

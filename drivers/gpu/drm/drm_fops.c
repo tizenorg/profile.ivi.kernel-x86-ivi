@@ -46,6 +46,9 @@ EXPORT_SYMBOL(drm_global_mutex);
 static int drm_open_helper(struct inode *inode, struct file *filp,
 			   struct drm_device * dev);
 
+static int drm_open_helper_kernel(struct inode *inode, struct file *filp,
+								  struct drm_device * dev);
+
 static int drm_setup(struct drm_device * dev)
 {
 	int ret;
@@ -102,10 +105,12 @@ int drm_open(struct inode *inode, struct file *filp)
 	mutex_lock(&dev->struct_mutex);
 	old_imapping = inode->i_mapping;
 	old_mapping = dev->dev_mapping;
-	if (old_mapping == NULL)
-		dev->dev_mapping = &inode->i_data;
+
+	//if (old_mapping == NULL)
+	dev->dev_mapping = &inode->i_data;
 	/* ihold ensures nobody can remove inode with our i_data */
-	ihold(container_of(dev->dev_mapping, struct inode, i_data));
+	//ihold(container_of(dev->dev_mapping, struct inode, i_data));
+
 	inode->i_mapping = dev->dev_mapping;
 	filp->f_mapping = dev->dev_mapping;
 	mutex_unlock(&dev->struct_mutex);
@@ -131,6 +136,65 @@ err_undo:
 	return retcode;
 }
 EXPORT_SYMBOL(drm_open);
+
+int drm_open_kernel(struct inode *inode, struct file *filp, struct drm_device** pdev)
+{
+	int minor_id = iminor(inode);
+	struct drm_minor *minor;
+	int retcode = 0;
+	int need_setup = 0;
+
+	struct address_space *old_mapping;
+	struct address_space *old_imapping;
+	struct drm_device* dev = NULL;
+
+	minor = idr_find(&drm_minors_idr, minor_id);
+	if (!minor)
+        return -ENODEV;
+
+    if (!(dev = minor->dev))
+        return -ENODEV;
+
+	if (!dev->open_count++)
+        need_setup = 1;
+
+    mutex_lock(&dev->struct_mutex);
+    old_imapping = inode->i_mapping;
+    old_mapping = dev->dev_mapping;
+
+    if (old_mapping == NULL)
+        dev->dev_mapping = &inode->i_data;
+
+    inode->i_mapping = dev->dev_mapping;
+
+    filp->f_mapping = dev->dev_mapping;
+    mutex_unlock(&dev->struct_mutex);
+
+    //retcode = drm_open_helper(inode, filp, dev);
+	//By pass drm_master when openning drm inside kernel.
+	retcode = drm_open_helper_kernel(inode, filp, dev);
+    if (retcode)
+        goto err_undo;
+    if (need_setup) {
+        retcode = drm_setup(dev);
+        if (retcode)
+            goto err_undo;
+    }
+
+	*pdev = dev;
+    return 0;
+
+err_undo:
+    mutex_lock(&dev->struct_mutex);
+    filp->f_mapping = old_imapping;
+    inode->i_mapping = old_imapping;
+//iput(container_of(dev->dev_mapping, struct inode, i_data));
+    dev->dev_mapping = old_mapping;
+    mutex_unlock(&dev->struct_mutex);
+    dev->open_count--;
+    return retcode;
+}
+EXPORT_SYMBOL(drm_open_kernel);
 
 /**
  * File \c open operation.
@@ -331,6 +395,103 @@ static int drm_open_helper(struct inode *inode, struct file *filp,
 out_close:
 	if (dev->driver->postclose)
 		dev->driver->postclose(dev, priv);
+out_prime_destroy:
+	if (drm_core_check_feature(dev, DRIVER_PRIME))
+		drm_prime_destroy_file_private(&priv->prime);
+	if (dev->driver->driver_features & DRIVER_GEM)
+		drm_gem_release(dev, priv);
+out_put_pid:
+	put_pid(priv->pid);
+	kfree(priv);
+	filp->private_data = NULL;
+	return ret;
+}
+
+static int drm_open_helper_kernel(struct inode *inode, struct file *filp,
+			   struct drm_device * dev)
+{
+	int minor_id = iminor(inode);
+	struct drm_file *priv;
+	int ret;
+
+	if (filp->f_flags & O_EXCL)
+		return -EBUSY;	/* No exclusive opens */
+	if (!drm_cpu_valid())
+		return -EINVAL;
+	if (dev->switch_power_state != DRM_SWITCH_POWER_ON && dev->switch_power_state != DRM_SWITCH_POWER_DYNAMIC_OFF)
+		return -EINVAL;
+
+	DRM_DEBUG("pid = %d, minor = %d\n", task_pid_nr(current), minor_id);
+
+	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
+	if (!priv)
+		return -ENOMEM;
+
+	filp->private_data = priv;
+	priv->filp = filp;
+	priv->uid = current_euid();
+	priv->pid = get_pid(task_pid(current));
+	priv->minor = idr_find(&drm_minors_idr, minor_id);
+	if (!priv->minor) {
+		ret = -ENODEV;
+		goto out_put_pid;
+	}
+
+	/* for compatibility root is always authenticated */
+	/* Remove the authenticated? */
+	priv->always_authenticated = capable(CAP_SYS_ADMIN);
+	priv->authenticated = priv->always_authenticated;
+	priv->lock_count = 0;
+
+	INIT_LIST_HEAD(&priv->lhead);
+	INIT_LIST_HEAD(&priv->fbs);
+	mutex_init(&priv->fbs_lock);
+	INIT_LIST_HEAD(&priv->event_list);
+	init_waitqueue_head(&priv->event_wait);
+	priv->event_space = 4096; /* set aside 4k for event buffer */
+
+	if (dev->driver->driver_features & DRIVER_GEM)
+		drm_gem_open(dev, priv);
+
+	if (drm_core_check_feature(dev, DRIVER_PRIME))
+		drm_prime_init_file_private(&priv->prime);
+
+	if (dev->driver->open) {
+		ret = dev->driver->open(dev, priv);
+		if (ret < 0)
+			goto out_prime_destroy;
+	}
+
+	// Do not hold drm_master because it will cause conflicts with xcompositor initialization.
+	mutex_lock(&dev->struct_mutex);
+	list_add(&priv->lhead, &dev->filelist);
+	mutex_unlock(&dev->struct_mutex);
+
+#ifdef __alpha__
+	/*
+	 * Default the hose
+	 */
+	if (!dev->hose) {
+		struct pci_dev *pci_dev;
+		pci_dev = pci_get_class(PCI_CLASS_DISPLAY_VGA << 8, NULL);
+		if (pci_dev) {
+			dev->hose = pci_dev->sysdata;
+			pci_dev_put(pci_dev);
+		}
+		if (!dev->hose) {
+			struct pci_bus *b = pci_bus_b(pci_root_buses.next);
+			if (b)
+				dev->hose = b->sysdata;
+		}
+	}
+#endif
+
+	return 0;
+
+
+//out_close:
+//	if (dev->driver->postclose)
+//		dev->driver->postclose(dev, priv);
 out_prime_destroy:
 	if (drm_core_check_feature(dev, DRIVER_PRIME))
 		drm_prime_destroy_file_private(&priv->prime);
@@ -583,6 +744,103 @@ int drm_release(struct inode *inode, struct file *filp)
 	return retcode;
 }
 EXPORT_SYMBOL(drm_release);
+
+int drm_release_kernel(struct inode *inode, struct file *filp)
+{
+	struct drm_file *file_priv = filp->private_data;
+	struct drm_device *dev = file_priv->minor->dev;
+	int retcode = 0;
+
+	mutex_lock(&drm_global_mutex);
+
+	DRM_DEBUG("open_count = %d\n", dev->open_count);
+
+	//If open_count==1, it means xcompositor does not open drm yet. 
+	//Release all of the drm resources?
+	//If open_count>1, xcompositor has been initialized.
+
+	//preclose?
+	if (dev->driver->preclose)
+		dev->driver->preclose(dev, file_priv);
+
+	/* ========================================================
+	 * Begin inline drm_release
+	 */
+
+	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
+		  task_pid_nr(current),
+		  (long)old_encode_dev(file_priv->minor->device),
+		  dev->open_count);
+
+	/* Release any auth tokens that might point to this file_priv,
+	   (do that under the drm_global_mutex) */
+	if (file_priv->magic)
+		(void) drm_remove_magic(file_priv->master, file_priv->magic);
+
+	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA))
+		drm_core_reclaim_buffers(dev, file_priv);
+
+	drm_events_release(file_priv);
+
+	if (dev->driver->driver_features & DRIVER_MODESET)
+		drm_fb_release(file_priv);
+
+	if (dev->driver->driver_features & DRIVER_GEM)
+		drm_gem_release(dev, file_priv);
+
+	mutex_lock(&dev->ctxlist_mutex);
+	if (!list_empty(&dev->ctxlist)) {
+		struct drm_ctx_list *pos, *n;
+
+		list_for_each_entry_safe(pos, n, &dev->ctxlist, head) {
+			if (pos->tag == file_priv &&
+			    pos->handle != DRM_KERNEL_CONTEXT) {
+				if (dev->driver->context_dtor)
+					dev->driver->context_dtor(dev,
+								  pos->handle);
+
+				drm_ctxbitmap_free(dev, pos->handle);
+
+				list_del(&pos->head);
+				kfree(pos);
+			}
+		}
+	}
+	mutex_unlock(&dev->ctxlist_mutex);
+
+	mutex_lock(&dev->struct_mutex);
+
+	BUG_ON(dev->dev_mapping == NULL);
+	//iput(container_of(dev->dev_mapping, struct inode, i_data));
+
+	/* drop the reference held my the file priv */
+	list_del(&file_priv->lhead);
+	mutex_unlock(&dev->struct_mutex);
+
+	if (dev->driver->postclose)
+		dev->driver->postclose(dev, file_priv);
+
+
+	if (drm_core_check_feature(dev, DRIVER_PRIME))
+		drm_prime_destroy_file_private(&file_priv->prime);
+
+	put_pid(file_priv->pid);
+	kfree(file_priv);
+
+	/* ========================================================
+	 * End inline drm_release
+	 */
+
+	if (!--dev->open_count) {
+		retcode = drm_lastclose(dev);
+		if (drm_device_is_unplugged(dev))
+			drm_put_dev(dev);
+	}
+	mutex_unlock(&drm_global_mutex);
+
+	return retcode;
+}
+EXPORT_SYMBOL(drm_release_kernel);
 
 static bool
 drm_dequeue_event(struct drm_file *file_priv,
