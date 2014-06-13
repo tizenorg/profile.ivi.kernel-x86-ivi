@@ -2942,6 +2942,7 @@ intel_dp_check_link_status(struct intel_dp *intel_dp)
 static enum drm_connector_status
 intel_dp_detect_dpcd(struct intel_dp *intel_dp)
 {
+	struct drm_device *dev = intel_dp_to_dev(intel_dp);
 	uint8_t *dpcd = intel_dp->dpcd;
 	uint8_t type;
 
@@ -2953,7 +2954,8 @@ intel_dp_detect_dpcd(struct intel_dp *intel_dp)
 		return connector_status_connected;
 
 	/* If we're HPD-aware, SINK_COUNT changes dynamically */
-	if (intel_dp->dpcd[DP_DPCD_REV] >= 0x11 &&
+	if (!IS_VALLEYVIEW(dev) &&
+	    intel_dp->dpcd[DP_DPCD_REV] >= 0x11 &&
 	    intel_dp->downstream_ports[0] & DP_DS_PORT_HPD) {
 		uint8_t reg;
 		if (!intel_dp_aux_native_read_retry(intel_dp, DP_SINK_COUNT,
