@@ -48,7 +48,7 @@
 %endif
 
 
-Name: kernel-common
+Name: linux-stable
 Summary: Tizen kernel
 Group: System/Kernel
 License: GPL-2.0
