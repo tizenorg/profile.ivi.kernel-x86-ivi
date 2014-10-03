@@ -113,6 +113,7 @@ struct intel_fbdev {
 	struct intel_framebuffer ifb;
 	struct list_head fbdev_list;
 	struct drm_display_mode *our_mode;
+	int preferred_bpp;
 };
 
 struct intel_encoder {
@@ -217,6 +218,12 @@ typedef struct dpll {
 	int	m;
 	int	p;
 } intel_clock_t;
+
+struct intel_plane_config {
+	bool tiled;
+	int size;
+	u32 base;
+};
 
 struct intel_crtc_config {
 	/**
@@ -367,6 +374,7 @@ struct intel_crtc {
 	int16_t cursor_width, cursor_height;
 	bool cursor_visible;
 
+	struct intel_plane_config plane_config;
 	struct intel_crtc_config config;
 
 	uint32_t ddi_pll_sel;
@@ -719,6 +727,9 @@ void hsw_enable_ips(struct intel_crtc *crtc);
 void hsw_disable_ips(struct intel_crtc *crtc);
 void intel_display_set_init_power(struct drm_device *dev, bool enable);
 int valleyview_get_vco(struct drm_i915_private *dev_priv);
+int intel_format_to_fourcc(int format);
+void intel_mode_from_pipe_config(struct drm_display_mode *mode,
+				 struct intel_crtc_config *pipe_config);
 
 /* intel_dp.c */
 void intel_dp_init(struct drm_device *dev, int output_reg, enum port port);
