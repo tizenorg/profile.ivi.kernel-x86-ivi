@@ -4,6 +4,7 @@
 #
 
 %define upstream_version 3.14.19
+%define profile ivi
 
 %if !%{defined platform}
 %define platform default
@@ -48,7 +49,7 @@
 %endif
 
 
-Name: linux-stable
+Name: kernel-x86-ivi
 Summary: Tizen kernel
 Group: System/Kernel
 License: GPL-2.0
