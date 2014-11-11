@@ -1551,6 +1551,86 @@ out:
 	return ret;
 }
 
+int drm_mode_getresources_kernel(struct drm_device *dev,
+				 void *data,
+				 struct drm_file *file_priv)
+{
+	struct drm_mode_card_res *card_res = data;
+	struct list_head *lh;
+	struct drm_framebuffer *fb;
+	struct drm_crtc *crtc;
+	int ret = 0;
+	int connector_count = 0;
+	int crtc_count = 0;
+	int fb_count = 0;
+	int encoder_count = 0;
+	int copied = 0;
+	uint32_t *fb_id;
+	uint32_t *crtc_id;
+
+	if (!drm_core_check_feature(dev, DRIVER_MODESET))
+		return -EINVAL;
+
+	mutex_lock(&file_priv->fbs_lock);
+	/*
+	 * For the non-control nodes we need to limit the list of resources
+	 * by IDs in the group list for this node
+	 */
+	list_for_each(lh, &file_priv->fbs)
+		fb_count++;
+
+	/* FBs */
+	if (card_res->count_fbs >= fb_count) {
+		copied = 0;
+		fb_id = (uint32_t __user *)(unsigned long)card_res->fb_id_ptr;
+		list_for_each_entry(fb, &file_priv->fbs, filp_head) {
+			if (put_user(fb->base.id, fb_id + copied)) {
+				mutex_unlock(&file_priv->fbs_lock);
+				return -EFAULT;
+			}
+			copied++;
+		}
+	}
+	card_res->count_fbs = fb_count;
+	mutex_unlock(&file_priv->fbs_lock);
+
+	drm_modeset_lock_all(dev);
+
+	list_for_each(lh, &dev->mode_config.crtc_list)
+		crtc_count++;
+
+	card_res->max_height = dev->mode_config.max_height;
+	card_res->min_height = dev->mode_config.min_height;
+	card_res->max_width = dev->mode_config.max_width;
+	card_res->min_width = dev->mode_config.min_width;
+
+	/* CRTCs */
+	if (card_res->count_crtcs >= crtc_count) {
+		copied = 0;
+		crtc_id = (uint32_t __user *)
+				(unsigned long)card_res->crtc_id_ptr;
+
+		list_for_each_entry(crtc,
+				    &dev->mode_config.crtc_list,
+				    head) {
+			DRM_DEBUG_KMS("[CRTC:%d]\n", crtc->base.id);
+			if (put_user(crtc->base.id, crtc_id + copied)) {
+				ret = -EFAULT;
+				goto out;
+			}
+			copied++;
+		}
+	}
+	card_res->count_crtcs = crtc_count;
+
+	DRM_DEBUG_KMS("CRTC[%d]", card_res->count_crtcs);
+
+out:
+	drm_modeset_unlock_all(dev);
+	return ret;
+}
+EXPORT_SYMBOL(drm_mode_getresources_kernel);
+
 /**
  * drm_mode_getcrtc - get CRTC configuration
  * @dev: drm device for the ioctl
