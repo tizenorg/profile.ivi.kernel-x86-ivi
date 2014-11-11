@@ -1,0 +1,10 @@
+config V2G_BRIDGE
+	tristate "Intel V2G_BRIDGE Kernel Module Driver"
+	depends on DRM && PCI && MEDIA_USB_SUPPORT
+	default y
+	help
+        Choose this option if enable the fast camera feature.
+        v2g_bridge.enable and v2g_bridge.debug options should
+        be enabled in kernel command line to enable/disable the
+        feature.
+        If M is selected the module will be called v2g_bridge.
