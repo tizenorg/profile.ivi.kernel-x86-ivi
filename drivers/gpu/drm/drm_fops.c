@@ -44,7 +44,7 @@ DEFINE_MUTEX(drm_global_mutex);
 EXPORT_SYMBOL(drm_global_mutex);
 
 static int drm_open_helper(struct inode *inode, struct file *filp,
-			   struct drm_device * dev);
+			   struct drm_device *dev);
 
 static int drm_setup(struct drm_device * dev)
 {
@@ -85,7 +85,7 @@ int drm_open(struct inode *inode, struct file *filp)
 	int retcode = 0;
 	int need_setup = 0;
 	struct address_space *old_mapping;
-	struct address_space *old_imapping;
+	static int is1st = 1;
 
 	minor = idr_find(&drm_minors_idr, minor_id);
 	if (!minor)
@@ -100,12 +100,17 @@ int drm_open(struct inode *inode, struct file *filp)
 	if (!dev->open_count++)
 		need_setup = 1;
 	mutex_lock(&dev->struct_mutex);
-	old_imapping = inode->i_mapping;
 	old_mapping = dev->dev_mapping;
-	if (old_mapping == NULL)
+
+	if (is1st) {
 		dev->dev_mapping = &inode->i_data;
-	/* ihold ensures nobody can remove inode with our i_data */
+		is1st = 0;
+	} else {
+		if (old_mapping == NULL)
+			dev->dev_mapping = &inode->i_data;
+	}
 	ihold(container_of(dev->dev_mapping, struct inode, i_data));
+
 	inode->i_mapping = dev->dev_mapping;
 	filp->f_mapping = dev->dev_mapping;
 	mutex_unlock(&dev->struct_mutex);
@@ -122,8 +127,8 @@ int drm_open(struct inode *inode, struct file *filp)
 
 err_undo:
 	mutex_lock(&dev->struct_mutex);
-	filp->f_mapping = old_imapping;
-	inode->i_mapping = old_imapping;
+	filp->f_mapping = old_mapping;
+	inode->i_mapping = old_mapping;
 	iput(container_of(dev->dev_mapping, struct inode, i_data));
 	dev->dev_mapping = old_mapping;
 	mutex_unlock(&dev->struct_mutex);
@@ -468,10 +473,7 @@ int drm_release(struct inode *inode, struct file *filp)
 	if (dev->driver->preclose)
 		dev->driver->preclose(dev, file_priv);
 
-	/* ========================================================
-	 * Begin inline drm_release
-	 */
-
+	/* Begin inline drm_release	 */
 	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
 		  task_pid_nr(current),
 		  (long)old_encode_dev(file_priv->minor->device),
@@ -528,11 +530,10 @@ int drm_release(struct inode *inode, struct file *filp)
 				temp->authenticated = temp->always_authenticated;
 		}
 
-		/**
+		/*
 		 * Since the master is disappearing, so is the
 		 * possibility to lock.
 		 */
-
 		if (master->lock.hw_lock) {
 			if (dev->sigdata.lock == master->lock.hw_lock)
 				dev->sigdata.lock = NULL;
@@ -569,10 +570,7 @@ int drm_release(struct inode *inode, struct file *filp)
 	put_pid(file_priv->pid);
 	kfree(file_priv);
 
-	/* ========================================================
-	 * End inline drm_release
-	 */
-
+	/* End inline drm_release */
 	if (!--dev->open_count) {
 		retcode = drm_lastclose(dev);
 		if (drm_device_is_unplugged(dev))
