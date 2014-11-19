@@ -1606,6 +1606,7 @@ out:
 	drm_modeset_unlock_all(dev);
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_getcrtc);
 
 static bool drm_mode_expose_to_userspace(const struct drm_display_mode *mode,
 					 const struct drm_file *file_priv)
@@ -1764,6 +1765,7 @@ out:
 
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_getconnector);
 
 int drm_mode_getencoder(struct drm_device *dev, void *data,
 			struct drm_file *file_priv)
@@ -1844,6 +1846,7 @@ out:
 	drm_modeset_unlock_all(dev);
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_getplane_res);
 
 /**
  * drm_mode_getplane - get plane info
@@ -1909,6 +1912,7 @@ out:
 	drm_modeset_unlock_all(dev);
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_getplane);
 
 /**
  * drm_mode_setplane - set up or tear down an plane
@@ -2043,6 +2047,7 @@ out:
 
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_setplane);
 
 /**
  * drm_mode_set_config_internal - helper to call ->set_config
@@ -2285,6 +2290,7 @@ out:
 	drm_modeset_unlock_all(dev);
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_setcrtc);
 
 static int drm_mode_cursor_common(struct drm_device *dev,
 				  struct drm_mode_cursor2 *req,
@@ -2627,6 +2633,7 @@ int drm_mode_addfb2(struct drm_device *dev,
 
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_addfb2);
 
 /**
  * drm_mode_rmfb - remove an FB from the configuration
@@ -2681,6 +2688,7 @@ fail_lookup:
 
 	return -ENOENT;
 }
+EXPORT_SYMBOL(drm_mode_rmfb);
 
 /**
  * drm_mode_getfb - get FB info
@@ -2836,6 +2844,7 @@ void drm_fb_release(struct drm_file *priv)
 	}
 	mutex_unlock(&priv->fbs_lock);
 }
+EXPORT_SYMBOL(drm_fb_release);
 
 struct drm_property *drm_property_create(struct drm_device *dev, int flags,
 					 const char *name, int num_values)
@@ -3766,6 +3775,7 @@ int drm_mode_create_dumb_ioctl(struct drm_device *dev,
 		return -ENOSYS;
 	return dev->driver->dumb_create(file_priv, dev, args);
 }
+EXPORT_SYMBOL(drm_mode_create_dumb_ioctl);
 
 int drm_mode_mmap_dumb_ioctl(struct drm_device *dev,
 			     void *data, struct drm_file *file_priv)
