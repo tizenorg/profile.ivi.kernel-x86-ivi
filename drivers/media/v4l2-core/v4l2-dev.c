@@ -26,6 +26,7 @@
 #include <linux/kmod.h>
 #include <linux/slab.h>
 #include <asm/uaccess.h>
+#include <linux/completion.h>
 
 #include <media/v4l2-common.h>
 #include <media/v4l2-device.h>
@@ -33,6 +34,8 @@
 
 #define VIDEO_NUM_DEVICES	256
 #define VIDEO_NAME              "video4linux"
+
+DECLARE_COMPLETION(video_device_completion);
 
 /*
  *	sysfs stuff
@@ -481,6 +484,18 @@ static int v4l2_release(struct inode *inode, struct file *filp)
 	video_put(vdev);
 	return ret;
 }
+
+int v4l2_open_kernel(struct inode *inode, struct file *filp)
+{
+	return v4l2_open(inode, filp);
+}
+EXPORT_SYMBOL(v4l2_open_kernel);
+
+int v4l2_release_kernel(struct inode *inode, struct file *filp)
+{
+	return v4l2_release(inode, filp);
+}
+EXPORT_SYMBOL(v4l2_release_kernel);
 
 static const struct file_operations v4l2_fops = {
 	.owner = THIS_MODULE,
@@ -935,6 +950,8 @@ int __video_register_device(struct video_device *vdev, int type, int nr,
 #endif
 	/* Part 6: Activate this minor. The char device can now be used. */
 	set_bit(V4L2_FL_REGISTERED, &vdev->flags);
+
+	complete(&video_device_completion);
 
 	return 0;
 
