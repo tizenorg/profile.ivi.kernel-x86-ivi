@@ -434,6 +434,48 @@ static int v4l2_mmap(struct file *filp, struct vm_area_struct *vm)
 	return ret;
 }
 
+int v4l2_enumerate_camera(unsigned int *camera_minor_lst,
+			  int *camera_id_lst,
+			  int *cnt)
+{
+	int i = 0;
+	struct video_device *dev = NULL;
+	int count = 0;
+
+	if (NULL == cnt || NULL == camera_minor_lst || NULL == camera_id_lst) {
+		pr_debug("Invalid parameter\n");
+		return -EINVAL;
+	}
+	if (0 >= *cnt) {
+		pr_debug("Invalid parameter\n");
+		return -EINVAL;
+	}
+
+	wait_for_completion_timeout(&video_device_completion,
+				    msecs_to_jiffies(5000));
+	for (i = 0; i < VIDEO_NUM_DEVICES; ) {
+		dev = video_device[i];
+		if (NULL != dev) {
+			if (dev->vfl_type == VFL_TYPE_GRABBER) {
+				camera_minor_lst[count] = dev->minor;
+				camera_id_lst[count] = dev->num;
+				count++;
+				if (count == *cnt)
+					break;
+			}
+		}
+		i++;
+	}
+	*cnt = count;
+	if (0 == count) {
+		pr_debug("Find no video dev.\n");
+		return -ENODEV;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(v4l2_enumerate_camera);
+
 /* Override for the open function */
 static int v4l2_open(struct inode *inode, struct file *filp)
 {
