@@ -4,4 +4,4 @@ V2G_BRIDGE_MOD_DIR = drivers/media/pci/v2g_bridge
 ccflags-y := -I$(V4L2_MOD_DIR)
 ccflags-$(CONFIG_V2G_BRIDGE_DEBUG) += -DDEBUG
 
-obj-y := v2g_bridge.o
+obj-$(CONFIG_V2G_BRIDGE) := v2g_bridge.o
