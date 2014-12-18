@@ -3,6 +3,12 @@
 # from MeeGo/Moblin/Fedora
 #
 
+# Currently we do not use initrd for anything. Thus, there is no need to have
+# a dependency on it. If in the future initrd is used, we have all the
+# dependency logic in place in case we need it.
+
+%bcond_with initrd
+
 %define upstream_version 3.14.19
 %define profile ivi
 
@@ -116,8 +122,10 @@ Requires(post): rpm
 #Requires(postun): setup-gummiboot
 
 Requires(post): /usr/sbin/depmod
-Requires(post): /usr/bin/dracut
 Requires(post): /usr/bin/kmod
+%if %{with initrd}
+Requires(post): /usr/bin/dracut
+%endif
 
 Requires(postun): /usr/bin/ln
 Requires(postun): /usr/bin/sed
@@ -322,7 +330,9 @@ else
 	fi
 fi
 
+%if %{with initrd}
 %{_bindir}/dracut /boot/initrd-%{kernel_full_version}.img %{kernel_full_version}
+%endif
 
 %post -n kernel-%{variant}-devel
 if [ -x /usr/sbin/hardlink ]; then
