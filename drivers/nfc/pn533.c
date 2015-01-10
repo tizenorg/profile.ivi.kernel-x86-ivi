@@ -1505,6 +1505,10 @@ static int pn533_target_found(struct pn533 *dev, u8 tg, u8 *tgdata,
 
 static inline void pn533_poll_next_mod(struct pn533 *dev)
 {
+	if (!dev->poll_mod_count) {
+		WARN(1, "poll_mod_count is zero!");
+		return;
+	}
 	dev->poll_mod_curr = (dev->poll_mod_curr + 1) % dev->poll_mod_count;
 }
 
@@ -1564,6 +1568,7 @@ static int pn533_start_poll_complete(struct pn533 *dev, struct sk_buff *resp)
 
 		/* We must stop the poll after a valid target found */
 		if (rc == 0) {
+			del_timer(&dev->listen_timer);
 			pn533_poll_reset_mod_list(dev);
 			return 0;
 		}
@@ -1912,8 +1917,10 @@ static int pn533_poll_dep_complete(struct pn533 *dev, void *arg,
 					dev->nfc_dev->targets[0].idx,
 					0, NFC_RF_INITIATOR);
 
-		if (!rc)
+		if (!rc) {
+			del_timer(&dev->listen_timer);
 			pn533_poll_reset_mod_list(dev);
+		}
 	}
 error:
 	dev_kfree_skb(resp);
@@ -2465,6 +2472,7 @@ static int pn533_dep_link_down(struct nfc_dev *nfc_dev)
 
 	dev_dbg(&dev->interface->dev, "%s\n", __func__);
 
+	del_timer(&dev->listen_timer);
 	pn533_poll_reset_mod_list(dev);
 
 	if (dev->tgt_mode || dev->tgt_active_prot)
