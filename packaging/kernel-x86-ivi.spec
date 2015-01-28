@@ -71,7 +71,7 @@ Version: %{upstream_version}
 #%else
 #Release: 0
 #%endif
-Release: 0
+Release: 60
 
 BuildRequires: module-init-tools
 BuildRequires: findutils
