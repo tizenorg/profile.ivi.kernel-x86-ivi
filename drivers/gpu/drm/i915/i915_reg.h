@@ -814,6 +814,8 @@
 #define   GFX_PPGTT_ENABLE		(1<<9)
 
 #define VLV_DISPLAY_BASE 0x180000
+#define VLV_VED_BASE 0x170000
+#define VLV_VED_SIZE 0x010000
 
 #define SCPD0		0x0209c /* 915+ only */
 #define IER		0x020a0
@@ -973,6 +975,7 @@
 #define GT_RENDER_SYNC_STATUS_INTERRUPT		(1 <<  2)
 #define GT_RENDER_DEBUG_INTERRUPT		(1 <<  1)
 #define GT_RENDER_USER_INTERRUPT		(1 <<  0)
+#define VLV_VED_BLOCK_INTERRUPT                 (1 << 23)
 
 #define PM_VEBOX_CS_ERROR_INTERRUPT		(1 << 12) /* hsw+ */
 #define PM_VEBOX_USER_INTERRUPT			(1 << 10) /* hsw+ */

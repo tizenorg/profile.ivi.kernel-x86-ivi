@@ -1514,6 +1514,8 @@ static irqreturn_t valleyview_irq_handler(int irq, void *arg)
 
 		if (pm_iir)
 			gen6_rps_irq_handler(dev_priv, pm_iir);
+		if (iir & VLV_VED_BLOCK_INTERRUPT)
+			vlv_ved_irq_handler(dev);
 
 		I915_WRITE(GTIIR, gt_iir);
 		I915_WRITE(GEN6_PMIIR, pm_iir);

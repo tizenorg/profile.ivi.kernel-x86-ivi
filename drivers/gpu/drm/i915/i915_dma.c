@@ -1669,6 +1669,13 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	if (IS_GEN5(dev))
 		intel_gpu_ips_init(dev_priv);
 
+	if (HAS_VED(dev)){
+		ret = vlv_setup_ved(dev);
+		if (ret < 0){
+			DRM_ERROR("failed to setup VED bridge: %d\n",ret);
+		}
+	}
+
 	intel_init_runtime_pm(dev_priv);
 
 	return 0;
@@ -1710,6 +1717,10 @@ int i915_driver_unload(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret;
+
+	if (HAS_VED(dev)){
+		vlv_teardown_ved(dev);
+	}
 
 	ret = i915_gem_suspend(dev);
 	if (ret) {

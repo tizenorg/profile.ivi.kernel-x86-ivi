@@ -1533,6 +1533,12 @@ typedef struct drm_i915_private {
 
 	struct i915_runtime_pm pm;
 
+	/* necessary resource sharing with ved driver. */	
+	struct{
+		struct platform_device *platdev;		
+		int irq;
+	} ved;
+
 	/* Old dri1 support infrastructure, beware the dragons ya fools entering
 	 * here! */
 	struct i915_dri1_state dri1;
@@ -1704,6 +1710,8 @@ struct drm_i915_gem_object {
 #define to_gem_object(obj) (&((struct drm_i915_gem_object *)(obj))->base)
 
 #define to_intel_bo(x) container_of(x, struct drm_i915_gem_object, base)
+
+#define HAS_VED(dev)		(INTEL_INFO(dev)->is_valleyview && IS_GEN7(dev))
 
 /**
  * Request queue structure.
@@ -2367,6 +2375,11 @@ void i915_restore_display_reg(struct drm_device *dev);
 /* i915_sysfs.c */
 void i915_setup_sysfs(struct drm_device *dev_priv);
 void i915_teardown_sysfs(struct drm_device *dev_priv);
+
+/* i915_ved.c */
+int vlv_setup_ved(struct drm_device *dev);
+void vlv_teardown_ved(struct drm_device *dev);
+void vlv_ved_irq_handler(struct drm_device *dev);
 
 /* intel_i2c.c */
 extern int intel_setup_gmbus(struct drm_device *dev);

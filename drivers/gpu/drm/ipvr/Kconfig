@@ -1,0 +1,9 @@
+config DRM_IPVR
+       tristate "IPVR video decode driver"
+       depends on DRM
+       select SHMEM
+       select TMPFS
+       default m
+       help
+         Choose this option if you want to enable accelerated video decode with VED hardware.
+		 Currently support VP8 decoding on valleyview.
