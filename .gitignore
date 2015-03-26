@@ -45,6 +45,7 @@ modules.builtin
 /System.map
 /Module.markers
 /Module.symvers
+/defconfig
 
 #
 # Debian directory (make deb-pkg)
@@ -56,6 +57,7 @@ modules.builtin
 #
 !.gitignore
 !.mailmap
+!.gbs.conf
 
 #
 # Generated include files
